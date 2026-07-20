@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Locked palette — see ARCHITECTURE.md "Design system". Raw hex values,
+ * not HSL triplets, to stay exactly faithful to the values decided there.
+ * Dark overrides apply via prefers-color-scheme only for V1 — no manual
+ * toggle yet (kept simple; add next-themes later if a toggle is wanted).
+ */
+:root {
+  --background: #fafaf9;
+  --foreground: #1c1917;
+  --surface: #ffffff;
+  --surface-secondary: #f5f5f4;
+  --border: #e7e5e4;
+  --text-muted: #78716c;
+  --text-faint: #a8a29e;
+
+  --accent-tint: #fde4d7;
+  --accent: #f05f22;
+  --accent-hover: #d6480f;
+  --primary: #c2703f;
+  --primary-hover: #a85a2e;
+
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --warning: #ca8a04;
+  --warning-bg: #fef3c7;
+  --destructive: #dc2626;
+  --destructive-bg: #fee2e2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0c0a09;
+    --foreground: #fafaf9;
+    --surface: #18140f;
+    --surface-secondary: #1f1a15;
+    --border: #2c2620;
+    --text-muted: #a8a29e;
+    --text-faint: #78716c;
+
+    --accent-tint: #3a2416;
+    --accent: #f3763f;
+    --accent-hover: #f58f5f;
+    --primary: #b4703f;
+    --primary-hover: #c78352;
+
+    --success: #4ade80;
+    --success-bg: #14251a;
+    --warning: #eab308;
+    --warning-bg: #2a2410;
+    --destructive: #f87171;
+    --destructive-bg: #2a1616;
+  }
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}

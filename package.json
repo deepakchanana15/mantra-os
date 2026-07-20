@@ -1,0 +1,17 @@
+{
+  "name": "mantra-os",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "packageManager": "npm@11.9.0",
+  "overrides": {
+    "rxjs": "7.8.1"
+  },
+  "scripts": {
+    "db:generate": "npm run generate --workspace=@mantra-os/db",
+    "db:validate": "npm run validate --workspace=@mantra-os/db",
+    "db:format": "npm run format --workspace=@mantra-os/db"
+  }
+}

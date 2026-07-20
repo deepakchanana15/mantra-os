@@ -1,0 +1,220 @@
+# Architecture Decisions
+
+Record of significant, hard-to-reverse decisions. Newest first.
+
+---
+
+## 2026-07-20 — Phase 6 testing scope: risk-based, not exhaustive-per-endpoint
+
+**Decision:** Add Vitest to `apps/api` for unit tests, but scope them narrowly to genuinely risky pure/near-pure logic rather than writing a unit test for every CRUD endpoint. Keep the hand-rolled `verify-*.js` scripts (real HTTP, against a live Neon DB) as the integration/e2e layer rather than porting them into a framework like Supertest+Jest.
+
+**What got unit tested and why:**
+- `DeletionGuardService` (11 cases) — the actual governance logic (Owner escalation floor, grant requirement, revoked grants, self-delete blocking, 1/day rate limit) lives here; every write endpoint just calls through it, so this one file is the real risk surface, not each controller.
+- `rolesFor()` (7 cases) — extracted from inline logic in `seed-rbac.js` into `apps/api/src/common/permissions/roles-for.ts` (imported back into the seed script from compiled `dist`, same pattern already used for `PERMISSIONS`) specifically so it could be unit tested at all; a wrong bundle here silently mis-grants or mis-denies every resource for a whole role.
+- `computeShippingStatus()` / `computeReceivingStatus()` (10 cases) — extracted the order-line-quantity-vs-shipped/received math out of `ShipmentsService`/`GoodsReceiptsService` into pure functions (`shipment-status.util.ts`, `goods-receipt-status.util.ts`); status transitions (PENDING → PARTIALLY_SHIPPED → SHIPPED, never regressing) are exactly the kind of off-by-one-prone logic worth pinning down independent of the DB.
+
+**What deliberately did not get unit tests:** simple CRUD controllers/services/repositories (Customers, Products, Warehouses, Suppliers, etc.) — they share one already-proven pattern (`findAll`/`findOneOrThrow`/`create`/`update`/`softDelete` via `DeletionGuardService`), and `verify-frontend-e2e.js` already exercises that pattern end-to-end for the reference vertical slice (Customers) plus page-load checks for the rest.
+
+**New integration coverage** — `packages/db/scripts/verify-governance.js`, following the existing `verify-*.js` pattern (real servers, real HTTP, real cookies, cleans up after itself): the 1/day deletion rate limit actually blocking a second delete (even for the Owner), Viewer role denied 403 on write while still allowed to read, and cross-org isolation via RLS (a second org's Owner gets 404 by ID and the record is absent from their list, not just "assumed from `verify-rls.js`'s lower-level check").
+
+**Result, run together:** 28/28 Vitest unit tests, 19/19 `verify-frontend-e2e.js`, 7/7 `verify-governance.js`, plus `verify-rls.js` and `verify-auth.js` — all green on the first full run after writing the new tests.
+
+**Why chosen over a broader or Jest/Supertest-based suite:** the `verify-*.js` scripts have already caught 5 real bugs across Phases 4–5 (the never-registered `TenantContextInterceptor`, the RSC serialization boundary violation, `emit()` vs `emitAsync()`, the 5s transaction timeout, plus the RLS cast bug earlier in Phase 3) precisely because they run against a real remote database and the full request pipeline — porting them into a mocked test framework would trade away the thing that's actually been finding bugs. Unit tests fill the specific gap those scripts can't reasonably cover: exhaustive branch coverage of pure logic (every role/resource combination, every rate-limit edge case) without needing a live server for each case.
+
+**Reversibility:** High — test scope is a judgment call, not a structural commitment; more unit tests can be added incrementally to any file if it turns out to need them.
+
+---
+
+## 2026-07-20 — Three more real bugs found completing Phase 5's remaining 8 domains
+
+**What happened:** Building out Products, Warehouses, Inventory, Contacts, Sales (Quotes/SalesOrders/Shipments), Purchasing (Suppliers/PurchaseOrders/GoodsReceipts), Marketing, Settings, and Reports, then extending `verify-frontend-e2e.js` to exercise the one piece of real cross-domain business logic in the new work (Purchasing→Inventory via GoodsReceipt, Sales→Inventory via Shipment, with actual stock-quantity math checked) surfaced three more bugs that `tsc` and `next build` both passed cleanly on:
+
+1. **RSC serialization boundary violation.** The generic `ExportCsvButton` took a `columns` prop with accessor *functions* (`(row) => row.sku`). Used from a Server Component (`products/page.tsx`), this crashed at runtime — React Server Components cannot pass functions to Client Components across that boundary. Not a type error; TypeScript has no concept of this constraint. Fixed by changing the component's contract to plain serializable data: the Server Component pre-maps rows into `Record<string,string>` before handing them to the button, no functions cross the boundary. Customers' original export button avoided this by accident (it formatted internally rather than taking an accessor-function prop) — the *generic* version reintroduced the problem.
+2. **`eventEmitter.emit()` instead of `emitAsync()`.** `DeletionGuardService.recordAndNotify()` fires the `record.deleted` event for `RecordDeletedListener` (async — writes a Notification, calls Resend) to pick up. `emit()` does not await async listeners; the request's transaction was committing and closing while the listener was still mid-flight, throwing "Transaction already closed." This directly contradicts the synchronous-listener assumption written into ARCHITECTURE.md's "Domain events" section back in Phase 2 — the assumption was correct in spirit (listener work should complete within the request) but the implementation used the wrong emitter method to actually guarantee it.
+3. **Prisma's default 5000ms interactive-transaction timeout was too tight** for Shipment/GoodsReceipt creation specifically — each does several sequential remote round-trips (create the record, one write per inventory line via `InventoryService.recordMovement()`, then a status-recalculation query re-reading the parent order) inside the one per-request transaction `TenantContextInterceptor` opens. Simple CRUD stays well under 5s; these multi-write flows didn't, once real network latency to Neon was actually exercised rather than assumed. Fixed by raising the transaction timeout to 15000ms.
+
+**Why none of this was caught earlier:** Every one of these needs the exact combination of (a) a real remote database connection, (b) a real multi-step business flow, not simple CRUD, and (c) the full request pipeline actually running — which is precisely what didn't exist until this phase's `verify-frontend-e2e.js` extended to cover Purchasing→Inventory and Sales→Inventory specifically, rather than stopping at "the page loads."
+
+**Reinforces the lesson from the earlier `TenantContextInterceptor` bug**: build-clean and type-clean are necessary, not sufficient. The project's verification bar going forward is "a real multi-step flow, driven through the full stack, against the live database" — and that bar keeps finding real bugs every time it's actually applied to new surface area, which is the argument for continuing to apply it rather than treating earlier clean runs as proof the pattern is now safe.
+
+**Reversibility:** All three fixes are contained and low-risk (a component contract, an emitter method, a config number). No data corruption occurred — the bugs manifested as request failures, not silent wrong data.
+
+---
+
+## 2026-07-20 — Critical bug found: TenantContextInterceptor was never actually running
+
+**What happened:** Building the Phase 5 frontend and driving it against the real API for the first time (`packages/db/scripts/verify-frontend-e2e.js` — real login, real org selection, real customer create/view/delete over HTTP with real cookies) surfaced that `TenantContextInterceptor` — the piece that opens the RLS transaction and populates `TenantContextService`'s `AsyncLocalStorage` — was built in Phase 4, referenced in `CommonModule`'s providers, but **never registered as `APP_INTERCEPTOR` and never applied via `@UseInterceptors` on any controller**. It simply never ran. Every tenant-scoped repository call had been silently missing its RLS transaction context this entire time.
+
+**Why earlier verification didn't catch it:** Every prior boot/smoke test either (a) failed before reaching the database (no live DB yet), or (b) only exercised `@SkipTenantContext()` routes (`/v1/organizations` list, `/v1/auth/login`) which correctly never needed the interceptor. `verify-auth.js` tested login end-to-end but never called a tenant-scoped route. Nothing had driven a request through the *full* guard-and-interceptor pipeline against real data until the frontend existed to do it. This is exactly why ARCHITECTURE.md's Phase 4 verification claims were scoped to "DI wiring and route mapping" — that was true and insufficient; it was never a claim that the RLS mechanism itself had been exercised.
+
+**Fix:** Registered `TenantContextInterceptor` globally via `APP_INTERCEPTOR` in `app.module.ts`. This immediately surfaced a second bug: `AuthController`'s routes (login/forgot-password/reset-password have no guards at all; `me` only has `JwtAuthGuard`) crashed with `Cannot read properties of undefined (reading 'id')` because the now-global interceptor assumed `req.user` always exists. Fixed by adding `@SkipTenantContext()` at the class level on `AuthController` — every route there is either pre-session or deliberately org-independent.
+
+**Re-verified clean after both fixes**: all 9 checks in `verify-frontend-e2e.js` pass — login, org picker, org selection, dashboard (real KPI data), customer list/create/view/delete (including the Owner-escalation-floor deletion rule actually firing), and the no-session redirect.
+
+**Lesson for how this project verifies work going forward:** "boots without error" and "DI resolves" are necessary but not sufficient — they don't prove a cross-cutting mechanism (guards, interceptors, RLS) is actually wired into the request path. Every phase from here should include at least one real request driven through the full pipeline against live data before being called verified, not just a successful build/boot.
+
+**Reversibility:** N/A — this was a bug, not a design choice. No tenant data existed in the window this was broken (this session, pre-any-real-usage), so no cross-tenant data exposure ever occurred in practice; still treated with the severity a live RLS gap deserves.
+
+---
+
+## 2026-07-19 — Self-hosted authentication replaces Firebase
+
+**Decision:** Firebase Authentication is removed entirely. `apps/api` now owns authentication directly: bcrypt-hashed passwords in the `users` table (`passwordHash`, replacing `firebaseUid`), a self-issued signed JWT (HS256, `AUTH_JWT_SECRET`) for sessions, and a `PasswordResetToken` table (stores only a SHA-256 hash of the reset token, never the raw value) for forgot/reset-password via Resend — the same email vendor already used for notifications.
+
+**Why chosen:** User hit Firebase's paywall in practice ("asks for money even for hobby projects") and asked to move to something in the Vercel/Next.js ecosystem instead. The literal ask ("use Vercel instead") isn't possible — Vercel has no end-user identity product; its one adjacent feature, Passport, gates a *deployment URL* behind an *external* IdP and is Enterprise-only, contact-sales pricing. Auth.js (NextAuth) was considered as the realistic "stay in the Next.js ecosystem" option, but rejected as a **library dependency**: Auth.js's default session token is an encrypted JWE designed to be issued and verified by the *same* Next.js app, which is awkward to verify correctly from a separate NestJS API — exactly this project's actual topology (two Vercel projects, not one). Self-issuing a plain signed JWT sidesteps that mismatch entirely and costs nothing to run.
+
+**Explicit tradeoff accepted:** the user chose traditional email + password over the initially-recommended magic-link (passwordless) approach. This means MantraOS now owns password hashing, validation, and a full reset flow — real security surface that a passwordless approach would have avoided. Mitigated with bcrypt (10 rounds), a hashed (not raw) reset token with a 1-hour expiry, and generic "invalid email or password" / "if an account exists..." responses that don't reveal account existence.
+
+**Verified end-to-end against the live database**, not just compiled: wrong password → 401; correct password → real signed token; that token against a protected route → 200; no token → 401. See `packages/db/scripts/verify-auth.js`.
+
+**Consequences:**
+- The invite/onboarding flow (already flagged as out-of-scope-for-now in TODO.md) now also needs to set an initial password when a User row is created, not just exist.
+- `apps/web` (Phase 5) needs its own login form + token storage (httpOnly cookie recommended) — there's no Auth.js session cookie magic to lean on, by design.
+
+**Reversibility:** Medium. Swapping the hashing/JWT scheme later is contained to `AuthService`/`JwtAuthGuard`; migrating *existing* user passwords to a different scheme (or back to a third-party IdP) would need a re-authentication step for every user, same as any password-scheme migration anywhere.
+
+---
+
+## 2026-07-19 — First live database: RLS text/uuid bug found, RBAC seeded and verified
+
+**What happened:** Provisioned the real Neon project, ran the first migration (32 tables), then hit a real bug applying `rls-policies.sql`: every policy cast the session variable to `::uuid`, but Prisma's `String` fields map to Postgres `text`, not a native `uuid` column — `text = uuid` has no valid operator. Fixed by comparing as text on both sides (removed all 52 `::uuid` casts). This is exactly the kind of thing that only surfaces against a real database, not from reading the schema.
+
+**Verified, not assumed:** Wrote `packages/db/scripts/verify-rls.js` — inserts a real customer under one org, then queries it as the actual restricted `mantraos_app` role (not the schema owner) with no tenant context (0 rows, correct), the wrong org's context (0 rows, correct), and the right org's context (1 row, correct). All three passed against the live database.
+
+**RBAC seeded from the single source of truth:** `packages/db/scripts/seed-rbac.js` reads `PERMISSIONS` from the already-compiled `apps/api` output (not a hand-copied list) and wires the five system roles per the `rolesFor()` rules in that script — delete-type permission keys are granted broadly (Owner/Admin/Manager/Member), since the real restriction on deleting a specific record is `DeletionGuardService`, not the role; `deletion_grants:manage` is Owner-only, matching the delegation design. Verified post-seed: Owner 63/63 permissions, Admin 62 (everything except `deletion_grants:manage`), Manager and Member 58 each (identical CRUD bundle), Viewer 16 (read-only), `deletion_grants:manage` held only by Owner.
+
+**Also found:** Prisma rejects `null` inside a compound-unique `where` clause (`organizationId_key` with `organizationId: null` for system roles) — worked around with `findFirst` + manual create/update instead of `upsert()`.
+
+**Reversibility:** The RLS fix is low-risk (caught before any real tenant data existed). The seed script is fully re-runnable (idempotent) if the permission catalog changes later.
+
+---
+
+## 2026-07-19 — Two schema gaps found and fixed while building domain modules
+
+**Decision:** `Category` and `Warehouse` gained `createdBy`/`updatedBy` (were missing them since the original Phase 3 pass); `GoodsReceipt` gained a `GoodsReceiptLine` child table (previously had no line items at all).
+
+**Why chosen:** Both were discovered organically while writing the actual NestJS modules, not by review — `DeletionGuardService.deleteWithGovernance()` needs `entityCreatedBy` to enforce the no-self-delete rule, which surfaced the missing audit columns the moment Categories/Warehouses needed delete endpoints. The GoodsReceipt gap surfaced when writing the receiving flow and realizing there was no way to express "received 8 of the 10 ordered" — a very ordinary procurement scenario that `Shipment`/`ShipmentLine` already handled correctly on the sales side.
+
+**Why this happened:** The Phase 3 schema pass modeled all 9 domains in one sitting without a live database or real usage to test assumptions against. Writing the actual CRUD/business logic in Phase 4 is what exposed the gaps — a predictable cost of designing schema ahead of the code that uses it, not a one-off mistake.
+
+**Reversibility:** High — both were caught before any real data existed. Adding nullable/new columns and a new child table costs nothing at this stage; the same fixes after production data existed would need real migrations with backfill.
+
+---
+
+## 2026-07-18 — Guard/interceptor split for tenant context
+
+**Decision:** Membership validation (does this user actually belong to the requested org?) moved from the interceptor described in the Phase 2 sketch into a Guard (`TenantMembershipGuard`), which runs before a separate `PermissionGuard`. A slimmer `TenantContextInterceptor` now only opens the RLS transaction, reusing the org id the guard already validated.
+
+**Why chosen:** Discovered while actually implementing the permission system — NestJS executes all Guards before any Interceptor, with no way to interleave them. `PermissionGuard` needs `req.membership` (role + permissions) to decide whether a route is allowed, but the original design had that data only becoming available inside an Interceptor, which runs too late. Splitting the membership lookup into a Guard fixes the ordering and, as a side benefit, means the lookup happens once and both `TenantMembershipGuard` and `PermissionGuard` share it — no duplicate query.
+
+**Consequences:** Every tenant-scoped controller must apply guards in this exact order: `@UseGuards(FirebaseAuthGuard, TenantMembershipGuard, PermissionGuard)`. Getting the order wrong fails closed (guards throw before reaching the handler) rather than silently skipping a check, so this is safe to get wrong in the sense that it won't leak data — but it will break the route.
+
+**Reversibility:** High — this is an internal request-pipeline detail, invisible to API consumers.
+
+---
+
+## 2026-07-18 — Ledger tables are never soft-deletable, not even by Owner
+
+**Decision:** InventoryTransaction, AuditLog, and GoodsReceipt have no `deletedAt` and are never updated after creation. They sit entirely outside the deletion-governance system (Owner-delegated grants, above) — that system governs editable business records; these three are event logs where "deleting history" is never a valid operation for anyone, including the Owner.
+
+**Why chosen:** InventoryTransaction is the 10M-row scale target and the source of truth for stock levels — allowing edits or deletions to it would let StockLevel and reality silently diverge with no way to reconstruct what actually happened. AuditLog recording deletions would be pointless if it were itself deletable. This wasn't explicitly asked for but follows the same governance instinct behind the deletion-grant system above: irreversible actions get deliberate guardrails, and a mutable audit/ledger table is a contradiction in terms.
+
+**Consequences:** Corrections to inventory counts happen via a new offsetting `ADJUSTMENT` transaction, never by editing a past row — this needs to be a first-class, easy action in the Phase 4/5 UI, not a workaround.
+
+**Reversibility:** High to loosen (just allow edits later, though it would undermine the audit guarantee), effectively impossible to tighten retroactively once any ledger row has ever been edited or deleted.
+
+---
+
+## 2026-07-18 — RLS requires two Postgres roles (migrator vs. runtime app)
+
+**Decision:** Two database roles: `mantraos_migrator` (schema owner, runs Prisma migrations) and `mantraos_app` (used by the NestJS app in production). The app must connect as `mantraos_app`, never as the schema owner.
+
+**Why chosen:** Postgres table owners bypass Row-Level Security by default, even with `FORCE ROW LEVEL SECURITY` set. If the NestJS app connected using the same role that owns the schema (the natural default if you only ever create one DB user), every RLS policy in `rls-policies.sql` would silently do nothing — the multi-tenancy isolation decided early on would exist in name only. This is a real Postgres behavior, not a style preference.
+
+**Reversibility:** Low once real tenant data exists under the wrong role — this needs to be right from the first Neon provisioning step in Phase 7 (or whenever a real database is first connected), not fixed after the fact.
+
+---
+
+## 2026-07-18 — Deletion governance: Owner-delegated grants, not role-based delete
+
+**Decision:** Delete is not part of any role's base permission bundle. It's off by default for everyone except the Owner, who can delegate it to specific individual users by user ID. Even with a grant, no one can delete a record they personally created — the Owner is the sole exception, as the top of the escalation chain. Every deletion is soft, audit-logged, emails the Owner, and is capped at 1 per day per person performing the deletion.
+
+**Why chosen:** User's explicit requirement, arrived at through several rounds of clarification. The core insight: at the target scale (1M customers, 10M inventory transactions), deletion is a categorically different risk than editing — a bad edit is correctable, an unnoticed bad deletion on business-critical records is not. The initial ask was a role-based escalation rule (Member's records deletable by Manager+, Manager's by Admin/Owner only); it evolved into a simpler and stricter model — Owner grants delete capability to named individuals, rather than it being implied by role at all. This is more flexible for the business (Owner decides trust on a person-by-person basis) and simpler to implement (one grant table, no per-role escalation logic to get subtly wrong).
+
+**Explicitly deferred, not forgotten:** delegation grants are global-per-user in V1 (not scoped per domain/module) — e.g. no "can delete in Sales but not Inventory" yet. Straightforward to add to the same `UserDeletionGrant` table later; not built now because it wasn't asked for and would be speculative.
+
+**Reversibility:** Medium. The grant table and audit log are additive and easy to extend (e.g., domain-scoped grants). Loosening the "no self-deletion" or "1/day" rules later is easy (config change); tightening them after users have grown used to looser behavior is the harder direction, as with any permission relaxation.
+
+---
+
+## 2026-07-18 — RBAC: fixed system roles for V1, not a custom role builder
+
+**Decision:** V1 ships five fixed roles (Owner, Admin, Manager, Member, Viewer) with preset permission bundles. No per-org custom role creation or permission-matrix UI.
+
+**Why chosen:** User confirmed simplicity over flexibility for V1 — a custom role builder is meaningful schema + UI work justified only once a real org needs non-standard roles, which isn't yet known.
+
+**Consequences:** `Role` and `RolePermission` tables are still modeled as proper many-to-many from day one (not a hardcoded enum), specifically so V2 can add custom roles without a schema rewrite — only the role-*management* capability is deferred, not the data model.
+
+**Reversibility:** High for adding the feature later (schema already supports it); low for removing fixed roles once orgs depend on them (standard migration risk, not special to this decision).
+
+---
+
+## 2026-07-18 — Architecture: modular monolith with DDD module boundaries
+
+**Decision:** One NestJS application with isolated per-domain modules (Identity, CRM, Products, Inventory, Sales, Purchasing, Notifications, Settings), not microservices. Cross-domain reactions go through an in-process event emitter, never direct module-to-module calls outside the defined dependency graph.
+
+**Why chosen:** At 50 orgs / 500 users, microservices add inter-service auth, network hops, and distributed-transaction complexity for no benefit, and would conflict with running the API as a single Vercel serverless function. Clean module boundaries keep the door open to extracting a domain into its own service later if a specific V2 need justifies it — at zero cost today.
+
+**Reversibility:** Medium — module boundaries were designed to make future extraction possible, but it's not free; this is the default assumption for all of V1 and V2 unless a specific domain proves it needs independent scaling.
+
+---
+
+## 2026-07-18 — Design system: warm-stone neutrals + brand orange, muted-fill buttons
+
+**Decision:** The visual palette is built around Mantra Sports' actual brand color (`#f05f22`, sampled from the logo) on a warm-stone neutral base, not a generic default. Primary buttons use a desaturated "muted/burnt" fill (`#C2703F`), not the raw brand hex.
+
+**Context considered:** No companion palette existed beyond the single orange hex. Two full mockups were built and visually compared: Scheme A (warm stone + brand orange) vs. Scheme B (neutral zinc + indigo — the generic default originally proposed before the brand color was known). Within Scheme A, three primary-button treatments were tested side by side: full-saturation fill, muted/burnt fill, and outline.
+
+**Why chosen:** User confirmed Scheme A preserves brand identity and was the preferred direction. Within it, the muted-fill button treatment was chosen deliberately over the raw brand hex — this is an internal tool used ~8 hours/day by staff, and full-saturation orange (`#F05F22` is a high-saturation hue in the "safety orange" family) repeating on every page as button fills was identified as a fatigue risk. The raw hex is preserved for small/infrequent elements (icons, active-nav indicator) where it reads as brand recognition rather than visual noise.
+
+**Other adjustments made during this process:** Warning color shifted from standard amber to a more golden yellow (`#CA8A04`) to keep enough hue separation from the brand orange that status colors remain trustworthy at a glance. Any orange used as text/links uses a darkened shade (`#B23A0D`, 6:1 contrast) since the raw brand hex only reaches 3.3:1 on white and fails WCAG AA for text.
+
+**Reversibility:** High — implemented as CSS/theme tokens (see [ARCHITECTURE.md](ARCHITECTURE.md)), not hardcoded values, so any future palette change is a token-level swap.
+
+---
+
+## 2026-07-18 — Hosting: 100% Vercel, NestJS as serverless functions
+
+**Decision:** Both the Next.js frontend and the NestJS API deploy to Vercel. The API runs as Vercel serverless functions rather than on a persistent-container host.
+
+**Context considered:** A persistent host (Railway/Fly/Render) would let NestJS keep its native strengths — in-process `@nestjs/schedule` cron, WebSocket gateways for real-time notifications, efficient pooled DB connections, room for long-running jobs (bulk import, future AI forecasting). Cost was ~$5–15/mo, negligible for the business.
+
+**Why chosen anyway:** Avoids a second hosting bill and a second platform to operate; the team already trusts and uses Vercel elsewhere.
+
+**Consequences to design around:**
+- No in-process cron — scheduled work (recurring reports, inventory reconciliation) must go through **Vercel Cron** hitting protected API routes, not `@nestjs/schedule`.
+- No native WebSocket gateway — V1 Notifications should ship as polling/on-demand fetch + Resend email, **not** real-time push. Defer a managed real-time vendor (Pusher/Ably) to V2 if a concrete need emerges — don't add it speculatively.
+- Serverless execution time limits apply to any long-running work (bulk imports, report generation, future manufacturing/AI compute). Fine for V1 CRUD-heavy modules; V2 heavy jobs will likely need a queue (e.g. Inngest/QStash) — not needed now.
+- Cold starts and high function concurrency mean Prisma **must** use Neon's pooled connection string (or Prisma Accelerate), never a direct connection, from Phase 3 onward.
+- Note: commercial/production use of Vercel requires the paid Pro plan ($20/mo/seat) — the free Hobby tier is licensed for non-commercial use only.
+
+**Reversibility:** Medium. The NestJS app itself stays portable (standard Nest app); only the deployment adapter and cron/realtime approach are Vercel-specific. Moving to a persistent host later is a deployment-layer change, not a rewrite.
+
+---
+
+## 2026-07-18 — Multi-tenancy: shared schema, `organization_id` + Postgres RLS
+
+**Decision:** Single Postgres database, single schema. Every business table carries an `organization_id` foreign key. Tenant isolation is enforced twice: at the application layer (Prisma middleware auto-injects the org filter) and at the database layer (Postgres Row-Level Security) as defense-in-depth.
+
+**Alternatives rejected:**
+- *Schema-per-organization* — isolation benefit doesn't justify 50x migration/backup/connection overhead at this scale.
+- *Database-per-organization* — same problem, worse; only justified by hard compliance/data-residency requirements, which no current or planned org has.
+
+**Why chosen:** Standard pattern for multi-tenant SaaS at this scale (comparable to how Linear/Notion/Shopify-style platforms isolate tenants). Scales well past the 10M-row target with proper indexing on `organization_id`. Keeps cross-org operational tooling and reporting simple.
+
+**Consequences to design around:**
+- Every Prisma model needs `organizationId` and an index on it (usually as part of a composite index with other common filters).
+- RLS policies must be written and tested per table before Phase 3 is considered done — this is the safety net against a cross-tenant data leak, which is a real incident given future orgs may be unrelated businesses.
+- The NestJS request context needs a reliable, tamper-proof way to establish "current organization" per request (derived from the authenticated user's org membership, never from a client-supplied value alone).
+
+**Reversibility:** Low. Changing tenancy model after data exists is a full migration. This is considered locked for V1 and V2.

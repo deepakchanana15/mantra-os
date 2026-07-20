@@ -1,0 +1,774 @@
+// MantraOS database schema
+// Conventions: UUID PKs, soft deletes (deletedAt) on business entities,
+// audit columns (createdAt/updatedAt/createdBy/updatedBy) on business entities,
+// organizationId on every tenant-scoped table. See DATABASE.md for rationale.
+//
+// Append-only ledger tables (InventoryTransaction, AuditLog, GoodsReceipt) are
+// deliberately NOT soft-deletable — corrections happen via offsetting entries,
+// never by editing or deleting history. See DATABASE.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Identity domain — Organization, User, Membership, Role, Permission
+// ─────────────────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String    @id @default(uuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  memberships    Membership[]
+  roles          Role[]
+  settings       OrganizationSettings?
+  deletionGrants UserDeletionGrant[]
+  auditLogs      AuditLog[]
+
+  customers          Customer[]
+  contacts           Contact[]
+  categories         Category[]
+  products           Product[]
+  warehouses         Warehouse[]
+  stockLevels        StockLevel[]
+  inventoryTxns      InventoryTransaction[]
+  quotes             Quote[]
+  quoteLines         QuoteLine[]
+  salesOrders        SalesOrder[]
+  salesOrderLines    SalesOrderLine[]
+  shipments          Shipment[]
+  shipmentLines      ShipmentLine[]
+  suppliers          Supplier[]
+  purchaseOrders     PurchaseOrder[]
+  purchaseOrderLines PurchaseOrderLine[]
+  goodsReceipts      GoodsReceipt[]
+  goodsReceiptLines  GoodsReceiptLine[]
+  segments           Segment[]
+  emailTemplates     EmailTemplate[]
+  campaigns          Campaign[]
+  notifications      Notification[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  avatarUrl    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  memberships         Membership[]
+  preferences         UserPreferences?
+  grantsReceived      UserDeletionGrant[]  @relation("GrantReceivedBy")
+  grantsIssued        UserDeletionGrant[]  @relation("GrantIssuedBy")
+  auditLogs           AuditLog[]           @relation("AuditPerformedBy")
+  notifications       Notification[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+/// Never stores the raw token — only its SHA-256 hash, so a database leak
+/// doesn't hand out usable reset links. The raw token exists only in the
+/// emailed link and the requester's browser.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model Membership {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  roleId         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+  role         Role         @relation(fields: [roleId], references: [id])
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+/// System roles have organizationId = null and are shared across every org.
+/// Per-org custom roles (organizationId set) are a V2 capability — the shape
+/// exists now so V2 doesn't need a schema rewrite, but V1 never creates one.
+model Role {
+  id             String   @id @default(uuid())
+  organizationId String?
+  key            String
+  name           String
+  isSystem       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization    Organization?    @relation(fields: [organizationId], references: [id])
+  memberships     Membership[]
+  rolePermissions RolePermission[]
+
+  @@unique([organizationId, key])
+  @@map("roles")
+}
+
+/// Global catalog, not tenant-scoped — the same permission keys apply to every org.
+model Permission {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  resource    String
+  action      String
+  description String?
+
+  rolePermissions RolePermission[]
+
+  @@index([resource])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Deletion governance — see DECISIONS.md "Deletion governance"
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Presence of a non-revoked row = this user may delete records in this org.
+/// Owner needs no row — delete capability is implicit for Owner.
+model UserDeletionGrant {
+  id             String    @id @default(uuid())
+  organizationId String
+  userId         String
+  grantedById    String
+  grantedAt      DateTime  @default(now())
+  revokedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation("GrantReceivedBy", fields: [userId], references: [id])
+  grantedBy    User         @relation("GrantIssuedBy", fields: [grantedById], references: [id])
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@map("user_deletion_grants")
+}
+
+/// Append-only. Never updated or deleted — it is itself the audit trail.
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  action         String
+  entityType     String
+  entityId       String
+  performedById  String
+  targetUserId   String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  performedBy  User         @relation("AuditPerformedBy", fields: [performedById], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([performedById, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CRM domain
+// ─────────────────────────────────────────────────────────────────────────
+
+enum CustomerType {
+  INDIVIDUAL
+  COMPANY
+}
+
+model Customer {
+  id              String       @id @default(uuid())
+  organizationId  String
+  name            String
+  type            CustomerType @default(COMPANY)
+  email           String?
+  phone           String?
+  billingAddress  Json?
+  shippingAddress Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  createdBy       String
+  updatedBy       String
+  deletedAt       DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  contacts     Contact[]
+  quotes       Quote[]
+  salesOrders  SalesOrder[]
+
+  @@index([organizationId])
+  @@index([organizationId, deletedAt])
+  @@map("customers")
+}
+
+model Contact {
+  id             String    @id @default(uuid())
+  organizationId String
+  customerId     String
+  name           String
+  email          String?
+  phone          String?
+  role           String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@map("contacts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Products domain
+// ─────────────────────────────────────────────────────────────────────────
+
+model Category {
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  parentId       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  parent       Category?    @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children     Category[]   @relation("CategoryHierarchy")
+  products     Product[]
+
+  @@index([organizationId])
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Product {
+  id             String    @id @default(uuid())
+  organizationId String
+  categoryId     String?
+  sku            String
+  name           String
+  description    String?
+  unitPrice      Decimal   @db.Decimal(12, 2)
+  unitCost       Decimal?  @db.Decimal(12, 2)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization          Organization           @relation(fields: [organizationId], references: [id])
+  category              Category?              @relation(fields: [categoryId], references: [id])
+  stockLevels           StockLevel[]
+  inventoryTransactions InventoryTransaction[]
+  quoteLines            QuoteLine[]
+  salesOrderLines       SalesOrderLine[]
+  purchaseOrderLines    PurchaseOrderLine[]
+
+  @@unique([organizationId, sku])
+  @@index([organizationId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Inventory domain
+// ─────────────────────────────────────────────────────────────────────────
+
+model Warehouse {
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  address        Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization          Organization           @relation(fields: [organizationId], references: [id])
+  stockLevels           StockLevel[]
+  inventoryTransactions InventoryTransaction[]
+  shipments             Shipment[]
+  goodsReceipts         GoodsReceipt[]
+
+  @@index([organizationId])
+  @@map("warehouses")
+}
+
+/// Current-state snapshot, derived from InventoryTransaction history.
+/// One row per product x warehouse — updated on every transaction, never
+/// the source of truth by itself (InventoryTransaction is).
+model StockLevel {
+  id               String   @id @default(uuid())
+  organizationId   String
+  productId        String
+  warehouseId      String
+  quantityOnHand   Int      @default(0)
+  quantityReserved Int      @default(0)
+  reorderPoint     Int?
+  updatedAt        DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
+  warehouse    Warehouse    @relation(fields: [warehouseId], references: [id])
+
+  @@unique([productId, warehouseId])
+  @@index([organizationId])
+  @@map("stock_levels")
+}
+
+enum InventoryTransactionType {
+  RECEIPT
+  SHIPMENT
+  ADJUSTMENT
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+/// Append-only ledger — the 10M-row scale target. Never updated or soft-deleted;
+/// corrections are new offsetting ADJUSTMENT rows, never edits to history.
+/// See DATABASE.md for the indexing rationale behind the composite index below.
+model InventoryTransaction {
+  id             String                   @id @default(uuid())
+  organizationId String
+  productId      String
+  warehouseId    String
+  type           InventoryTransactionType
+  quantity       Int
+  referenceType  String?
+  referenceId    String?
+  createdAt      DateTime                 @default(now())
+  createdBy      String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
+  warehouse    Warehouse    @relation(fields: [warehouseId], references: [id])
+
+  @@index([organizationId, warehouseId, productId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([referenceType, referenceId])
+  @@map("inventory_transactions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sales domain
+// ─────────────────────────────────────────────────────────────────────────
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Quote {
+  id             String      @id @default(uuid())
+  organizationId String
+  customerId     String
+  status         QuoteStatus @default(DRAFT)
+  validUntil     DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  lines        QuoteLine[]
+  salesOrder   SalesOrder?
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@map("quotes")
+}
+
+model QuoteLine {
+  id             String  @id @default(uuid())
+  organizationId String
+  quoteId        String
+  productId      String
+  quantity       Int
+  unitPrice      Decimal @db.Decimal(12, 2)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  quote        Quote        @relation(fields: [quoteId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@index([organizationId])
+  @@index([quoteId])
+  @@map("quote_lines")
+}
+
+enum SalesOrderStatus {
+  PENDING
+  CONFIRMED
+  PARTIALLY_SHIPPED
+  SHIPPED
+  CANCELLED
+}
+
+model SalesOrder {
+  id             String           @id @default(uuid())
+  organizationId String
+  customerId     String
+  quoteId        String?          @unique
+  status         SalesOrderStatus @default(PENDING)
+  orderDate      DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  customer     Customer         @relation(fields: [customerId], references: [id])
+  quote        Quote?           @relation(fields: [quoteId], references: [id])
+  lines        SalesOrderLine[]
+  shipments    Shipment[]
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@map("sales_orders")
+}
+
+model SalesOrderLine {
+  id             String  @id @default(uuid())
+  organizationId String
+  salesOrderId   String
+  productId      String
+  quantity       Int
+  unitPrice      Decimal @db.Decimal(12, 2)
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  salesOrder    SalesOrder     @relation(fields: [salesOrderId], references: [id])
+  product       Product        @relation(fields: [productId], references: [id])
+  shipmentLines ShipmentLine[]
+
+  @@index([organizationId])
+  @@index([salesOrderId])
+  @@map("sales_order_lines")
+}
+
+enum ShipmentStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+model Shipment {
+  id             String         @id @default(uuid())
+  organizationId String
+  salesOrderId   String
+  warehouseId    String
+  status         ShipmentStatus @default(PENDING)
+  trackingNumber String?
+  shippedAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  salesOrder   SalesOrder     @relation(fields: [salesOrderId], references: [id])
+  warehouse    Warehouse      @relation(fields: [warehouseId], references: [id])
+  lines        ShipmentLine[]
+
+  @@index([organizationId])
+  @@index([salesOrderId])
+  @@map("shipments")
+}
+
+model ShipmentLine {
+  id               String @id @default(uuid())
+  organizationId   String
+  shipmentId       String
+  salesOrderLineId String
+  quantity         Int
+
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  shipment       Shipment       @relation(fields: [shipmentId], references: [id])
+  salesOrderLine SalesOrderLine @relation(fields: [salesOrderLineId], references: [id])
+
+  @@index([organizationId])
+  @@index([shipmentId])
+  @@map("shipment_lines")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Purchasing domain
+// ─────────────────────────────────────────────────────────────────────────
+
+model Supplier {
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  address        Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  purchaseOrders PurchaseOrder[]
+
+  @@index([organizationId])
+  @@map("suppliers")
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id             String              @id @default(uuid())
+  organizationId String
+  supplierId     String
+  status         PurchaseOrderStatus @default(DRAFT)
+  orderDate      DateTime            @default(now())
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization  Organization        @relation(fields: [organizationId], references: [id])
+  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  lines         PurchaseOrderLine[]
+  goodsReceipts GoodsReceipt[]
+
+  @@index([organizationId])
+  @@index([supplierId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id              String  @id @default(uuid())
+  organizationId  String
+  purchaseOrderId String
+  productId       String
+  quantity        Int
+  unitCost        Decimal @db.Decimal(12, 2)
+
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  purchaseOrder     PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  product           Product            @relation(fields: [productId], references: [id])
+  goodsReceiptLines GoodsReceiptLine[]
+
+  @@index([organizationId])
+  @@index([purchaseOrderId])
+  @@map("purchase_order_lines")
+}
+
+/// Append-only — a receipt event, not a mutable record. Feeds InventoryTransaction.
+model GoodsReceipt {
+  id              String   @id @default(uuid())
+  organizationId  String
+  purchaseOrderId String
+  warehouseId     String
+  receivedAt      DateTime @default(now())
+  createdBy       String
+
+  organization  Organization       @relation(fields: [organizationId], references: [id])
+  purchaseOrder PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  warehouse     Warehouse          @relation(fields: [warehouseId], references: [id])
+  lines         GoodsReceiptLine[]
+
+  @@index([organizationId])
+  @@index([purchaseOrderId])
+  @@map("goods_receipts")
+}
+
+/// Append-only, like its parent GoodsReceipt — see DATABASE.md "Append-only ledger tables".
+model GoodsReceiptLine {
+  id                  String @id @default(uuid())
+  organizationId      String
+  goodsReceiptId      String
+  purchaseOrderLineId String
+  quantity            Int
+
+  organization      Organization      @relation(fields: [organizationId], references: [id])
+  goodsReceipt      GoodsReceipt      @relation(fields: [goodsReceiptId], references: [id])
+  purchaseOrderLine PurchaseOrderLine @relation(fields: [purchaseOrderLineId], references: [id])
+
+  @@index([organizationId])
+  @@index([goodsReceiptId])
+  @@map("goods_receipt_lines")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Marketing domain — email campaigns to CRM segments (see DECISIONS.md)
+// ─────────────────────────────────────────────────────────────────────────
+
+model Segment {
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  filterJson     Json
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  campaigns    Campaign[]
+
+  @@index([organizationId])
+  @@map("segments")
+}
+
+model EmailTemplate {
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  subject        String
+  bodyHtml       String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  campaigns    Campaign[]
+
+  @@index([organizationId])
+  @@map("email_templates")
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+model Campaign {
+  id             String         @id @default(uuid())
+  organizationId String
+  segmentId      String
+  templateId     String
+  status         CampaignStatus @default(DRAFT)
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  stats          Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  segment      Segment       @relation(fields: [segmentId], references: [id])
+  template     EmailTemplate @relation(fields: [templateId], references: [id])
+
+  @@index([organizationId])
+  @@map("campaigns")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Notifications domain
+// ─────────────────────────────────────────────────────────────────────────
+
+model Notification {
+  id             String    @id @default(uuid())
+  organizationId String
+  userId         String
+  type           String
+  title          String
+  body           String?
+  metadata       Json?
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Settings domain
+// ─────────────────────────────────────────────────────────────────────────
+
+model OrganizationSettings {
+  organizationId String   @id
+  timezone       String   @default("UTC")
+  currency       String   @default("USD")
+  dateFormat     String   @default("YYYY-MM-DD")
+  updatedAt      DateTime @updatedAt
+  updatedBy      String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("organization_settings")
+}
+
+model UserPreferences {
+  userId    String   @id
+  theme     String   @default("system")
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_preferences")
+}
