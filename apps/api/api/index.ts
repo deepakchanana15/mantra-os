@@ -1,4 +1,3 @@
-import dns from "node:dns";
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { ExpressAdapter } from "@nestjs/platform-express";
@@ -6,17 +5,6 @@ import type { Request, Response } from "express";
 import express from "express";
 import serverlessHttp from "serverless-http";
 import { AppModule } from "../src/app.module";
-
-/**
- * Neon's pooler hostname resolves to both AAAA (IPv6) and A (IPv4) records.
- * Vercel's Node.js serverless runtime doesn't reliably support outbound
- * IPv6 — connecting over it doesn't fail cleanly, it hangs until Vercel's
- * own function timeout kills the invocation (FUNCTION_INVOCATION_TIMEOUT),
- * which looks identical to a slow cold start. Forcing IPv4 first avoids
- * this; the same connection string works instantly from a normal
- * (non-serverless) network. See DECISIONS.md "Phase 7 deploy debugging".
- */
-dns.setDefaultResultOrder("ipv4first");
 
 /**
  * Vercel serverless entry point — see ARCHITECTURE.md "Deployment: two
