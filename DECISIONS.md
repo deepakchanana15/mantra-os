@@ -4,6 +4,20 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-21 — Phase 7 deploy debugging: apps/api hung with FUNCTION_INVOCATION_TIMEOUT
+
+**What happened:** After the prod Neon database was provisioned and `apps/api` was deployed to Vercel, every request hung for the full function duration and returned `FUNCTION_INVOCATION_TIMEOUT` rather than a real response. Three real, separate misconfigurations were found and fixed in sequence before the actual root cause was reached:
+
+1. **No Output Directory.** Vercel's zero-config build expects a `public/` folder even for a pure-serverless project with zero static assets; without one the build fails outright with "No Output Directory named 'public' found." Fixed with an intentionally empty `apps/api/public/.gitkeep` — see ARCHITECTURE.md's Deployment section for why nothing in it is ever actually served.
+2. **Bootstrap failures were silent.** `api/index.ts`'s handler didn't catch a `NestFactory.create()`/`app.init()` rejection, so a genuine config error (briefly, a missing `RESEND_API_KEY` before it was correctly added to Vercel) looked identical to a hang — both ended in the same timeout. Fixed by catching and caching the failure, returning an immediate 500 with the real error message instead of retrying (and re-hanging on) the same failing bootstrap every request.
+3. **The actual root cause: IPv6.** Neon's pooler hostname resolves to both AAAA (IPv6) and A (IPv4) records. The same connection string connected instantly (~3s) from a normal machine but hung indefinitely from Vercel's Node.js serverless runtime — which doesn't reliably support outbound IPv6 — until Vercel's own function timeout killed the invocation. This is what every other fix in this entry was worked around before finding: region pinning (`apps/api/vercel.json`'s `"regions": ["iad1"]`, matching Neon's `us-east-1`) was tried first and didn't fix it alone, confirming the problem wasn't (only) cross-region latency. The actual fix was forcing IPv4 resolution at the process level: `dns.setDefaultResultOrder("ipv4first")` at the top of `api/index.ts`, before any other imports.
+
+**Why this took several iterations rather than one diagnosis:** each symptom (build failure, then a hang, then still a hang after two plausible-looking fixes) looked identical from the outside — a failed or stuck deployment — and only differed in their actual causes once Vercel's Function Logs and a direct connection test (bypassing Vercel entirely, from a normal machine) were used to isolate where in the request lifecycle things actually broke. The direct test — the same pooled connection string, run locally, succeeding in ~3 seconds — was the key piece of evidence that ruled out the connection string/credentials/Neon-availability entirely and pointed at the serverless network environment specifically.
+
+**Reversibility:** All three fixes are small, contained, and low-risk (a static folder, an error-handling change, one DNS resolution-order call). None change the application's actual behavior for a working connection — they only change how a broken one fails (or stops failing).
+
+---
+
 ## 2026-07-20 — Phase 7 launch decisions: Hobby plan accepted, fresh prod Neon, Resend and custom domain deferred
 
 **Decision, made explicitly at Phase 7 kickoff:**
