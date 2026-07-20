@@ -165,7 +165,7 @@ Turborepo — simpler than Nx, first-class Vercel support.
 
 `apps/web` and `apps/api` deploy as **separate Vercel projects** from the same repo (per-project root directory). NestJS bootstraps once per warm serverless instance — the Nest app instance is cached at module scope, not rebuilt per request — and is wrapped as a single function handling all routes, so cold start pays for one bootstrap, not one per endpoint.
 
-`apps/web` proxies `/api/*` to the NestJS deployment via a Next.js rewrite, so end users only ever see one domain (no CORS) while the two apps stay independently deployable behind the scenes.
+`apps/web` proxies to the NestJS deployment via server-side Route Handlers (`app/api/**/route.ts`, reading the `API_BASE_URL` env var — see Phase 5 below), not a `next.config` rewrite. Since the browser only ever talks to `apps/web`'s own domain and the actual cross-service call happens server-to-server, end users see one domain and no CORS applies, while the two apps stay independently deployable behind the scenes.
 
 Cron jobs (per [DECISIONS.md](DECISIONS.md)) hit protected `/internal/cron/*` routes via Vercel Cron, authenticated with a shared secret header — never a public endpoint.
 

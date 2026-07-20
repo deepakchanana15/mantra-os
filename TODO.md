@@ -1,8 +1,17 @@
 # TODO
 
-## Deferred, not blocking
+## Phase 7 — Deployment (in progress)
 
-- [ ] Production domain name — explicitly deferred to Phase 7
+- [x] Git repo initialized, initial commit pushed to [github.com/deepakchanana15/mantra-os](https://github.com/deepakchanana15/mantra-os)
+- [x] Real production `AUTH_JWT_SECRET` generated (not committed, not posted in chat — see DEPLOYMENT.md)
+- [x] `DEPLOYMENT.md` runbook written for the account-level steps (Neon prod project, two Vercel projects, env vars)
+- [ ] Fresh Neon prod project provisioned, migrated, RBAC-seeded (Step 1 of DEPLOYMENT.md — needs your Neon account)
+- [ ] `apps/api` Vercel project created and deployed (Step 2 — needs your Vercel account)
+- [ ] `apps/web` Vercel project created and deployed (Step 3)
+- [ ] Live deployment verified end-to-end (Step 4)
+- [ ] Deploy on Vercel Hobby accepted as a known ToS risk for now — see DECISIONS.md "Phase 7 launch decisions"
+- [ ] Production domain name — deferred, launching on default `*.vercel.app` subdomains (see DECISIONS.md)
+- [ ] No CI yet — Vitest/verify-*.js suite doesn't run automatically on push; add before more than one contributor touches this repo
 
 ## Live database setup — done
 
@@ -31,8 +40,7 @@
 
 ## Still needed before real end-user traffic
 
-- [ ] Real Resend API key + verified sending domain (currently a placeholder value)
-- [ ] Set a real `AUTH_JWT_SECRET` per environment when deploying (a local dev one already exists in `apps/api/.env`, not shared anywhere)
+- [ ] Real Resend API key + verified sending domain (currently a placeholder value; explicitly deferred past Phase 7 launch — see DECISIONS.md "Phase 7 launch decisions")
 - [ ] Decide when to move off Neon's free tier — trigger is "real daily usage annoyed by cold starts," not a specific storage number (see DECISIONS.md)
 - [ ] User invite/onboarding flow — Identity currently assumes a User row already exists, and now also needs an initial password set as part of that flow (not just a Firebase account created)
 - [ ] Contacts search — `ContactsRepository.findAll` doesn't implement text search yet (only `customerId` filtering); the Contacts page has no search box until this exists, rather than shipping one that silently does nothing

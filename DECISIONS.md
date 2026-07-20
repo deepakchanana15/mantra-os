@@ -4,6 +4,22 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-20 — Phase 7 launch decisions: Hobby plan accepted, fresh prod Neon, Resend and custom domain deferred
+
+**Decision, made explicitly at Phase 7 kickoff:**
+1. **Deploy on Vercel Hobby**, not Pro, despite the Hobby tier being licensed for non-commercial use only (flagged again at this exact decision point per [DECISIONS.md](DECISIONS.md) "Hosting: 100% Vercel") and MantraOS running real Mantra Sports business data being commercial use by definition. Accepted knowingly as a cost-conscious tradeoff, same posture as the earlier Firebase-cost-driven auth decision.
+2. **Provision a fresh Neon project for production**, separate from the project used for local dev and the Phase 3–6 `verify-*.js`/demo-account testing. The dev project keeps all its test/demo data as a scratch database going forward; it is never promoted to prod.
+3. **Resend stays on its placeholder key at launch.** Password reset and deletion-governance owner-notification emails will fail silently (the underlying request still succeeds) until a real key + verified sending domain is configured. Deferred rather than blocking Phase 7 on it.
+4. **Custom domain deferred**, per the "Production domain name" item already flagged in TODO.md since Phase 5 — both Vercel projects launch on default `*.vercel.app` subdomains.
+
+**Why chosen over the alternatives:** all four are the same shape of tradeoff — ship now on the free/default path, accept a known and explicitly-recorded gap, revisit before it actually matters (real paying-adjacent usage, a real user depending on password reset, a real need for a branded URL). None of these are irreversible: Pro is an upgrade click, Resend is a key swap, a domain is a DNS setting, and the fresh-Neon choice only affects which project *is* prod, not the schema/RLS design itself.
+
+**Consequences to design around:** none of the four change any code path — they're deployment-environment configuration, not architecture. See [DEPLOYMENT.md](DEPLOYMENT.md) for the concrete runbook this produced.
+
+**Reversibility:** High on all four — see "why chosen" above.
+
+---
+
 ## 2026-07-20 — Phase 6 testing scope: risk-based, not exhaustive-per-endpoint
 
 **Decision:** Add Vitest to `apps/api` for unit tests, but scope them narrowly to genuinely risky pure/near-pure logic rather than writing a unit test for every CRUD endpoint. Keep the hand-rolled `verify-*.js` scripts (real HTTP, against a live Neon DB) as the integration/e2e layer rather than porting them into a framework like Supertest+Jest.
