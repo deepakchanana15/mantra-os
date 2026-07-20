@@ -169,6 +169,8 @@ Turborepo — simpler than Nx, first-class Vercel support.
 
 Cron jobs (per [DECISIONS.md](DECISIONS.md)) hit protected `/internal/cron/*` routes via Vercel Cron, authenticated with a shared secret header — never a public endpoint.
 
+`apps/api/public/` exists but is intentionally empty (just a `.gitkeep`). Vercel's zero-config build always expects an Output Directory — defaulting to `public/` — even for a project with no static assets at all; without it, the build fails with "No Output Directory named 'public' found." Nothing in this folder is ever actually reachable: `vercel.json`'s catch-all rewrite (`/(.*) → /api/index`) sends 100% of incoming requests to the serverless function before any static file would be served.
+
 ## Tenant context & RLS enforcement (request lifecycle) — implemented in Phase 4
 
 The concrete mechanism behind the Phase 1 multi-tenancy decision. Note this differs slightly from the original Phase 2 sketch: NestJS runs all Guards before any Interceptor, so membership validation had to move into a Guard (not stay in the Interceptor) once a permission system needed the same data — see DECISIONS.md "Guard/interceptor split for tenant context".
