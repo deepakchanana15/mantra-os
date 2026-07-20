@@ -15,6 +15,7 @@ import { AppModule } from "../src/app.module";
  * own router handles dispatch to individual controllers, not Vercel.
  */
 let cachedHandler: ReturnType<typeof serverlessHttp> | undefined;
+let bootstrapFailure: Error | undefined;
 
 async function bootstrap(): Promise<ReturnType<typeof serverlessHttp>> {
   const expressApp = express();
@@ -25,8 +26,24 @@ async function bootstrap(): Promise<ReturnType<typeof serverlessHttp>> {
 }
 
 export default async function handler(req: Request, res: Response): Promise<void> {
+  // A bootstrap failure (e.g. a required env var missing) must reject fast
+  // with a clear error on every request, not silently hang until Vercel's
+  // own function timeout kills it — that turned a config typo into what
+  // looked like a stuck cold start. Cache the failure itself, the same way
+  // a successful handler is cached, so a bad instance doesn't retry
+  // bootstrap (and its slow DB connection attempt) on every request.
+  if (bootstrapFailure) {
+    res.status(500).json({ message: "Server failed to start", error: bootstrapFailure.message });
+    return;
+  }
   if (!cachedHandler) {
-    cachedHandler = await bootstrap();
+    try {
+      cachedHandler = await bootstrap();
+    } catch (err) {
+      bootstrapFailure = err instanceof Error ? err : new Error(String(err));
+      res.status(500).json({ message: "Server failed to start", error: bootstrapFailure.message });
+      return;
+    }
   }
   await cachedHandler(req, res);
 }
