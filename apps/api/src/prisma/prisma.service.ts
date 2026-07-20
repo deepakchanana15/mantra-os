@@ -1,8 +1,18 @@
+import dns from "node:dns";
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { PrismaClient } from "@mantra-os/db";
+
+// The `ws` package opens its WebSocket connection through Node's own
+// `net`/`tls` modules (unlike Prisma's Rust query engine, which has its own
+// networking stack and never goes through Node's `dns` module at all —
+// see DECISIONS.md "Phase 7 deploy debugging"). Neon's pooler hostname
+// resolves to both IPv6 and IPv4, and Vercel's serverless runtime doesn't
+// reliably support outbound IPv6, so this DOES matter at this layer even
+// though the identical call had no effect before this adapter was added.
+dns.setDefaultResultOrder("ipv4first");
 
 // Node's `ws` package as the WebSocket implementation — Neon's serverless
 // driver needs one explicitly outside of edge/browser runtimes that have a
