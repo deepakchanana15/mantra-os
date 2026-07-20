@@ -5,7 +5,7 @@
 - [x] Git repo initialized, initial commit pushed to [github.com/deepakchanana15/mantra-os](https://github.com/deepakchanana15/mantra-os)
 - [x] Real production `AUTH_JWT_SECRET` generated (not committed, not posted in chat — see DEPLOYMENT.md)
 - [x] `DEPLOYMENT.md` runbook written for the account-level steps (Neon prod project, two Vercel projects, env vars)
-- [ ] Fresh Neon prod project provisioned, migrated, RBAC-seeded (Step 1 of DEPLOYMENT.md — needs your Neon account)
+- [x] Fresh Neon prod project provisioned (`mantra-os-prod`), migrated (2 migrations), RLS applied (78 statements), RBAC seeded (63 permissions, 5 roles, 257 role-permission links)
 - [ ] `apps/api` Vercel project created and deployed (Step 2 — needs your Vercel account)
 - [ ] `apps/web` Vercel project created and deployed (Step 3)
 - [ ] Live deployment verified end-to-end (Step 4)
