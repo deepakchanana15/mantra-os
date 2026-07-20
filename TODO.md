@@ -6,7 +6,7 @@
 - [x] Real production `AUTH_JWT_SECRET` generated (not committed, not posted in chat — see DEPLOYMENT.md)
 - [x] `DEPLOYMENT.md` runbook written for the account-level steps (Neon prod project, two Vercel projects, env vars)
 - [x] Fresh Neon prod project provisioned (`mantra-os-prod`), migrated (2 migrations), RLS applied (78 statements), RBAC seeded (63 permissions, 5 roles, 257 role-permission links)
-- [ ] `apps/api` Vercel project created and deployed (Step 2 — needs your Vercel account)
+- [x] `apps/api` Vercel project created and deployed (`mantra-os-api.vercel.app`) — live, verified against the real prod database (login/validation/auth all confirmed working end-to-end). Took real debugging: see DECISIONS.md "Phase 7 deploy debugging" — the actual root cause was `serverless-http` not supporting Vercel at all (only AWS/Azure), not anything database-related, though the Neon serverless driver adapter switch made along the way is a correct, permanent improvement in its own right.
 - [ ] `apps/web` Vercel project created and deployed (Step 3)
 - [ ] Live deployment verified end-to-end (Step 4)
 - [ ] Deploy on Vercel Hobby accepted as a known ToS risk for now — see DECISIONS.md "Phase 7 launch decisions"
