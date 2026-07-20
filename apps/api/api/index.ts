@@ -41,6 +41,7 @@ export default async function handler(req: Request, res: Response): Promise<void
       cachedHandler = await bootstrap();
     } catch (err) {
       bootstrapFailure = err instanceof Error ? err : new Error(String(err));
+      console.error("Bootstrap failed:", bootstrapFailure);
       res.status(500).json({ message: "Server failed to start", error: bootstrapFailure.message });
       return;
     }
