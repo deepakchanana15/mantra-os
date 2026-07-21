@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft, Mail, Phone } from "lucide-react";
+import { ArrowLeft, Mail, MapPin, Phone } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { customerTypeLabel } from "@/lib/customer-types";
+import { formatAddress, type AddressValue } from "@/lib/address";
 import { DeleteCustomerButton } from "./delete-customer-button";
 
 interface Contact {
@@ -21,6 +22,8 @@ interface Customer {
   type: string;
   email: string | null;
   phone: string | null;
+  billingAddress: AddressValue | null;
+  shippingAddress: AddressValue | null;
   createdAt: string;
   contacts: Contact[];
 }
@@ -50,7 +53,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           <TabsTrigger value="contacts">Contacts ({customer.contacts.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview">
+        <TabsContent value="overview" className="flex flex-col gap-3">
           <Card className="max-w-lg">
             <CardContent className="flex flex-col gap-3 p-5">
               <div className="flex items-center gap-2.5 text-sm">
@@ -66,6 +69,11 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
               </div>
             </CardContent>
           </Card>
+
+          <div className="grid max-w-lg grid-cols-2 gap-3">
+            <AddressCard title="Billing address" address={customer.billingAddress} />
+            <AddressCard title="Shipping address" address={customer.shippingAddress} />
+          </div>
         </TabsContent>
 
         <TabsContent value="contacts">
@@ -90,5 +98,28 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function AddressCard({ title, address }: { title: string; address: AddressValue | null }) {
+  const lines = formatAddress(address);
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-2 p-5">
+        <div className="flex items-center gap-2.5 text-sm font-medium text-foreground">
+          <MapPin className="h-4 w-4 text-faint" />
+          {title}
+        </div>
+        {lines.length === 0 ? (
+          <p className="text-xs text-faint">No address on file</p>
+        ) : (
+          <div className="text-sm text-foreground">
+            {lines.map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

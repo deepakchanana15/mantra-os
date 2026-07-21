@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CUSTOMER_TYPES, customerTypeDescription, customerTypeLabel } from "@/lib/customer-types";
+import { AddressFields } from "@/components/domain/address-fields";
+import { EMPTY_ADDRESS, isAddressEmpty, type AddressValue } from "@/lib/address";
 
 export default function NewCustomerPage() {
   const router = useRouter();
@@ -23,16 +26,27 @@ export default function NewCustomerPage() {
   const [type, setType] = useState<string>("USER");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [billingAddress, setBillingAddress] = useState<AddressValue>(EMPTY_ADDRESS);
+  const [shippingAddress, setShippingAddress] = useState<AddressValue>(EMPTY_ADDRESS);
+  const [shippingSameAsBilling, setShippingSameAsBilling] = useState(true);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
+      const resolvedShipping = shippingSameAsBilling ? billingAddress : shippingAddress;
       const res = await fetch("/api/v1/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, type, email: email || undefined, phone: phone || undefined }),
+        body: JSON.stringify({
+          name,
+          type,
+          email: email || undefined,
+          phone: phone || undefined,
+          billingAddress: isAddressEmpty(billingAddress) ? undefined : billingAddress,
+          shippingAddress: isAddressEmpty(resolvedShipping) ? undefined : resolvedShipping,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -56,7 +70,7 @@ export default function NewCustomerPage() {
         <h1 className="mt-1 text-xl font-bold text-foreground">New Customer</h1>
       </div>
 
-      <Card className="max-w-lg">
+      <Card className="max-w-xl">
         <CardContent className="p-5">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
@@ -91,6 +105,33 @@ export default function NewCustomerPage() {
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="phone">Phone</Label>
               <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+
+            <Separator />
+
+            <div className="flex flex-col gap-3">
+              <Label className="text-sm font-semibold text-foreground">Billing address</Label>
+              <AddressFields idPrefix="billing" value={billingAddress} onChange={setBillingAddress} />
+            </div>
+
+            <Separator />
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-foreground">Shipping address</Label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={shippingSameAsBilling}
+                    onChange={(e) => setShippingSameAsBilling(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-border accent-accent"
+                  />
+                  Same as billing address
+                </label>
+              </div>
+              {!shippingSameAsBilling && (
+                <AddressFields idPrefix="shipping" value={shippingAddress} onChange={setShippingAddress} />
+              )}
             </div>
 
             <div className="mt-2 flex gap-2">
