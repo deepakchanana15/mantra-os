@@ -23,6 +23,10 @@ Currency conversion (exchange rates, transaction-currency tracking), the tax eng
 
 **Reversibility:** The hierarchy decision (Company beneath Organization, not replacing it) is the one genuinely hard-to-reverse call here — every other piece (tax engine sophistication, price list structure, UI translation) can be deepened later without touching what Sub-phase A ships. Getting the hierarchy wrong would mean redoing every table that references Company/Country.
 
+**Sub-phase B, shipped:** `companyId`/`countryId` (nullable, indexed, `ON DELETE SET NULL`) added to `Customer`, `Quote`, `SalesOrder`, `PurchaseOrder`, `Supplier`; `brandId` added to `Product`, `Campaign`. All optional — existing rows aren't backfilled, set going forward. DTOs, repositories (create and, where a general update method exists, update), and create-form selectors (`CompanyCountrySelect`, `BrandSelect` in `apps/web/components/domain/`) were updated for all 7 entities. Campaign has no frontend UI at all yet (pre-existing gap, unrelated to this work), so its `brandId` is backend-only for now.
+
+**RBAC adjustment made during Sub-phase B:** Sub-phase A had restricted `companies`/`countries`/`brands`/`websites` to Owner/Admin for *all* actions, including reads. That blocked Manager/Member — who can create Customers/Quotes/SalesOrders/etc. — from reading the very lists needed to populate the new selectors. Reopened reads to all roles (`rolesFor` in `apps/api/src/common/permissions/roles-for.ts`) while keeping writes (create/update/delete) Owner/Admin-only, matching the generic CRUD-group pattern used elsewhere. This was a deliberate, user-confirmed change, not an oversight fix.
+
 ---
 
 ## 2026-07-21 — Customer type taxonomy: 20 sports-business types replace generic INDIVIDUAL/COMPANY
