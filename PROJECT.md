@@ -41,4 +41,4 @@ Finance, Manufacturing, Marketplace Integrations, Mobile Apps, Advanced AI/Forec
 
 Built phase-gated: Design → Architecture → Database → Backend → Frontend → Testing → Deployment. See [DECISIONS.md](DECISIONS.md) for locked architectural decisions, [ROADMAP.md](ROADMAP.md) for phase status, [ARCHITECTURE.md](ARCHITECTURE.md) for system design, [DATABASE.md](DATABASE.md) for the schema.
 
-**Current phase: 6 — Testing (complete). Risk-based Vitest unit tests plus a new `verify-governance.js` integration script cover deletion governance, RBAC, status-transition math, and cross-org isolation, alongside the existing `verify-*.js` scripts — all green together. Ready for Phase 7 — Deployment.**
+**Current phase: 7 — Deployment (complete). Live on Vercel (`mantra-os-api.vercel.app` + `mantra-os-web-zoc9.vercel.app`) against a real production Neon database, verified end-to-end through the actual web UI. All V1 phases done.**

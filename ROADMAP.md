@@ -10,7 +10,7 @@
 | 4 — Backend | ✅ Done | All 9 modules built, live against real Neon + real auth. A critical RLS-interceptor wiring bug was found and fixed via Phase 5's e2e testing — see [DECISIONS.md](DECISIONS.md). |
 | 5 — Frontend | ✅ Done | Next.js app shell, full auth flow, all V1 domains built (Customers set the pattern, 8 more followed it). End-to-end verified against the real API including live cross-domain flows. Three more real bugs found and fixed — see [DECISIONS.md](DECISIONS.md). |
 | 6 — Testing | ✅ Done | Risk-based Vitest unit tests (DeletionGuardService, rolesFor, shipment/goods-receipt status math — 28 tests) + a new `verify-governance.js` integration script (rate limit, Viewer denial, cross-org isolation — 7 checks), alongside the existing `verify-*.js` scripts. All green together — see [ARCHITECTURE.md](ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md). |
-| 7 — Deployment | 🚧 In progress | Repo pushed to GitHub, prod JWT secret generated, `DEPLOYMENT.md` runbook written. Remaining: Neon prod project, two Vercel projects, live verification — see [TODO.md](TODO.md) and [DEPLOYMENT.md](DEPLOYMENT.md). |
+| 7 — Deployment | ✅ Done | Live on Vercel: `mantra-os-api.vercel.app` + `mantra-os-web-zoc9.vercel.app`, real prod Neon database, fully verified end-to-end (login, org selection, dashboard, create/delete). Real debugging along the way — `serverless-http` didn't support Vercel at all, and a major RLS gap left the app unusable past login in both dev and prod until fixed — see [DECISIONS.md](DECISIONS.md). |
 
 ## V1 scope (target)
 
