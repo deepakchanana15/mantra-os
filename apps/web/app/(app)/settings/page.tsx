@@ -33,6 +33,7 @@ interface Company {
   id: string;
   name: string;
   legalName: string | null;
+  registrationNumber: string | null;
   baseCurrencyId: string | null;
 }
 
