@@ -61,6 +61,9 @@ model Organization {
   emailTemplates     EmailTemplate[]
   campaigns          Campaign[]
   notifications      Notification[]
+  opportunities      Opportunity[]
+  invoices           Invoice[]
+  supportTickets     SupportTicket[]
 
   @@map("organizations")
 }
@@ -265,6 +268,9 @@ model Company {
   salesOrders    SalesOrder[]
   suppliers      Supplier[]
   purchaseOrders PurchaseOrder[]
+  opportunities  Opportunity[]
+  invoices       Invoice[]
+  supportTickets SupportTicket[]
 
   @@index([organizationId])
   @@map("companies")
@@ -307,6 +313,9 @@ model Country {
   salesOrders    SalesOrder[]
   suppliers      Supplier[]
   purchaseOrders PurchaseOrder[]
+  opportunities  Opportunity[]
+  invoices       Invoice[]
+  supportTickets SupportTicket[]
 
   @@unique([companyId, isoCode])
   @@index([organizationId])
@@ -415,12 +424,15 @@ model Customer {
   updatedBy       String
   deletedAt       DateTime?
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  company      Company?     @relation(fields: [companyId], references: [id])
-  country      Country?     @relation(fields: [countryId], references: [id])
-  contacts     Contact[]
-  quotes       Quote[]
-  salesOrders  SalesOrder[]
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  company        Company?        @relation(fields: [companyId], references: [id])
+  country        Country?        @relation(fields: [countryId], references: [id])
+  contacts       Contact[]
+  quotes         Quote[]
+  salesOrders    SalesOrder[]
+  opportunities  Opportunity[]
+  invoices       Invoice[]
+  supportTickets SupportTicket[]
 
   @@index([organizationId])
   @@index([organizationId, deletedAt])
@@ -684,6 +696,7 @@ model SalesOrder {
   quote        Quote?           @relation(fields: [quoteId], references: [id])
   lines        SalesOrderLine[]
   shipments    Shipment[]
+  invoices     Invoice[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -953,6 +966,139 @@ model Campaign {
   @@index([organizationId])
   @@index([brandId])
   @@map("campaigns")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sales pipeline & billing domain (Sub-phase C — see DECISIONS.md "Global
+// multi-country, multi-company, multi-brand architecture")
+// ─────────────────────────────────────────────────────────────────────────
+
+enum OpportunityStage {
+  NEW
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+/// Pre-Quote sales pipeline stage — minimal version, not yet linked to Quote.
+model Opportunity {
+  id                String           @id @default(uuid())
+  organizationId    String
+  companyId         String?
+  countryId         String?
+  customerId        String
+  name              String
+  stage             OpportunityStage @default(NEW)
+  estimatedValue    Decimal?         @db.Decimal(12, 2)
+  expectedCloseDate DateTime?
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  createdBy         String
+  updatedBy         String
+  deletedAt         DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  company      Company?     @relation(fields: [companyId], references: [id])
+  country      Country?     @relation(fields: [countryId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([companyId])
+  @@index([countryId])
+  @@map("opportunities")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  VOID
+}
+
+/// Minimal version — a single amount, not itemized lines. Optionally tied
+/// to a SalesOrder; standalone invoices are also allowed.
+model Invoice {
+  id             String        @id @default(uuid())
+  organizationId String
+  companyId      String?
+  countryId      String?
+  customerId     String
+  salesOrderId   String?
+  invoiceNumber  String
+  status         InvoiceStatus @default(DRAFT)
+  amount         Decimal       @db.Decimal(12, 2)
+  issuedAt       DateTime?
+  dueDate        DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  company      Company?     @relation(fields: [companyId], references: [id])
+  country      Country?     @relation(fields: [countryId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  salesOrder   SalesOrder?  @relation(fields: [salesOrderId], references: [id])
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([salesOrderId])
+  @@index([companyId])
+  @@index([countryId])
+  @@map("invoices")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Support domain (Sub-phase C)
+// ─────────────────────────────────────────────────────────────────────────
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum SupportTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model SupportTicket {
+  id             String                @id @default(uuid())
+  organizationId String
+  companyId      String?
+  countryId      String?
+  customerId     String
+  subject        String
+  description    String?
+  status         SupportTicketStatus   @default(OPEN)
+  priority       SupportTicketPriority @default(MEDIUM)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  company      Company?     @relation(fields: [companyId], references: [id])
+  country      Country?     @relation(fields: [countryId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([companyId])
+  @@index([countryId])
+  @@map("support_tickets")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

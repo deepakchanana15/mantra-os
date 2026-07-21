@@ -103,6 +103,21 @@ export const PERMISSIONS = {
   CAMPAIGNS_DELETE: "campaigns:delete",
   CAMPAIGNS_SEND: "campaigns:send",
 
+  OPPORTUNITIES_CREATE: "opportunities:create",
+  OPPORTUNITIES_READ: "opportunities:read",
+  OPPORTUNITIES_UPDATE: "opportunities:update",
+  OPPORTUNITIES_DELETE: "opportunities:delete",
+
+  INVOICES_CREATE: "invoices:create",
+  INVOICES_READ: "invoices:read",
+  INVOICES_UPDATE: "invoices:update",
+  INVOICES_DELETE: "invoices:delete",
+
+  SUPPORT_TICKETS_CREATE: "support_tickets:create",
+  SUPPORT_TICKETS_READ: "support_tickets:read",
+  SUPPORT_TICKETS_UPDATE: "support_tickets:update",
+  SUPPORT_TICKETS_DELETE: "support_tickets:delete",
+
   REPORTS_READ: "reports:read",
 } as const;
 

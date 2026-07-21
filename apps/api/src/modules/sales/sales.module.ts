@@ -1,5 +1,11 @@
 import { Module } from "@nestjs/common";
 import { InventoryModule } from "../inventory/inventory.module";
+import { InvoicesController } from "./invoices/invoices.controller";
+import { InvoicesRepository } from "./invoices/invoices.repository";
+import { InvoicesService } from "./invoices/invoices.service";
+import { OpportunitiesController } from "./opportunities/opportunities.controller";
+import { OpportunitiesRepository } from "./opportunities/opportunities.repository";
+import { OpportunitiesService } from "./opportunities/opportunities.service";
 import { QuotesController } from "./quotes/quotes.controller";
 import { QuotesRepository } from "./quotes/quotes.repository";
 import { QuotesService } from "./quotes/quotes.service";
@@ -12,7 +18,13 @@ import { ShipmentsService } from "./shipments/shipments.service";
 
 @Module({
   imports: [InventoryModule],
-  controllers: [QuotesController, SalesOrdersController, ShipmentsController],
+  controllers: [
+    QuotesController,
+    SalesOrdersController,
+    ShipmentsController,
+    OpportunitiesController,
+    InvoicesController,
+  ],
   providers: [
     QuotesRepository,
     QuotesService,
@@ -20,6 +32,10 @@ import { ShipmentsService } from "./shipments/shipments.service";
     SalesOrdersService,
     ShipmentsRepository,
     ShipmentsService,
+    OpportunitiesRepository,
+    OpportunitiesService,
+    InvoicesRepository,
+    InvoicesService,
   ],
 })
 export class SalesModule {}

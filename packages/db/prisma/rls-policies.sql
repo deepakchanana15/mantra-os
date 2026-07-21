@@ -255,6 +255,28 @@ CREATE POLICY tenant_isolation ON "campaigns"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
 
+-- ── Sales pipeline & billing (Sub-phase C) ──────────────────────────────
+
+ALTER TABLE "opportunities" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "opportunities" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "opportunities"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+ALTER TABLE "invoices" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "invoices" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "invoices"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+-- ── Support (Sub-phase C) ────────────────────────────────────────────────
+
+ALTER TABLE "support_tickets" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "support_tickets" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "support_tickets"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
 -- ── Notifications ────────────────────────────────────────────────────────
 
 ALTER TABLE "notifications" ENABLE ROW LEVEL SECURITY;

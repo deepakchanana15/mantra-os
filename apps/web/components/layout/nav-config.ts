@@ -2,12 +2,15 @@ import {
   Boxes,
   ClipboardList,
   LayoutDashboard,
+  LifeBuoy,
   LineChart,
   Mail,
   Package,
   PackageCheck,
+  Receipt,
   Settings,
   ShoppingCart,
+  Target,
   Truck,
   Users,
   Warehouse,
@@ -52,9 +55,11 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Sales",
     items: [
+      { label: "Opportunities", href: "/opportunities", icon: Target },
       { label: "Quotes", href: "/quotes", icon: ShoppingCart },
       { label: "Sales Orders", href: "/sales-orders", icon: ShoppingCart },
       { label: "Shipments", href: "/shipments", icon: Truck },
+      { label: "Invoices", href: "/invoices", icon: Receipt },
     ],
   },
   {
@@ -64,6 +69,10 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
       { label: "Goods Receipts", href: "/goods-receipts", icon: PackageCheck },
     ],
+  },
+  {
+    label: "Support",
+    items: [{ label: "Tickets", href: "/support-tickets", icon: LifeBuoy }],
   },
   {
     label: "More",

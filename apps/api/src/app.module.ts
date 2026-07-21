@@ -17,6 +17,7 @@ import { ProductsModule } from "./modules/products/products.module";
 import { PurchasingModule } from "./modules/purchasing/purchasing.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SalesModule } from "./modules/sales/sales.module";
+import { SupportModule } from "./modules/support/support.module";
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { SalesModule } from "./modules/sales/sales.module";
     PurchasingModule,
     MarketingModule,
     ReportsModule,
+    SupportModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

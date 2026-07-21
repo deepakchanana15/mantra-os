@@ -40,6 +40,7 @@ export function rolesFor(resource: string, action: string): SystemRoleKey[] {
   }
   // Generic CRUD-group resources: customers, contacts, products, categories,
   // warehouses, quotes, sales_orders, shipments, suppliers, purchase_orders,
-  // goods_receipts, segments, email_templates, campaigns.
+  // goods_receipts, segments, email_templates, campaigns, opportunities,
+  // invoices, support_tickets.
   return action === "read" ? ALL_ROLES : WRITE_ROLES;
 }
