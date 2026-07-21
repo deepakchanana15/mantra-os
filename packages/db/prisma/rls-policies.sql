@@ -20,12 +20,29 @@
 --      they aren't scoped BY organizationId (a User can belong to many orgs;
 --      Organization is the tenant boundary itself, not a child of one). Access
 --      to these is governed by the app-layer Membership check in
---      TenantContextInterceptor, not by RLS.
+--      TenantMembershipGuard/OrganizationsRepository, not by RLS on those two
+--      tables directly — but that check itself queries `memberships`, which
+--      DOES have FORCE RLS. Rule 2's org-context policy alone can never satisfy
+--      it: "does this user belong to org X" and "which orgs does this user
+--      belong to at all" both necessarily run BEFORE any org has been
+--      selected, so app.current_org_id is never set for either lookup — under
+--      rule 3 (fail closed), that's zero rows, always, for every user,
+--      forever. This was a real bug (found Phase 7, in production), not a
+--      hypothetical: the whole app was unusable past login. Rule 7 is the fix.
 --   5. roles, permissions, role_permissions have no V1 policy — Permission and
 --      system Roles (organizationId IS NULL) are shared reference data, not
 --      per-tenant secrets. Revisit when V2 adds per-org custom roles.
 --   6. user_preferences has no policy — scoped by userId, not organizationId;
 --      protected by the API checking req.user.id, not by RLS.
+--   7. memberships gets a SECOND, ADDITIONAL policy (Postgres combines
+--      multiple permissive policies with OR) scoped to SELECT only: a row is
+--      also visible if its userId matches app.current_user_id, a session
+--      variable set via `SET LOCAL` by TenantMembershipGuard and
+--      OrganizationsRepository.findAllForUser specifically for their own
+--      pre-org-context lookups — see DECISIONS.md "The memberships RLS gap".
+--      INSERT/UPDATE/DELETE are still governed exclusively by rule 2's
+--      org-context policy; this addition only ever widens what's readable,
+--      never what's writable.
 
 -- ── Roles ───────────────────────────────────────────────────────────────
 -- Run once per environment, not per migration. Password/credentials are
@@ -63,6 +80,12 @@ ALTER TABLE "memberships" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON "memberships"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+-- See design note 7: lets a user see their own membership rows across every
+-- org they belong to, before any org has been selected (X-Organization-Id
+-- validation, and the "which orgs am I in" listing itself, both need this).
+CREATE POLICY user_self_visibility ON "memberships"
+  FOR SELECT
+  USING ("userId" = current_setting('app.current_user_id', true));
 
 -- ── CRM ──────────────────────────────────────────────────────────────────
 

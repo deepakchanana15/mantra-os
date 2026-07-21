@@ -7,12 +7,13 @@
 - [x] `DEPLOYMENT.md` runbook written for the account-level steps (Neon prod project, two Vercel projects, env vars)
 - [x] Fresh Neon prod project provisioned (`mantra-os-prod`), migrated (2 migrations), RLS applied (78 statements), RBAC seeded (63 permissions, 5 roles, 257 role-permission links)
 - [x] `apps/api` Vercel project created and deployed (`mantra-os-api.vercel.app`) — live, verified against the real prod database (login/validation/auth all confirmed working end-to-end). Took real debugging: see DECISIONS.md "Phase 7 deploy debugging" — the actual root cause was `serverless-http` not supporting Vercel at all (only AWS/Azure), not anything database-related, though the Neon serverless driver adapter switch made along the way is a correct, permanent improvement in its own right.
-- [ ] `apps/web` Vercel project created and deployed (Step 3)
-- [ ] Live deployment verified end-to-end (Step 4)
+- [x] `apps/web` Vercel project created and deployed (`mantra-os-web-zoc9.vercel.app`)
+- [x] **Major bug found and fixed during live verification**: the entire app was unusable past login, in both dev and prod — `TenantMembershipGuard` and `OrganizationsRepository.findAllForUser` both queried `memberships` (FORCE RLS) outside any transaction, which doesn't bypass RLS the way it was assumed to. See DECISIONS.md "The memberships RLS gap".
+- [ ] Live deployment verified end-to-end (Step 4) — pending final re-check after the RLS fix redeploys
 - [ ] Deploy on Vercel Hobby accepted as a known ToS risk for now — see DECISIONS.md "Phase 7 launch decisions"
 - [ ] Production domain name — deferred, launching on default `*.vercel.app` subdomains (see DECISIONS.md)
 - [ ] No CI yet — Vitest/verify-*.js suite doesn't run automatically on push; add before more than one contributor touches this repo
-- [ ] Audit `packages/db/scripts/*.js` for implicit `new PrismaClient()` (no explicit `datasources.db.url`) — found via `create-demo-user.js` silently connecting as the wrong role after an unrelated `apps/api` rebuild changed which `.env` the generated client's auto-discovery resolved to. `create-demo-user.js` and `verify-rls.js` are already fixed (explicit `datasources.db.url`, loaded from a known file path); `verify-auth.js`, `verify-frontend-e2e.js`, `verify-governance.js`, `seed-rbac.js`, `setup-app-role.js` have not been checked — they likely "worked" so far only because the tables they touch directly (`users`, `permissions`, `roles`) aren't RLS-protected, not because they're actually immune to this.
+- [ ] Audit remaining `packages/db/scripts/*.js` for implicit `new PrismaClient()` (no explicit `datasources.db.url`) — `create-demo-user.js`, `verify-rls.js`, `verify-frontend-e2e.js`, and `verify-governance.js` are now fixed (explicit `datasources.db.url`, loaded from a known file path); `seed-rbac.js` and `setup-app-role.js` still aren't — `setup-app-role.js`'s ambient resolution has already been observed picking up the wrong (non-owner) connection once during this phase (an `ALTER ROLE` permission error), so this isn't hypothetical.
 
 ## Live database setup — done
 

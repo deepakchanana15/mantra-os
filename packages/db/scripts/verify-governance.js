@@ -5,11 +5,25 @@
  * (proxying to the real running NestJS API) over HTTP with real cookies,
  * same as verify-frontend-e2e.js. Requires both servers running. Cleans up
  * all test data afterward regardless of outcome.
+ *
+ * Reads DATABASE_URL from packages/db/.env explicitly — see
+ * create-demo-user.js's comment for why this can't rely on the generated
+ * Prisma client's own implicit .env discovery.
  */
-require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
+
+function loadEnvFile(filePath) {
+  const env = {};
+  for (const line of fs.readFileSync(filePath, "utf8").split("\n")) {
+    const match = line.match(/^([A-Z_]+)="(.*)"$/);
+    if (match) env[match[1]] = match[2];
+  }
+  return env;
+}
 
 const WEB_BASE_URL = process.env.WEB_BASE_URL || "http://localhost:3000";
 
@@ -78,7 +92,8 @@ function fetchJsonWith(cookies) {
 }
 
 async function main() {
-  const prisma = new PrismaClient();
+  const databaseUrl = loadEnvFile(path.join(__dirname, "..", ".env")).DATABASE_URL;
+  const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
   const password = "correct-horse-battery-staple";
   const passwordHash = await bcrypt.hash(password, 10);
 

@@ -12,11 +12,23 @@ export class OrganizationsRepository extends BaseRepository {
     super(tenantContext);
   }
 
-  /** Not tenant-scoped by design — lists orgs the user belongs to, for the org switcher. Runs outside the RLS transaction (SkipTenantContext route). */
+  /**
+   * Not tenant-scoped by design — lists orgs the user belongs to, for the org
+   * switcher (SkipTenantContext route, runs before any org is selected). This
+   * still needs its own small transaction: `memberships` has FORCE RLS, and
+   * with no app.current_org_id set (there's no org yet — that's the whole
+   * point of this query), the org-context policy alone would return zero
+   * rows for every user, always. Relies on the memberships table's second
+   * RLS policy (user_self_visibility, see rls-policies.sql design note 7),
+   * scoped by user rather than org.
+   */
   findAllForUser(userId: string) {
-    return this.prisma.organization.findMany({
-      where: { memberships: { some: { userId } }, deletedAt: null },
-      orderBy: { name: "asc" },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL app.current_user_id = '${userId}'`);
+      return tx.organization.findMany({
+        where: { memberships: { some: { userId } }, deletedAt: null },
+        orderBy: { name: "asc" },
+      });
     });
   }
 

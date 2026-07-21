@@ -44,9 +44,18 @@ export class TenantMembershipGuard implements CanActivate {
       throw new BadRequestException("Missing or invalid X-Organization-Id header");
     }
 
-    const membership = await this.prisma.membership.findUnique({
-      where: { organizationId_userId: { organizationId, userId: req.user.id } },
-      include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
+    // No app.current_org_id exists yet at this point in the pipeline (that's
+    // set later, by TenantContextInterceptor, using the organizationId this
+    // guard is about to validate) — so this lookup relies on the memberships
+    // table's second RLS policy (user_self_visibility, see rls-policies.sql
+    // design note 7) instead, scoped by user rather than org.
+    const userId = req.user.id;
+    const membership = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL app.current_user_id = '${userId}'`);
+      return tx.membership.findUnique({
+        where: { organizationId_userId: { organizationId, userId } },
+        include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
+      });
     });
     if (!membership) {
       throw new ForbiddenException("You are not a member of this organization");

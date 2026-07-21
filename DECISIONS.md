@@ -4,6 +4,28 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-21 — The memberships RLS gap: the app was unusable past login, in both dev and prod
+
+**What happened:** While verifying the live Phase 7 deployment end-to-end (a real browser login), the org picker showed "No organizations yet" for an account that definitely had one. Direct testing traced it to a real, deep bug: `TenantMembershipGuard` (validates `X-Organization-Id` against a real Membership row, on every tenant-scoped request) and `OrganizationsRepository.findAllForUser` (lists the orgs a user belongs to, for the org switcher) both query the `memberships` table via the raw `PrismaService`, outside any transaction — on the theory that skipping the transaction "bypasses" RLS. It doesn't. `mantraos_app` is not the table owner; Postgres RLS applies to every query it runs, transaction or not. With `app.current_org_id` never set (impossible here — neither of these lookups has an org to set it to yet, that's the entire point of both), `memberships`'s existing policy (`organizationId = current_setting('app.current_org_id')`) evaluates to `NULL` for every row, which RLS treats as "not visible." **Every authenticated, tenant-scoped request has been silently returning zero rows since RLS became genuinely active** — a design gap present since Phase 3 (`rls-policies.sql`'s own design notes already flagged that `organizations`/`users` access "is governed by the app-layer Membership check," but the policy that check actually needs was never added), masked the whole time by the Phase 5 bug where `TenantContextInterceptor` was never registered at all (see the entry below) — RLS wasn't really enforced then either, so this never had a chance to surface until now.
+
+**Confirmed, not assumed:** direct raw queries against both the dev and prod databases, as `mantraos_app`, with correct data present and no context set, reproduced empty results identically in both environments. This ruled out a Vercel-specific or deployment-specific cause before any fix was attempted.
+
+**Fix:** a second, additive RLS policy on `memberships`, scoped to `SELECT` only:
+```sql
+CREATE POLICY user_self_visibility ON "memberships"
+  FOR SELECT
+  USING ("userId" = current_setting('app.current_user_id', true));
+```
+Postgres combines multiple permissive policies with OR, so a row is now visible if *either* the org context matches (the existing policy, still the only thing governing INSERT/UPDATE/DELETE) *or* the user context matches. `TenantMembershipGuard` and `findAllForUser` each now wrap their one query in a minimal `$transaction` that does `SET LOCAL app.current_user_id = '<the authenticated user's id>'` first — the same `SET LOCAL`-inside-a-transaction pattern `TenantContextInterceptor` already uses for org context, just scoped to user identity for these two specifically-pre-org-context lookups. The userId comes from the JWT's `sub` claim (server-signed, not raw client input), matching the existing trust boundary used for `organizationId` interpolation elsewhere.
+
+**Verified before shipping:** re-ran the full local suite after the fix — 28/28 Vitest, 19/19 `verify-frontend-e2e.js`, 7/7 `verify-governance.js` (which specifically re-proves cross-org isolation and Viewer-role denial through this exact guard), `verify-rls.js`, `verify-auth.js` — then applied the same policy to prod and redeployed before considering this closed.
+
+**A related, separate finding along the way:** several `packages/db/scripts/*.js` files (`verify-frontend-e2e.js`, `verify-governance.js`, `create-demo-user.js`) call `new PrismaClient()` with no explicit `datasources.db.url`, relying on the generated client's implicit `.env` auto-discovery. That auto-discovery resolves relative to wherever `prisma generate` was last run from — after `apps/api`'s build started running its own `prisma generate` (Phase 7's build-fix work), these scripts silently started connecting as `mantraos_app` instead of the intended schema owner, which is what surfaced *this* RLS gap in the first place (a `membership.create()` failing loudly, rather than the guard/repository queries failing silently the way they'd been doing all along). Fixed the same way `verify-rls.js` already did it — read `packages/db/.env` explicitly, pass the URL via `datasources.db.url`. `seed-rbac.js` and `setup-app-role.js` are still unfixed — see TODO.md.
+
+**Reversibility:** High. The new policy only ever widens what's SELECT-visible, never what's writable — it cannot introduce a cross-tenant write path. The code changes are two small, self-contained transaction wrappers.
+
+---
+
 ## 2026-07-21 — Phase 7 deploy debugging: apps/api hung with FUNCTION_INVOCATION_TIMEOUT
 
 **What happened:** After the prod Neon database was provisioned and `apps/api` was deployed to Vercel, every request hung for the full function duration and returned `FUNCTION_INVOCATION_TIMEOUT` rather than a real response. Several real, separate issues were found and fixed in sequence — some were genuine, worthwhile fixes on their own merits, but none were actually what was causing every request to hang. That root cause turned out to be present since `api/index.ts` was first written in Phase 4, unrelated to anything database-related:
