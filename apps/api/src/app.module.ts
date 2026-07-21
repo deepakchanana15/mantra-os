@@ -8,6 +8,7 @@ import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { TenantContextInterceptor } from "./common/interceptors/tenant-context.interceptor";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CrmModule } from "./modules/crm/crm.module";
+import { GlobalModule } from "./modules/global/global.module";
 import { IdentityModule } from "./modules/identity/identity.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
 import { MarketingModule } from "./modules/marketing/marketing.module";
@@ -24,6 +25,7 @@ import { SalesModule } from "./modules/sales/sales.module";
     CommonModule,
     AuthModule,
     IdentityModule,
+    GlobalModule,
     NotificationsModule,
     CrmModule,
     ProductsModule,

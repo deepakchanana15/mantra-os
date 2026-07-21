@@ -34,6 +34,11 @@ model Organization {
   deletionGrants UserDeletionGrant[]
   auditLogs      AuditLog[]
 
+  companies Company[]
+  countries Country[]
+  brands    Brand[]
+  websites  Website[]
+
   customers          Customer[]
   contacts           Contact[]
   categories         Category[]
@@ -206,6 +211,149 @@ model AuditLog {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Global domain — Company, Country, Brand, Website, Currency
+// See DECISIONS.md "Global multi-country, multi-company, multi-brand
+// architecture" for the full design rationale. Chain: Organization (still
+// the RLS tenant boundary, unchanged) -> Company -> Country -> Warehouse,
+// with Brand and Website attached at the Organization/Country level.
+// Sub-phase A: master data only. Scoping existing entities to
+// Company/Country/Brand is Sub-phase B.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Global reference data (ISO 4217), not tenant-scoped — a currency code
+/// means the same thing for every organization. Historical exchange-rate
+/// tracking and transaction-level currency conversion are a follow-on phase.
+model Currency {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  name          String
+  symbol        String
+  decimalPlaces Int      @default(2)
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  companies Company[]
+  countries Country[]
+  websites  Website[]
+
+  @@map("currencies")
+}
+
+/// A legal entity within an Organization (Mantra Sports Australia Pty Ltd,
+/// Mantra Sports USA LLC, ...). Organization stays the RLS tenant boundary;
+/// Company is a new sub-entity layer beneath it, not a replacement for it.
+model Company {
+  id                 String    @id @default(uuid())
+  organizationId     String
+  name               String
+  legalName          String?
+  registrationNumber String?
+  baseCurrencyId     String?
+  enabled            Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  createdBy          String
+  updatedBy          String
+  deletedAt          DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  baseCurrency Currency?    @relation(fields: [baseCurrencyId], references: [id])
+  countries    Country[]
+
+  @@index([organizationId])
+  @@map("companies")
+}
+
+/// Belongs to a Company, not directly to Organization (confirmed by the
+/// requirement itself: "Warehouse belongs to a country. Country belongs to
+/// a company."). organizationId is denormalized here too, matching this
+/// project's existing convention on line-item tables — RLS policies stay a
+/// simple column comparison instead of a subquery through Company.
+model Country {
+  id              String    @id @default(uuid())
+  organizationId  String
+  companyId       String
+  name            String
+  isoCode         String
+  currencyId      String?
+  defaultLanguage String?
+  timeZone        String?
+  dateFormat      String?
+  /// Simple flat rate for V1 — see DECISIONS.md "Tax and pricing, framework
+  /// not data". The full multi-rule tax engine (GST/VAT/CGST/SGST/IGST,
+  /// dated, compound) is a follow-on phase once real rates exist to build
+  /// and test against.
+  taxPercentage   Decimal?  @db.Decimal(5, 2)
+  enabled         Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String
+  updatedBy       String
+  deletedAt       DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  company      Company      @relation(fields: [companyId], references: [id])
+  currency     Currency?    @relation(fields: [currencyId], references: [id])
+  warehouses   Warehouse[]
+  websites     Website[]
+
+  @@unique([companyId, isoCode])
+  @@index([organizationId])
+  @@index([companyId])
+  @@map("countries")
+}
+
+/// Cross-cutting, not tied to one Company — belongs to the Organization
+/// directly. Product/Campaign get brandId in Sub-phase B.
+model Brand {
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  slug           String
+  enabled        Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  websites     Website[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@map("brands")
+}
+
+model Website {
+  id             String    @id @default(uuid())
+  organizationId String
+  countryId      String
+  brandId        String
+  currencyId     String?
+  language       String?
+  shopifyStoreId String?
+  domain         String?
+  enabled        Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String
+  updatedBy      String
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  country      Country      @relation(fields: [countryId], references: [id])
+  brand        Brand        @relation(fields: [brandId], references: [id])
+  currency     Currency?    @relation(fields: [currencyId], references: [id])
+
+  @@index([organizationId])
+  @@index([countryId])
+  @@index([brandId])
+  @@map("websites")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // CRM domain
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -343,6 +491,10 @@ model Product {
 model Warehouse {
   id             String    @id @default(uuid())
   organizationId String
+  /// Nullable: existing warehouses predate the multi-country model and
+  /// aren't assigned a country by the Sub-phase A migration — set going
+  /// forward, backfilled for existing rows as a separate data task.
+  countryId      String?
   name           String
   address        Json?
   createdAt      DateTime  @default(now())
@@ -352,12 +504,14 @@ model Warehouse {
   deletedAt      DateTime?
 
   organization          Organization           @relation(fields: [organizationId], references: [id])
+  country               Country?               @relation(fields: [countryId], references: [id])
   stockLevels           StockLevel[]
   inventoryTransactions InventoryTransaction[]
   shipments             Shipment[]
   goodsReceipts         GoodsReceipt[]
 
   @@index([organizationId])
+  @@index([countryId])
   @@map("warehouses")
 }
 

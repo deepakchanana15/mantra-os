@@ -14,10 +14,25 @@
  * comment).
  *
  * Usage: node scripts/seed-rbac.js
+ *
+ * Reads DATABASE_URL from packages/db/.env explicitly rather than relying
+ * on the generated Prisma client's own implicit .env discovery — see
+ * create-demo-user.js's comment for why that auto-discovery can't be
+ * trusted (it resolves relative to wherever `prisma generate` was last
+ * run from, not reliably this package's own .env).
  */
-require("dotenv").config();
+const fs = require("fs");
 const path = require("path");
 const { PrismaClient } = require("@prisma/client");
+
+function loadEnvFile(filePath) {
+  const env = {};
+  for (const line of fs.readFileSync(filePath, "utf8").split("\n")) {
+    const match = line.match(/^([A-Z_]+)="(.*)"$/);
+    if (match) env[match[1]] = match[2];
+  }
+  return env;
+}
 const { PERMISSIONS } = require(
   path.join(__dirname, "..", "..", "..", "apps", "api", "dist", "src", "common", "permissions", "permission-keys.js"),
 );
@@ -37,7 +52,8 @@ const SYSTEM_ROLES = [
 ];
 
 async function main() {
-  const prisma = new PrismaClient();
+  const databaseUrl = loadEnvFile(path.join(__dirname, "..", ".env")).DATABASE_URL;
+  const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
   const permissionKeys = Object.values(PERMISSIONS);
 
   console.log(`Seeding ${permissionKeys.length} permissions...`);

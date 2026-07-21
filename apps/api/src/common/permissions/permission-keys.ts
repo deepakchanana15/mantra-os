@@ -11,6 +11,26 @@ export const PERMISSIONS = {
   MEMBERS_DELETE: "members:delete",
   DELETION_GRANTS_MANAGE: "deletion_grants:manage",
 
+  COMPANIES_CREATE: "companies:create",
+  COMPANIES_READ: "companies:read",
+  COMPANIES_UPDATE: "companies:update",
+  COMPANIES_DELETE: "companies:delete",
+
+  COUNTRIES_CREATE: "countries:create",
+  COUNTRIES_READ: "countries:read",
+  COUNTRIES_UPDATE: "countries:update",
+  COUNTRIES_DELETE: "countries:delete",
+
+  BRANDS_CREATE: "brands:create",
+  BRANDS_READ: "brands:read",
+  BRANDS_UPDATE: "brands:update",
+  BRANDS_DELETE: "brands:delete",
+
+  WEBSITES_CREATE: "websites:create",
+  WEBSITES_READ: "websites:read",
+  WEBSITES_UPDATE: "websites:update",
+  WEBSITES_DELETE: "websites:delete",
+
   CUSTOMERS_CREATE: "customers:create",
   CUSTOMERS_READ: "customers:read",
   CUSTOMERS_UPDATE: "customers:update",

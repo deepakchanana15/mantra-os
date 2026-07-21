@@ -14,7 +14,19 @@ const WRITE_ROLES: SystemRoleKey[] = ["owner", "admin", "manager", "member"];
  * key only keeps Viewer out of delete entirely.
  */
 export function rolesFor(resource: string, action: string): SystemRoleKey[] {
-  if (resource === "org_settings" || resource === "members") {
+  if (
+    resource === "org_settings" ||
+    resource === "members" ||
+    resource === "companies" ||
+    resource === "countries" ||
+    resource === "brands" ||
+    resource === "websites"
+  ) {
+    // Global master data (legal entities, countries/tax rates, brands,
+    // websites) defines the business structure itself, not day-to-day
+    // records — same sensitivity tier as org_settings/members, restricted
+    // to Owner/Admin even for reads (unlike the generic CRUD group below,
+    // where everyone including Viewer can read).
     return ["owner", "admin"];
   }
   if (resource === "deletion_grants") {

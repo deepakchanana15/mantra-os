@@ -94,6 +94,7 @@ Notifications  (listens to domain events from all of the above — never importe
 | Domain | Entities | Notes |
 |---|---|---|
 | **Identity** | Organization, User, Membership (user↔org, many-to-many), Role, Permission, RolePermission | Every other domain depends on this one; it depends on nothing. |
+| **Global** (added Phase 8) | Company, Country, Brand, Website, Currency | `Organization → Company → Country → Warehouse`, with Brand/Website cross-cutting. See [DECISIONS.md](DECISIONS.md) "Global multi-country, multi-company, multi-brand architecture". Sub-phase A shipped master data only — existing domains don't reference Company/Country/Brand yet (Sub-phase B). |
 | **CRM** | Customer, Contact | |
 | **Products** | Product, Category (self-referencing hierarchy) | |
 | **Inventory** | Warehouse, StockLevel (product × warehouse), InventoryTransaction | InventoryTransaction is the 10M-row target table — see [DATABASE.md](DATABASE.md) for indexing once Phase 3 starts. |

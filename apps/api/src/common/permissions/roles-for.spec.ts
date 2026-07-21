@@ -12,6 +12,13 @@ describe("rolesFor", () => {
     expect(rolesFor("deletion_grants", "manage")).toEqual(["owner"]);
   });
 
+  it("restricts global master data (companies/countries/brands/websites) to Owner/Admin, including reads", () => {
+    for (const resource of ["companies", "countries", "brands", "websites"]) {
+      expect(rolesFor(resource, "read")).toEqual(["owner", "admin"]);
+      expect(rolesFor(resource, "create")).toEqual(["owner", "admin"]);
+    }
+  });
+
   it("gives everyone including Viewer read access to reports", () => {
     expect(rolesFor("reports", "read")).toEqual(["owner", "admin", "manager", "member", "viewer"]);
   });

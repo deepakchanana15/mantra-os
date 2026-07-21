@@ -4,6 +4,27 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-21 — Global multi-country, multi-company, multi-brand architecture (design)
+
+**Context:** MantraOS must expand from modeling a single business (Mantra Sports) to an enterprise architecture that supports multiple legal entities, countries, brands, and websites — without a future database redesign. Current countries: US, Canada, Australia, New Zealand, Netherlands, Germany; next planned: India. This is a foundational re-architecture, not a feature — it touches the domain model broadly and needed its own design pass before any schema work, the same way Phases 1–2 did for the original architecture.
+
+**Decision 1 — Tenancy hierarchy:** `Organization` remains the RLS tenant boundary, **unchanged** from the Phase 1 lock (see "Multi-tenancy: shared schema, `organization_id` + Postgres RLS" below) — it's still what lets MantraOS itself serve unrelated future customers, not just Mantra Sports. A new `Company` entity sits *beneath* Organization, representing a legal entity (Mantra Sports Australia Pty Ltd, Mantra Sports USA LLC, etc.). `Country` belongs to `Company` (not the other way around — confirmed by the requirement itself: "Warehouse belongs to a country. Country belongs to a company."), and `Warehouse` belongs to `Country`. `Brand` and `Website` are cross-cutting: a Brand belongs to the Organization (a brand isn't tied to one legal entity), a Website references a Country and a Brand. Full chain: `Organization → Company → Country → Warehouse`, with `Brand`/`Website` attached at the Organization/Country level respectively.
+
+**Decision 2 — Phasing:** built as three checkpointed sub-phases rather than one large change against a live production system:
+- **Sub-phase A:** master data — `Currency`, `Company`, `Country`, `Brand`, `Website`, plus `countryId` added to the existing `Warehouse` table. Seeded with the 6 current countries.
+- **Sub-phase B:** `companyId`/`countryId`/`brandId` scoping added to existing entities (`Customer`, `Quote`, `SalesOrder`, `PurchaseOrder`, `Supplier` get company/country; `Product`, `Campaign` get brand).
+- **Sub-phase C:** three entities referenced by the requirement but not yet built anywhere in MantraOS — `Opportunity` (pre-Quote sales pipeline stage), `Invoice`, `SupportTicket` — added as minimal versions with the new scoping from the start.
+
+Currency conversion (exchange rates, transaction-currency tracking), the tax engine, price lists, shipping zones, the extended multi-dimensional permission model (Company/Country/Warehouse/Department/Role/Brand), and dashboard/report filtering by these new dimensions are **explicitly deferred to their own follow-on phases** after this foundational layer lands — each is a substantial subsystem on its own, not a field addition.
+
+**Decision 3 — Multi-language scope, narrowed:** "Multi-language" means tagging records (Country's default language, a Customer/Contact's preferred language for correspondence) — **not** translating the MantraOS application UI itself. Full UI internationalization (every label/button/screen in English/German/Dutch/French/Hindi) is a separate, large frontend initiative, out of scope here until there's a concrete need to open it.
+
+**Decision 4 — Tax and pricing, framework not data:** `Country.taxPercentage` is a simple configurable decimal for V1 — enough that nothing is hardcoded — not yet the full rule engine implied by "GST/VAT/CGST/SGST/IGST" (multiple stacked, dated, compound rules). That engine, and the full price-list system (per-country, per-customer-type-tier pricing), are follow-on phases once real rates/price data exist to build and test against. Building the engine before there's real data to validate it against would mean designing blind.
+
+**Reversibility:** The hierarchy decision (Company beneath Organization, not replacing it) is the one genuinely hard-to-reverse call here — every other piece (tax engine sophistication, price list structure, UI translation) can be deepened later without touching what Sub-phase A ships. Getting the hierarchy wrong would mean redoing every table that references Company/Country.
+
+---
+
 ## 2026-07-21 — Customer type taxonomy: 20 sports-business types replace generic INDIVIDUAL/COMPANY
 
 **Decision:** `Customer.type` moves from a generic `INDIVIDUAL | COMPANY` enum to 20 specific values reflecting how Mantra Sports actually segments its customers: `USER, STORE, ACADEMY, CLUB, COACH, PROFESSIONAL, SCHOOL, COLLEGE_UNIVERSITY, ASSOCIATION, CORPORATE, GOVERNMENT, TEAM, DISTRIBUTOR, DEALER, FRANCHISE, EVENT_ORGANIZER, RENTAL_PROVIDER, NGO_FOUNDATION, INFLUENCER_CREATOR, OEM_PRIVATE_LABEL`. Labels and descriptions (e.g. "Store — Retail sports shop, online retailer, or distributor") live in `apps/web/lib/customer-types.ts`, the single source of truth for the frontend; `apps/api` only validates against the Prisma-generated enum, it doesn't need the display text.

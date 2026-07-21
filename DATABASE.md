@@ -1,6 +1,6 @@
 # Database
 
-Prisma schema: [`packages/db/prisma/schema.prisma`](packages/db/prisma/schema.prisma) — 32 models across 9 domains, validated with `npx prisma validate`.
+Prisma schema: [`packages/db/prisma/schema.prisma`](packages/db/prisma/schema.prisma) — 37 models across 10 domains, validated with `npx prisma validate`.
 RLS policies: [`packages/db/prisma/rls-policies.sql`](packages/db/prisma/rls-policies.sql) — applied after every `prisma migrate deploy`, not managed by Prisma directly.
 
 **Two gaps found and fixed while building the Phase 4 backend** (not caught during the original Phase 3 design pass): `Category` and `Warehouse` were missing `createdBy`/`updatedBy` despite being business entities like every other soft-deletable table, and `GoodsReceipt` had no line items at all — meaning it couldn't express receiving less than a full purchase order, unlike `Shipment`/`ShipmentLine`. Both fixed; see [DECISIONS.md](DECISIONS.md).
@@ -51,7 +51,9 @@ Implements the mechanism decided in [ARCHITECTURE.md](ARCHITECTURE.md#tenant-con
 
 If the app connected as the schema owner, `FORCE ROW LEVEL SECURITY` would still be bypassed and every policy in `rls-policies.sql` would be decorative. This is a required operational step for Phase 7, not optional hardening — noted in [TODO.md](TODO.md).
 
-**Deliberately no RLS policy on:** `organizations` and `users` (they aren't scoped *by* organizationId — a User belongs to many orgs, and Organization is the tenant boundary itself, not a child of one; access is governed by the app-layer Membership check instead), `roles`/`permissions`/`role_permissions` (shared reference data for V1's fixed system roles — revisit once V2 adds per-org custom roles), and `user_preferences` (scoped by `userId`, protected by the API checking `req.user.id`, not by tenant).
+**Deliberately no RLS policy on:** `organizations` and `users` (they aren't scoped *by* organizationId — a User belongs to many orgs, and Organization is the tenant boundary itself, not a child of one; access is governed by the app-layer Membership check instead), `roles`/`permissions`/`role_permissions` (shared reference data for V1's fixed system roles — revisit once V2 adds per-org custom roles), `user_preferences` (scoped by `userId`, protected by the API checking `req.user.id`, not by tenant), and `currencies` (global ISO 4217 reference data, same reasoning as roles/permissions). `companies`/`countries`/`brands`/`websites` (added Phase 8) get the standard `organizationId`-based policy like every other tenant-scoped table.
+
+`memberships` additionally has a second, narrower policy (`user_self_visibility`, SELECT only) letting a user see their own membership rows before any org has been selected — see [DECISIONS.md](DECISIONS.md) "The memberships RLS gap" for why the org-context policy alone can never satisfy that lookup.
 
 ## Other schema notes
 

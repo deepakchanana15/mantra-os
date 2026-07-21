@@ -10,12 +10,27 @@
  * ignore "already exists" errors).
  *
  * Usage: node scripts/setup-app-role.js
+ *
+ * Reads DATABASE_URL from packages/db/.env explicitly rather than relying
+ * on the generated Prisma client's own implicit .env discovery — see
+ * create-demo-user.js's comment for why (it resolves relative to wherever
+ * `prisma generate` was last run from, not reliably this package's own
+ * .env, and this script needs the OWNER connection specifically to be
+ * able to ALTER ROLE at all).
  */
-require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { PrismaClient } = require("@prisma/client");
+
+function loadEnvFile(filePath) {
+  const env = {};
+  for (const line of fs.readFileSync(filePath, "utf8").split("\n")) {
+    const match = line.match(/^([A-Z_]+)="(.*)"$/);
+    if (match) env[match[1]] = match[2];
+  }
+  return env;
+}
 
 const APP_ROLE = "mantraos_app";
 
@@ -46,13 +61,13 @@ function splitSqlStatements(sql) {
 }
 
 async function main() {
-  const ownerUrl = process.env.DATABASE_URL;
+  const ownerUrl = loadEnvFile(path.join(__dirname, "..", ".env")).DATABASE_URL;
   if (!ownerUrl) {
     throw new Error("DATABASE_URL not found — is packages/db/.env populated?");
   }
 
   const password = crypto.randomBytes(24).toString("base64url");
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({ datasources: { db: { url: ownerUrl } } });
 
   console.log(`Creating/updating role "${APP_ROLE}"...`);
   await prisma.$executeRawUnsafe(`

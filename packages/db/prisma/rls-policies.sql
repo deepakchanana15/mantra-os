@@ -43,6 +43,9 @@
 --      INSERT/UPDATE/DELETE are still governed exclusively by rule 2's
 --      org-context policy; this addition only ever widens what's readable,
 --      never what's writable.
+--   8. currencies has no policy — same reasoning as rule 5: global reference
+--      data (ISO 4217 codes), not per-tenant. companies/countries/brands/
+--      websites, which reference it, are all normally tenant-scoped.
 
 -- ── Roles ───────────────────────────────────────────────────────────────
 -- Run once per environment, not per migration. Password/credentials are
@@ -86,6 +89,33 @@ CREATE POLICY tenant_isolation ON "memberships"
 CREATE POLICY user_self_visibility ON "memberships"
   FOR SELECT
   USING ("userId" = current_setting('app.current_user_id', true));
+
+-- ── Global (Company/Country/Brand/Website) — currencies is deliberately
+-- excluded, same as roles/permissions: global reference data, not per-tenant.
+
+ALTER TABLE "companies" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "companies" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "companies"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+ALTER TABLE "countries" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "countries" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "countries"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+ALTER TABLE "brands" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "brands" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "brands"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+ALTER TABLE "websites" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "websites" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "websites"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
 
 -- ── CRM ──────────────────────────────────────────────────────────────────
 
