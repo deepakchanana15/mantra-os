@@ -12,6 +12,7 @@
 - [ ] Deploy on Vercel Hobby accepted as a known ToS risk for now — see DECISIONS.md "Phase 7 launch decisions"
 - [ ] Production domain name — deferred, launching on default `*.vercel.app` subdomains (see DECISIONS.md)
 - [ ] No CI yet — Vitest/verify-*.js suite doesn't run automatically on push; add before more than one contributor touches this repo
+- [ ] Audit `packages/db/scripts/*.js` for implicit `new PrismaClient()` (no explicit `datasources.db.url`) — found via `create-demo-user.js` silently connecting as the wrong role after an unrelated `apps/api` rebuild changed which `.env` the generated client's auto-discovery resolved to. `create-demo-user.js` and `verify-rls.js` are already fixed (explicit `datasources.db.url`, loaded from a known file path); `verify-auth.js`, `verify-frontend-e2e.js`, `verify-governance.js`, `seed-rbac.js`, `setup-app-role.js` have not been checked — they likely "worked" so far only because the tables they touch directly (`users`, `permissions`, `roles`) aren't RLS-protected, not because they're actually immune to this.
 
 ## Live database setup — done
 
