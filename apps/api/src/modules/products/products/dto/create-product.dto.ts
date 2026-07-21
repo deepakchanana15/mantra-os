@@ -27,4 +27,9 @@ export class CreateProductDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   unitCost?: number;
+
+  /** Optional — see DECISIONS.md "Global multi-country, multi-company, multi-brand architecture" Sub-phase B. */
+  @IsOptional()
+  @IsUUID()
+  brandId?: string;
 }

@@ -9,4 +9,9 @@ export class CreateCampaignDto {
 
   @IsOptional()
   scheduledAt?: Date;
+
+  /** Optional — see DECISIONS.md "Global multi-country, multi-company, multi-brand architecture" Sub-phase B. */
+  @IsOptional()
+  @IsUUID()
+  brandId?: string;
 }

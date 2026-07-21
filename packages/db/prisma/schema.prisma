@@ -257,9 +257,14 @@ model Company {
   updatedBy          String
   deletedAt          DateTime?
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  baseCurrency Currency?    @relation(fields: [baseCurrencyId], references: [id])
-  countries    Country[]
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  baseCurrency   Currency?       @relation(fields: [baseCurrencyId], references: [id])
+  countries      Country[]
+  customers      Customer[]
+  quotes         Quote[]
+  salesOrders    SalesOrder[]
+  suppliers      Supplier[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([organizationId])
   @@map("companies")
@@ -292,11 +297,16 @@ model Country {
   updatedBy       String
   deletedAt       DateTime?
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  company      Company      @relation(fields: [companyId], references: [id])
-  currency     Currency?    @relation(fields: [currencyId], references: [id])
-  warehouses   Warehouse[]
-  websites     Website[]
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  company        Company         @relation(fields: [companyId], references: [id])
+  currency       Currency?       @relation(fields: [currencyId], references: [id])
+  warehouses     Warehouse[]
+  websites       Website[]
+  customers      Customer[]
+  quotes         Quote[]
+  salesOrders    SalesOrder[]
+  suppliers      Supplier[]
+  purchaseOrders PurchaseOrder[]
 
   @@unique([companyId, isoCode])
   @@index([organizationId])
@@ -320,6 +330,8 @@ model Brand {
 
   organization Organization @relation(fields: [organizationId], references: [id])
   websites     Website[]
+  products     Product[]
+  campaigns    Campaign[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -386,6 +398,11 @@ enum CustomerType {
 model Customer {
   id              String       @id @default(uuid())
   organizationId  String
+  /// Nullable — see DECISIONS.md "Global multi-country, multi-company,
+  /// multi-brand architecture" Sub-phase B: existing records predate this
+  /// scoping and aren't backfilled, set going forward.
+  companyId       String?
+  countryId       String?
   name            String
   type            CustomerType @default(USER)
   email           String?
@@ -399,12 +416,16 @@ model Customer {
   deletedAt       DateTime?
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  company      Company?     @relation(fields: [companyId], references: [id])
+  country      Country?     @relation(fields: [countryId], references: [id])
   contacts     Contact[]
   quotes       Quote[]
   salesOrders  SalesOrder[]
 
   @@index([organizationId])
   @@index([organizationId, deletedAt])
+  @@index([companyId])
+  @@index([countryId])
   @@map("customers")
 }
 
@@ -459,6 +480,8 @@ model Product {
   id             String    @id @default(uuid())
   organizationId String
   categoryId     String?
+  /// Nullable — see DECISIONS.md Sub-phase B.
+  brandId        String?
   sku            String
   name           String
   description    String?
@@ -472,6 +495,7 @@ model Product {
 
   organization          Organization           @relation(fields: [organizationId], references: [id])
   category              Category?              @relation(fields: [categoryId], references: [id])
+  brand                 Brand?                 @relation(fields: [brandId], references: [id])
   stockLevels           StockLevel[]
   inventoryTransactions InventoryTransaction[]
   quoteLines            QuoteLine[]
@@ -481,6 +505,7 @@ model Product {
   @@unique([organizationId, sku])
   @@index([organizationId])
   @@index([categoryId])
+  @@index([brandId])
   @@map("products")
 }
 
@@ -585,6 +610,9 @@ enum QuoteStatus {
 model Quote {
   id             String      @id @default(uuid())
   organizationId String
+  /// Nullable — see DECISIONS.md Sub-phase B.
+  companyId      String?
+  countryId      String?
   customerId     String
   status         QuoteStatus @default(DRAFT)
   validUntil     DateTime?
@@ -595,12 +623,16 @@ model Quote {
   deletedAt      DateTime?
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  company      Company?     @relation(fields: [companyId], references: [id])
+  country      Country?     @relation(fields: [countryId], references: [id])
   customer     Customer     @relation(fields: [customerId], references: [id])
   lines        QuoteLine[]
   salesOrder   SalesOrder?
 
   @@index([organizationId])
   @@index([customerId])
+  @@index([companyId])
+  @@index([countryId])
   @@map("quotes")
 }
 
@@ -632,6 +664,9 @@ enum SalesOrderStatus {
 model SalesOrder {
   id             String           @id @default(uuid())
   organizationId String
+  /// Nullable — see DECISIONS.md Sub-phase B.
+  companyId      String?
+  countryId      String?
   customerId     String
   quoteId        String?          @unique
   status         SalesOrderStatus @default(PENDING)
@@ -643,6 +678,8 @@ model SalesOrder {
   deletedAt      DateTime?
 
   organization Organization     @relation(fields: [organizationId], references: [id])
+  company      Company?         @relation(fields: [companyId], references: [id])
+  country      Country?         @relation(fields: [countryId], references: [id])
   customer     Customer         @relation(fields: [customerId], references: [id])
   quote        Quote?           @relation(fields: [quoteId], references: [id])
   lines        SalesOrderLine[]
@@ -650,6 +687,8 @@ model SalesOrder {
 
   @@index([organizationId])
   @@index([customerId])
+  @@index([companyId])
+  @@index([countryId])
   @@map("sales_orders")
 }
 
@@ -725,6 +764,9 @@ model ShipmentLine {
 model Supplier {
   id             String    @id @default(uuid())
   organizationId String
+  /// Nullable — see DECISIONS.md Sub-phase B.
+  companyId      String?
+  countryId      String?
   name           String
   email          String?
   phone          String?
@@ -736,9 +778,13 @@ model Supplier {
   deletedAt      DateTime?
 
   organization   Organization    @relation(fields: [organizationId], references: [id])
+  company        Company?        @relation(fields: [companyId], references: [id])
+  country        Country?        @relation(fields: [countryId], references: [id])
   purchaseOrders PurchaseOrder[]
 
   @@index([organizationId])
+  @@index([companyId])
+  @@index([countryId])
   @@map("suppliers")
 }
 
@@ -753,6 +799,9 @@ enum PurchaseOrderStatus {
 model PurchaseOrder {
   id             String              @id @default(uuid())
   organizationId String
+  /// Nullable — see DECISIONS.md Sub-phase B.
+  companyId      String?
+  countryId      String?
   supplierId     String
   status         PurchaseOrderStatus @default(DRAFT)
   orderDate      DateTime            @default(now())
@@ -763,12 +812,16 @@ model PurchaseOrder {
   deletedAt      DateTime?
 
   organization  Organization        @relation(fields: [organizationId], references: [id])
+  company       Company?            @relation(fields: [companyId], references: [id])
+  country       Country?            @relation(fields: [countryId], references: [id])
   supplier      Supplier            @relation(fields: [supplierId], references: [id])
   lines         PurchaseOrderLine[]
   goodsReceipts GoodsReceipt[]
 
   @@index([organizationId])
   @@index([supplierId])
+  @@index([companyId])
+  @@index([countryId])
   @@map("purchase_orders")
 }
 
@@ -878,6 +931,8 @@ enum CampaignStatus {
 model Campaign {
   id             String         @id @default(uuid())
   organizationId String
+  /// Nullable — see DECISIONS.md Sub-phase B.
+  brandId        String?
   segmentId      String
   templateId     String
   status         CampaignStatus @default(DRAFT)
@@ -891,10 +946,12 @@ model Campaign {
   deletedAt      DateTime?
 
   organization Organization  @relation(fields: [organizationId], references: [id])
+  brand        Brand?        @relation(fields: [brandId], references: [id])
   segment      Segment       @relation(fields: [segmentId], references: [id])
   template     EmailTemplate @relation(fields: [templateId], references: [id])
 
   @@index([organizationId])
+  @@index([brandId])
   @@map("campaigns")
 }
 

@@ -12,9 +12,9 @@ describe("rolesFor", () => {
     expect(rolesFor("deletion_grants", "manage")).toEqual(["owner"]);
   });
 
-  it("restricts global master data (companies/countries/brands/websites) to Owner/Admin, including reads", () => {
+  it("opens global master data (companies/countries/brands/websites) reads to all roles but restricts writes to Owner/Admin", () => {
     for (const resource of ["companies", "countries", "brands", "websites"]) {
-      expect(rolesFor(resource, "read")).toEqual(["owner", "admin"]);
+      expect(rolesFor(resource, "read")).toEqual(["owner", "admin", "manager", "member", "viewer"]);
       expect(rolesFor(resource, "create")).toEqual(["owner", "admin"]);
     }
   });

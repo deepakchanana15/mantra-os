@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LineItemsEditor, type LineItemRow, type ProductOption } from "@/components/domain/line-items-editor";
+import { CompanyCountrySelect } from "@/components/domain/company-country-select";
 
 interface Customer {
   id: string;
@@ -26,6 +27,8 @@ export default function NewQuotePage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [customerId, setCustomerId] = useState<string | undefined>(undefined);
+  const [companyId, setCompanyId] = useState<string | undefined>(undefined);
+  const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [lines, setLines] = useState<LineItemRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -45,7 +48,7 @@ export default function NewQuotePage() {
       const res = await fetch("/api/v1/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId, lines: validLines }),
+        body: JSON.stringify({ customerId, companyId, countryId, lines: validLines }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -89,6 +92,13 @@ export default function NewQuotePage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+
+            <CompanyCountrySelect
+              companyId={companyId}
+              countryId={countryId}
+              onCompanyChange={setCompanyId}
+              onCountryChange={setCountryId}
+            />
 
             <LineItemsEditor
               products={products}

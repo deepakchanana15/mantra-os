@@ -6,6 +6,15 @@ export class CreateQuoteDto {
   @IsUUID()
   customerId!: string;
 
+  /** Optional — see DECISIONS.md "Global multi-country, multi-company, multi-brand architecture" Sub-phase B. */
+  @IsOptional()
+  @IsUUID()
+  companyId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  countryId?: string;
+
   @IsOptional()
   validUntil?: Date;
 

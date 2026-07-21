@@ -9,12 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { CompanyCountrySelect } from "@/components/domain/company-country-select";
 
 export default function NewSupplierPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [companyId, setCompanyId] = useState<string | undefined>(undefined);
+  const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -24,7 +27,7 @@ export default function NewSupplierPage() {
       const res = await fetch("/api/v1/suppliers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email: email || undefined, phone: phone || undefined }),
+        body: JSON.stringify({ name, email: email || undefined, phone: phone || undefined, companyId, countryId }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -63,6 +66,12 @@ export default function NewSupplierPage() {
               <Label htmlFor="phone">Phone</Label>
               <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
+            <CompanyCountrySelect
+              companyId={companyId}
+              countryId={countryId}
+              onCompanyChange={setCompanyId}
+              onCountryChange={setCountryId}
+            />
             <div className="mt-2 flex gap-2">
               <Button type="submit" disabled={loading}>
                 {loading ? "Creating…" : "Create supplier"}

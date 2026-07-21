@@ -35,6 +35,8 @@ export class PurchaseOrdersRepository extends BaseRepository {
       data: {
         organizationId: this.organizationId,
         supplierId: dto.supplierId,
+        companyId: dto.companyId,
+        countryId: dto.countryId,
         createdBy: this.userId,
         updatedBy: this.userId,
         lines: {

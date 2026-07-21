@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LineItemsEditor, type LineItemRow, type ProductOption } from "@/components/domain/line-items-editor";
+import { CompanyCountrySelect } from "@/components/domain/company-country-select";
 
 interface Supplier {
   id: string;
@@ -26,6 +27,8 @@ export default function NewPurchaseOrderPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [supplierId, setSupplierId] = useState<string | undefined>(undefined);
+  const [companyId, setCompanyId] = useState<string | undefined>(undefined);
+  const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [lines, setLines] = useState<LineItemRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -47,6 +50,8 @@ export default function NewPurchaseOrderPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           supplierId,
+          companyId,
+          countryId,
           lines: validLines.map((l) => ({ productId: l.productId, quantity: l.quantity, unitCost: l.unitPrice })),
         }),
       });
@@ -92,6 +97,13 @@ export default function NewPurchaseOrderPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+
+            <CompanyCountrySelect
+              companyId={companyId}
+              countryId={countryId}
+              onCompanyChange={setCompanyId}
+              onCountryChange={setCountryId}
+            />
 
             <LineItemsEditor
               products={products}

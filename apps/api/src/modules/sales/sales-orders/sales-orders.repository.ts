@@ -36,6 +36,8 @@ export class SalesOrdersRepository extends BaseRepository {
         organizationId: this.organizationId,
         customerId: dto.customerId,
         quoteId: dto.quoteId,
+        companyId: dto.companyId,
+        countryId: dto.countryId,
         createdBy: this.userId,
         updatedBy: this.userId,
         lines: {

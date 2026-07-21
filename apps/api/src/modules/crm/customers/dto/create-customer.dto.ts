@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsEmail, IsEnum, IsOptional, IsString, MaxLength, MinLength, ValidateNested } from "class-validator";
+import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, MaxLength, MinLength, ValidateNested } from "class-validator";
 import { CustomerType } from "@mantra-os/db";
 import { AddressDto } from "../../../../common/dto/address.dto";
 
@@ -11,6 +11,15 @@ export class CreateCustomerDto {
 
   @IsEnum(CustomerType)
   type: CustomerType = CustomerType.USER;
+
+  /** Optional — see DECISIONS.md "Global multi-country, multi-company, multi-brand architecture" Sub-phase B. */
+  @IsOptional()
+  @IsUUID()
+  companyId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  countryId?: string;
 
   @IsOptional()
   @IsEmail()

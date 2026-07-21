@@ -37,6 +37,8 @@ export class CustomersRepository extends BaseRepository {
       data: {
         name: dto.name,
         type: dto.type,
+        companyId: dto.companyId,
+        countryId: dto.countryId,
         email: dto.email,
         phone: dto.phone,
         billingAddress: addressToJson(dto.billingAddress),
@@ -55,6 +57,8 @@ export class CustomersRepository extends BaseRepository {
       data: {
         name: dto.name,
         type: dto.type,
+        companyId: dto.companyId,
+        countryId: dto.countryId,
         email: dto.email,
         phone: dto.phone,
         billingAddress: addressToJson(dto.billingAddress),

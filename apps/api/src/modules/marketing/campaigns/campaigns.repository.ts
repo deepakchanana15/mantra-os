@@ -30,6 +30,7 @@ export class CampaignsRepository extends BaseRepository {
         segmentId: dto.segmentId,
         templateId: dto.templateId,
         scheduledAt: dto.scheduledAt,
+        brandId: dto.brandId,
         organizationId: this.organizationId,
         createdBy: this.userId,
         updatedBy: this.userId,

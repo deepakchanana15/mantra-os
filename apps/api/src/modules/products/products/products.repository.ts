@@ -47,6 +47,7 @@ export class ProductsRepository extends BaseRepository {
         categoryId: dto.categoryId,
         unitPrice: dto.unitPrice,
         unitCost: dto.unitCost,
+        brandId: dto.brandId,
         organizationId: this.organizationId,
         createdBy: this.userId,
         updatedBy: this.userId,
@@ -65,6 +66,7 @@ export class ProductsRepository extends BaseRepository {
         categoryId: dto.categoryId,
         unitPrice: dto.unitPrice,
         unitCost: dto.unitCost,
+        brandId: dto.brandId,
         updatedBy: this.userId,
       },
     });

@@ -14,20 +14,20 @@ const WRITE_ROLES: SystemRoleKey[] = ["owner", "admin", "manager", "member"];
  * key only keeps Viewer out of delete entirely.
  */
 export function rolesFor(resource: string, action: string): SystemRoleKey[] {
-  if (
-    resource === "org_settings" ||
-    resource === "members" ||
-    resource === "companies" ||
-    resource === "countries" ||
-    resource === "brands" ||
-    resource === "websites"
-  ) {
-    // Global master data (legal entities, countries/tax rates, brands,
-    // websites) defines the business structure itself, not day-to-day
-    // records — same sensitivity tier as org_settings/members, restricted
-    // to Owner/Admin even for reads (unlike the generic CRUD group below,
-    // where everyone including Viewer can read).
+  if (resource === "org_settings" || resource === "members") {
+    // Org-level settings and membership management — restricted to
+    // Owner/Admin even for reads.
     return ["owner", "admin"];
+  }
+  if (resource === "companies" || resource === "countries" || resource === "brands" || resource === "websites") {
+    // Global master data (legal entities, countries/tax rates, brands,
+    // websites) defines the business structure itself. Writes stay
+    // Owner/Admin only, but reads are open to all roles — Manager/Member
+    // need to read these lists to populate the Company/Country/Brand
+    // selectors on Customer/Quote/SalesOrder/PurchaseOrder/Supplier/
+    // Product/Campaign create forms (Sub-phase B). See DECISIONS.md
+    // "Global multi-country, multi-company, multi-brand architecture".
+    return action === "read" ? ALL_ROLES : ["owner", "admin"];
   }
   if (resource === "deletion_grants") {
     return ["owner"]; // Owner is the only one who may delegate delete access — see DECISIONS.md.

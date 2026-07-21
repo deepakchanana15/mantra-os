@@ -19,6 +19,7 @@ import {
 import { CUSTOMER_TYPES, customerTypeDescription, customerTypeLabel } from "@/lib/customer-types";
 import { AddressFields } from "@/components/domain/address-fields";
 import { EMPTY_ADDRESS, isAddressEmpty, type AddressValue } from "@/lib/address";
+import { CompanyCountrySelect } from "@/components/domain/company-country-select";
 
 export default function NewCustomerPage() {
   const router = useRouter();
@@ -26,6 +27,8 @@ export default function NewCustomerPage() {
   const [type, setType] = useState<string>("USER");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [companyId, setCompanyId] = useState<string | undefined>(undefined);
+  const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [billingAddress, setBillingAddress] = useState<AddressValue>(EMPTY_ADDRESS);
   const [shippingAddress, setShippingAddress] = useState<AddressValue>(EMPTY_ADDRESS);
   const [shippingSameAsBilling, setShippingSameAsBilling] = useState(true);
@@ -44,6 +47,8 @@ export default function NewCustomerPage() {
           type,
           email: email || undefined,
           phone: phone || undefined,
+          companyId,
+          countryId,
           billingAddress: isAddressEmpty(billingAddress) ? undefined : billingAddress,
           shippingAddress: isAddressEmpty(resolvedShipping) ? undefined : resolvedShipping,
         }),
@@ -106,6 +111,13 @@ export default function NewCustomerPage() {
               <Label htmlFor="phone">Phone</Label>
               <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
+
+            <CompanyCountrySelect
+              companyId={companyId}
+              countryId={countryId}
+              onCompanyChange={setCompanyId}
+              onCountryChange={setCountryId}
+            />
 
             <Separator />
 

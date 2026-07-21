@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { BrandSelect } from "@/components/domain/brand-select";
 
 interface Category {
   id: string;
@@ -27,6 +28,7 @@ export default function NewProductPage() {
   const [sku, setSku] = useState("");
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
+  const [brandId, setBrandId] = useState<string | undefined>(undefined);
   const [unitPrice, setUnitPrice] = useState("");
   const [unitCost, setUnitCost] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,6 +53,7 @@ export default function NewProductPage() {
           sku,
           name,
           categoryId,
+          brandId,
           unitPrice: Number(unitPrice),
           unitCost: unitCost ? Number(unitCost) : undefined,
         }),
@@ -108,6 +111,8 @@ export default function NewProductPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+
+            <BrandSelect brandId={brandId} onChange={setBrandId} />
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">

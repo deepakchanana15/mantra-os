@@ -35,6 +35,8 @@ export class QuotesRepository extends BaseRepository {
       data: {
         organizationId: this.organizationId,
         customerId: dto.customerId,
+        companyId: dto.companyId,
+        countryId: dto.countryId,
         validUntil: dto.validUntil,
         createdBy: this.userId,
         updatedBy: this.userId,

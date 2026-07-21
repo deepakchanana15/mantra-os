@@ -36,6 +36,8 @@ export class SuppliersRepository extends BaseRepository {
         email: dto.email,
         phone: dto.phone,
         address: addressToJson(dto.address),
+        companyId: dto.companyId,
+        countryId: dto.countryId,
         organizationId: this.organizationId,
         createdBy: this.userId,
         updatedBy: this.userId,
@@ -52,6 +54,8 @@ export class SuppliersRepository extends BaseRepository {
         email: dto.email,
         phone: dto.phone,
         address: addressToJson(dto.address),
+        companyId: dto.companyId,
+        countryId: dto.countryId,
         updatedBy: this.userId,
       },
     });
