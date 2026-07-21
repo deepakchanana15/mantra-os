@@ -209,16 +209,37 @@ model AuditLog {
 // CRM domain
 // ─────────────────────────────────────────────────────────────────────────
 
+// Sports-business customer taxonomy — see DECISIONS.md "Customer type
+// taxonomy" for the full list's source and the labels/descriptions shown in
+// the UI (kept in apps/web/lib/customer-types.ts, not duplicated here).
 enum CustomerType {
-  INDIVIDUAL
-  COMPANY
+  USER
+  STORE
+  ACADEMY
+  CLUB
+  COACH
+  PROFESSIONAL
+  SCHOOL
+  COLLEGE_UNIVERSITY
+  ASSOCIATION
+  CORPORATE
+  GOVERNMENT
+  TEAM
+  DISTRIBUTOR
+  DEALER
+  FRANCHISE
+  EVENT_ORGANIZER
+  RENTAL_PROVIDER
+  NGO_FOUNDATION
+  INFLUENCER_CREATOR
+  OEM_PRIVATE_LABEL
 }
 
 model Customer {
   id              String       @id @default(uuid())
   organizationId  String
   name            String
-  type            CustomerType @default(COMPANY)
+  type            CustomerType @default(USER)
   email           String?
   phone           String?
   billingAddress  Json?

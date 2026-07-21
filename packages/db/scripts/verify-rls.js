@@ -38,7 +38,7 @@ async function main() {
     );
     await owner.$executeRawUnsafe(`
       INSERT INTO customers (id, "organizationId", name, type, "createdAt", "updatedAt", "createdBy", "updatedBy")
-      VALUES ('${customerId}', '${orgA}', 'RLS Test Customer', 'COMPANY', now(), now(), '${fakeUser}', '${fakeUser}')
+      VALUES ('${customerId}', '${orgA}', 'RLS Test Customer', 'STORE', now(), now(), '${fakeUser}', '${fakeUser}')
     `);
 
     const app = new PrismaClient({ datasources: { db: { url: appUrl } } });

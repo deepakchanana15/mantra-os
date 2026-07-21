@@ -15,11 +15,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CUSTOMER_TYPES, customerTypeDescription, customerTypeLabel } from "@/lib/customer-types";
 
 export default function NewCustomerPage() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [type, setType] = useState<"COMPANY" | "INDIVIDUAL">("COMPANY");
+  const [type, setType] = useState<string>("USER");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,14 +69,18 @@ export default function NewCustomerPage() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" type="button" className="w-full justify-start">
-                    {type === "COMPANY" ? "Company" : "Individual"}
+                    {customerTypeLabel(type)}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                  <DropdownMenuItem onSelect={() => setType("COMPANY")}>Company</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setType("INDIVIDUAL")}>Individual</DropdownMenuItem>
+                <DropdownMenuContent className="max-h-80 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
+                  {CUSTOMER_TYPES.map((t) => (
+                    <DropdownMenuItem key={t.value} onSelect={() => setType(t.value)}>
+                      {t.label}
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              <p className="text-xs text-muted-foreground">{customerTypeDescription(type)}</p>
             </div>
 
             <div className="flex flex-col gap-1.5">

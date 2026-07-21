@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { customerTypeLabel } from "@/lib/customer-types";
 import { CustomerSearch } from "./customer-search";
 import { CustomerTypeFilter } from "./customer-type-filter";
 import { ExportCustomersButton } from "./export-customers-button";
@@ -11,7 +12,7 @@ import { ExportCustomersButton } from "./export-customers-button";
 interface Customer {
   id: string;
   name: string;
-  type: "INDIVIDUAL" | "COMPANY";
+  type: string;
   email: string | null;
   phone: string | null;
 }
@@ -75,7 +76,7 @@ export default async function CustomersPage({
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="neutral">{customer.type === "COMPANY" ? "Company" : "Individual"}</Badge>
+                    <Badge variant="neutral">{customerTypeLabel(customer.type)}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{customer.email ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{customer.phone ?? "—"}</TableCell>

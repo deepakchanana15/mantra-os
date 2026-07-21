@@ -14,11 +14,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CUSTOMER_TYPES as ALL_CUSTOMER_TYPES } from "@/lib/customer-types";
 
-const CUSTOMER_TYPES = [
+const CUSTOMER_TYPE_FILTER_OPTIONS: { value: string | undefined; label: string }[] = [
   { value: undefined, label: "Any customer type" },
-  { value: "COMPANY", label: "Company" },
-  { value: "INDIVIDUAL", label: "Individual" },
+  ...ALL_CUSTOMER_TYPES,
 ];
 
 /** V1's filter is deliberately one field — see segment-filter.dto.ts on the backend. */
@@ -52,7 +52,7 @@ export function CreateSegmentDialog() {
     }
   }
 
-  const currentLabel = CUSTOMER_TYPES.find((t) => t.value === customerType)?.label;
+  const currentLabel = CUSTOMER_TYPE_FILTER_OPTIONS.find((t) => t.value === customerType)?.label;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -79,8 +79,8 @@ export function CreateSegmentDialog() {
                   {currentLabel}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                {CUSTOMER_TYPES.map((t) => (
+              <DropdownMenuContent className="max-h-80 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
+                {CUSTOMER_TYPE_FILTER_OPTIONS.map((t) => (
                   <DropdownMenuItem key={t.label} onSelect={() => setCustomerType(t.value)}>
                     {t.label}
                   </DropdownMenuItem>

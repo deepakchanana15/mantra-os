@@ -9,12 +9,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CUSTOMER_TYPES } from "@/lib/customer-types";
 
-const TYPES = [
-  { value: "", label: "All types" },
-  { value: "COMPANY", label: "Company" },
-  { value: "INDIVIDUAL", label: "Individual" },
-];
+const TYPES = [{ value: "", label: "All types" }, ...CUSTOMER_TYPES];
 
 export function CustomerTypeFilter() {
   const router = useRouter();
@@ -41,7 +38,7 @@ export function CustomerTypeFilter() {
           {currentLabel}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent className="max-h-80 overflow-y-auto">
         {TYPES.map((t) => (
           <DropdownMenuItem key={t.value} onSelect={() => setType(t.value)}>
             {t.label}

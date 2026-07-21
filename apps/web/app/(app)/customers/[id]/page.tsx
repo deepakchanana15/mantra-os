@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { customerTypeLabel } from "@/lib/customer-types";
 import { DeleteCustomerButton } from "./delete-customer-button";
 
 interface Contact {
@@ -17,7 +18,7 @@ interface Contact {
 interface Customer {
   id: string;
   name: string;
-  type: "INDIVIDUAL" | "COMPANY";
+  type: string;
   email: string | null;
   phone: string | null;
   createdAt: string;
@@ -37,7 +38,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           </Link>
           <div className="mt-1 flex items-center gap-2.5">
             <h1 className="text-xl font-bold text-foreground">{customer.name}</h1>
-            <Badge variant="neutral">{customer.type === "COMPANY" ? "Company" : "Individual"}</Badge>
+            <Badge variant="neutral">{customerTypeLabel(customer.type)}</Badge>
           </div>
         </div>
         <DeleteCustomerButton customerId={customer.id} />

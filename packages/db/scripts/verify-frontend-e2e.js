@@ -110,7 +110,7 @@ async function main() {
     res = await fetch(`${WEB_BASE_URL}/api/v1/customers`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: toHeader(cookies) },
-      body: JSON.stringify({ name: "E2E Test Customer", type: "COMPANY" }),
+      body: JSON.stringify({ name: "E2E Test Customer", type: "STORE" }),
     });
     const created = await res.json();
     customerId = created.id;
@@ -156,7 +156,7 @@ async function main() {
 
     const customer = await fetchJson("/api/v1/customers", {
       method: "POST",
-      body: JSON.stringify({ name: "E2E Sales Customer", type: "COMPANY" }),
+      body: JSON.stringify({ name: "E2E Sales Customer", type: "STORE" }),
     });
     const product = await fetchJson("/api/v1/products", {
       method: "POST",

@@ -4,6 +4,20 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-21 — Customer type taxonomy: 20 sports-business types replace generic INDIVIDUAL/COMPANY
+
+**Decision:** `Customer.type` moves from a generic `INDIVIDUAL | COMPANY` enum to 20 specific values reflecting how Mantra Sports actually segments its customers: `USER, STORE, ACADEMY, CLUB, COACH, PROFESSIONAL, SCHOOL, COLLEGE_UNIVERSITY, ASSOCIATION, CORPORATE, GOVERNMENT, TEAM, DISTRIBUTOR, DEALER, FRANCHISE, EVENT_ORGANIZER, RENTAL_PROVIDER, NGO_FOUNDATION, INFLUENCER_CREATOR, OEM_PRIVATE_LABEL`. Labels and descriptions (e.g. "Store — Retail sports shop, online retailer, or distributor") live in `apps/web/lib/customer-types.ts`, the single source of truth for the frontend; `apps/api` only validates against the Prisma-generated enum, it doesn't need the display text.
+
+**Default:** `USER` (was `COMPANY`) — the highest-volume, most generic case for a new customer record.
+
+**Existing data:** both dev and prod had a handful of test/demo customers using the old values (no real customer data existed yet at this point). Remapped via the migration itself: `INDIVIDUAL → USER`, `COMPANY → STORE`.
+
+**Migration mechanics worth remembering:** Postgres can't cast a text value that isn't a member of the *target* enum, so a straight `ALTER COLUMN ... TYPE new_enum USING old::text::new_enum` fails the moment it hits an `'INDIVIDUAL'` or `'COMPANY'` row — neither exists in the new type. The column has to pass through a plain `text` intermediate state first: drop default → cast to `text` (accepts anything) → `UPDATE` the old values to their new equivalents → cast `text` to the new enum (now every row already holds a valid value) → swap the enum type in under the old name → restore the default. `prisma migrate dev` couldn't be used to author this (it requires an interactive terminal, unavailable here); the migration folder was created by hand from `prisma migrate diff --script` output, with the `UPDATE` statements inserted at the right point.
+
+**Reversibility:** Low once real customer data exists and staff start relying on specific values in reporting/segmentation — renaming or removing a value later means another data migration, not just a schema edit. Adding *new* values later is cheap (a plain `ALTER TYPE ... ADD VALUE`).
+
+---
+
 ## 2026-07-21 — The memberships RLS gap: the app was unusable past login, in both dev and prod
 
 **What happened:** While verifying the live Phase 7 deployment end-to-end (a real browser login), the org picker showed "No organizations yet" for an account that definitely had one. Direct testing traced it to a real, deep bug: `TenantMembershipGuard` (validates `X-Organization-Id` against a real Membership row, on every tenant-scoped request) and `OrganizationsRepository.findAllForUser` (lists the orgs a user belongs to, for the org switcher) both query the `memberships` table via the raw `PrismaService`, outside any transaction — on the theory that skipping the transaction "bypasses" RLS. It doesn't. `mantraos_app` is not the table owner; Postgres RLS applies to every query it runs, transaction or not. With `app.current_org_id` never set (impossible here — neither of these lookups has an org to set it to yet, that's the entire point of both), `memberships`'s existing policy (`organizationId = current_setting('app.current_org_id')`) evaluates to `NULL` for every row, which RLS treats as "not visible." **Every authenticated, tenant-scoped request has been silently returning zero rows since RLS became genuinely active** — a design gap present since Phase 3 (`rls-policies.sql`'s own design notes already flagged that `organizations`/`users` access "is governed by the app-layer Membership check," but the policy that check actually needs was never added), masked the whole time by the Phase 5 bug where `TenantContextInterceptor` was never registered at all (see the entry below) — RLS wasn't really enforced then either, so this never had a chance to surface until now.

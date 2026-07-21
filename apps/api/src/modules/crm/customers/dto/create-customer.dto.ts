@@ -10,7 +10,7 @@ export class CreateCustomerDto {
   name!: string;
 
   @IsEnum(CustomerType)
-  type: CustomerType = CustomerType.COMPANY;
+  type: CustomerType = CustomerType.USER;
 
   @IsOptional()
   @IsEmail()

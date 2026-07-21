@@ -123,14 +123,14 @@ async function main() {
 
     const custA1 = await asOwnerA("/api/v1/customers", {
       method: "POST",
-      body: JSON.stringify({ name: "Gov Customer A1", type: "COMPANY" }),
+      body: JSON.stringify({ name: "Gov Customer A1", type: "STORE" }),
     });
     const firstDelete = await asOwnerA(`/api/v1/customers/${custA1.body.id}`, { method: "DELETE" });
     check("First deletion of the day succeeds for the Owner", firstDelete.ok);
 
     const custA2 = await asOwnerA("/api/v1/customers", {
       method: "POST",
-      body: JSON.stringify({ name: "Gov Customer A2", type: "COMPANY" }),
+      body: JSON.stringify({ name: "Gov Customer A2", type: "STORE" }),
     });
     const secondDelete = await asOwnerA(`/api/v1/customers/${custA2.body.id}`, { method: "DELETE" });
     check(
@@ -147,14 +147,14 @@ async function main() {
 
     const viewerWrite = await asViewerA("/api/v1/customers", {
       method: "POST",
-      body: JSON.stringify({ name: "Should Be Denied", type: "COMPANY" }),
+      body: JSON.stringify({ name: "Should Be Denied", type: "STORE" }),
     });
     check("Viewer is denied (403) from creating a customer", viewerWrite.status === 403);
 
     // --- 3. Cross-org isolation via RLS ---
     const custA3 = await asOwnerA("/api/v1/customers", {
       method: "POST",
-      body: JSON.stringify({ name: "Gov Customer A3 (org A only)", type: "COMPANY" }),
+      body: JSON.stringify({ name: "Gov Customer A3 (org A only)", type: "STORE" }),
     });
     check("Setup: customer created in org A", custA3.ok);
 
