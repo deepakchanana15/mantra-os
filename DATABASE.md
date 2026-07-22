@@ -1,6 +1,6 @@
 # Database
 
-Prisma schema: [`packages/db/prisma/schema.prisma`](packages/db/prisma/schema.prisma) — 37 models across 10 domains, validated with `npx prisma validate`.
+Prisma schema: [`packages/db/prisma/schema.prisma`](packages/db/prisma/schema.prisma) — 40 models across 11 domains, validated with `npx prisma validate`.
 RLS policies: [`packages/db/prisma/rls-policies.sql`](packages/db/prisma/rls-policies.sql) — applied after every `prisma migrate deploy`, not managed by Prisma directly.
 
 **Two gaps found and fixed while building the Phase 4 backend** (not caught during the original Phase 3 design pass): `Category` and `Warehouse` were missing `createdBy`/`updatedBy` despite being business entities like every other soft-deletable table, and `GoodsReceipt` had no line items at all — meaning it couldn't express receiving less than a full purchase order, unlike `Shipment`/`ShipmentLine`. Both fixed; see [DECISIONS.md](DECISIONS.md).

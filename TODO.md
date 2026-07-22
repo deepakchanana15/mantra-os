@@ -61,14 +61,14 @@
 - [x] New `packages/db/scripts/verify-governance.js` — real HTTP integration checks for the 1/day deletion rate limit, Viewer role write denial (403), and cross-org data isolation via RLS (404 by ID + absence from list), 7/7 passing
 - [x] Full suite confirmed green together: 28/28 Vitest unit tests, 19/19 `verify-frontend-e2e.js`, 7/7 `verify-governance.js`, `verify-rls.js`, `verify-auth.js`
 
-## Phase 8 — Global multi-country/multi-company/multi-brand architecture (in progress)
+## Phase 8 — Global multi-country/multi-company/multi-brand architecture (Sub-phases A/B/C done)
 
 See DECISIONS.md "Global multi-country, multi-company, multi-brand architecture" for the full design and phasing rationale.
 
 - [x] Sub-phase A: `Currency`, `Company`, `Country`, `Brand`, `Website` master data — schema, RBAC (Owner/Admin), settings UI, seeded with the 6 current countries. Live in prod.
 - [x] Sub-phase B: `companyId`/`countryId` scoping on Customer/Quote/SalesOrder/PurchaseOrder/Supplier; `brandId` on Product/Campaign. DTOs, repositories, and create-form selectors updated for all 7 entities (Campaign has no frontend UI at all yet, so its field is backend-only). Global master-data reads reopened to all roles so Manager/Member can populate the selectors. Live in prod.
-- [ ] Sub-phase C: minimal `Opportunity`, `Invoice`, `SupportTicket` entities, scoped from the start — not yet started
-- [ ] Follow-on, explicitly deferred until Sub-phase C lands: currency conversion/exchange rates, the full tax rule engine, price lists, shipping zones, the extended multi-dimensional permission model, dashboard/report filtering by Company/Country/Brand
+- [x] Sub-phase C: minimal `Opportunity`, `Invoice`, `SupportTicket` entities, scoped to Company/Country from the start. Full CRUD backend + RLS + RBAC + create/list frontend pages, no edit/detail pages yet (matches the existing Supplier precedent). Opportunity not yet linked to Quote. Live in prod, verified via local suite + a manual smoke test of all three new endpoints (create/list/update/duplicate-invoice-number-rejected/delete-governance).
+- [ ] Follow-on, explicitly deferred: currency conversion/exchange rates, the full tax rule engine, price lists, shipping zones, the extended multi-dimensional permission model, dashboard/report filtering by Company/Country/Brand, linking Opportunity → Quote, itemized Invoice lines, SupportTicket assignment/SLA
 
 ## Later
 

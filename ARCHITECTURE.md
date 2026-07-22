@@ -98,8 +98,9 @@ Notifications  (listens to domain events from all of the above — never importe
 | **CRM** | Customer, Contact | |
 | **Products** | Product, Category (self-referencing hierarchy) | |
 | **Inventory** | Warehouse, StockLevel (product × warehouse), InventoryTransaction | InventoryTransaction is the 10M-row target table — see [DATABASE.md](DATABASE.md) for indexing once Phase 3 starts. |
-| **Sales** | Quote, QuoteLine, SalesOrder, SalesOrderLine, Shipment, ShipmentLine | |
+| **Sales** | Quote, QuoteLine, SalesOrder, SalesOrderLine, Shipment, ShipmentLine, Opportunity, Invoice | Opportunity/Invoice added Sub-phase C (see [DECISIONS.md](DECISIONS.md)) — minimal versions, Opportunity not yet linked to Quote, Invoice not itemized. |
 | **Purchasing** | Supplier, PurchaseOrder, PurchaseOrderLine, GoodsReceipt | GoodsReceipt feeds Inventory. |
+| **Support** (added Sub-phase C) | SupportTicket | Minimal — subject/description/status/priority, no assignment or SLA tracking yet. |
 | **Notifications** | Notification | Populated by listening to domain events, not by direct calls from other modules. |
 | **Settings** | OrganizationSettings, UserPreferences | Deliberately thin. |
 | **Marketing** | Segment, EmailTemplate, Campaign | Email-only for V1 — a Campaign sends an EmailTemplate to a saved Segment (a filter over CRM Customers/Contacts) via Resend, with delivery/open/click tracking via Resend webhooks. No landing pages, no social/ad channels — those would need vendors outside the current stack. |
