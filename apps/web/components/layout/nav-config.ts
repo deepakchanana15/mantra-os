@@ -13,6 +13,7 @@ import {
   Target,
   Truck,
   Users,
+  Wallet,
   Warehouse,
 } from "lucide-react";
 
@@ -68,6 +69,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Suppliers", href: "/suppliers", icon: Truck },
       { label: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
       { label: "Goods Receipts", href: "/goods-receipts", icon: PackageCheck },
+      { label: "Expenses", href: "/expenses", icon: Wallet },
     ],
   },
   {

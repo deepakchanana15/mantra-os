@@ -99,7 +99,7 @@ Notifications  (listens to domain events from all of the above — never importe
 | **Products** | Product, Category (self-referencing hierarchy) | |
 | **Inventory** | Warehouse, StockLevel (product × warehouse), InventoryTransaction | InventoryTransaction is the 10M-row target table — see [DATABASE.md](DATABASE.md) for indexing once Phase 3 starts. |
 | **Sales** | Quote, QuoteLine, SalesOrder, SalesOrderLine, Shipment, ShipmentLine, Opportunity, Invoice | Opportunity/Invoice added Sub-phase C (see [DECISIONS.md](DECISIONS.md)) — minimal versions, Opportunity not yet linked to Quote, Invoice not itemized. |
-| **Purchasing** | Supplier, PurchaseOrder, PurchaseOrderLine, GoodsReceipt | GoodsReceipt feeds Inventory. |
+| **Purchasing** | Supplier, PurchaseOrder, PurchaseOrderLine, GoodsReceipt, Expense | GoodsReceipt feeds Inventory. Expense (added 2026-07-22, see [DECISIONS.md](DECISIONS.md) "Goods receipt upload + Expense") is soft-deletable, unlike append-only GoodsReceipt — optionally linked to a GoodsReceipt/PurchaseOrder/Supplier, with a receipt photo uploaded direct to Vercel Blob from the browser. |
 | **Support** (added Sub-phase C) | SupportTicket | Minimal — subject/description/status/priority, no assignment or SLA tracking yet. |
 | **Notifications** | Notification | Populated by listening to domain events, not by direct calls from other modules. |
 | **Settings** | OrganizationSettings, UserPreferences | Deliberately thin. |

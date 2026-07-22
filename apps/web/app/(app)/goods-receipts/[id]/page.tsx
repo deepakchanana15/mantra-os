@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Paperclip } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface GoodsReceipt {
   id: string;
   receivedAt: string;
+  receiptFileUrl: string | null;
   warehouse: { name: string };
   purchaseOrder: { id: string; supplier: { name: string } };
   lines: { id: string; quantity: number; purchaseOrderLine: { product: { name: string; sku: string } } }[];
@@ -26,6 +27,17 @@ export default async function GoodsReceiptDetailPage({ params }: { params: { id:
         <p className="text-xs text-faint">
           Received {new Date(receipt.receivedAt).toLocaleString()} at {receipt.warehouse.name}
         </p>
+        {receipt.receiptFileUrl && (
+          <a
+            href={receipt.receiptFileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 flex w-fit items-center gap-1 text-xs text-accent hover:underline"
+          >
+            <Paperclip className="h-3 w-3" />
+            View attached receipt
+          </a>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">

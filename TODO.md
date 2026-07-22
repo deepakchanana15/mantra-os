@@ -70,6 +70,14 @@ See DECISIONS.md "Global multi-country, multi-company, multi-brand architecture"
 - [x] Sub-phase C: minimal `Opportunity`, `Invoice`, `SupportTicket` entities, scoped to Company/Country from the start. Full CRUD backend + RLS + RBAC + create/list frontend pages, no edit/detail pages yet (matches the existing Supplier precedent). Opportunity not yet linked to Quote. Live in prod, verified via local suite + a manual smoke test of all three new endpoints (create/list/update/duplicate-invoice-number-rejected/delete-governance).
 - [ ] Follow-on, explicitly deferred: currency conversion/exchange rates, the full tax rule engine, price lists, shipping zones, the extended multi-dimensional permission model, dashboard/report filtering by Company/Country/Brand, linking Opportunity → Quote, itemized Invoice lines, SupportTicket assignment/SLA
 
+## 2026-07-22 fixes and Goods Receipt upload + Expense
+
+- [x] Sidebar nav now scrolls independently instead of clipping items when the browser is zoomed in
+- [x] Products list: missing category include fixed (list always showed "—" even when set), delete button added to match every other domain list
+- [x] Product price now shows the currency code (e.g. "USD 1,198.00") instead of a bare "$" — still hardcoded to USD everywhere; a real per-product/per-country currency needs a design decision (Product has no Company/Country link yet, only Brand)
+- [x] Goods Receipt upload + minimal `Expense` entity — see DECISIONS.md "Goods receipt upload + Expense". Vercel Blob (client-direct-upload) for the attached vendor receipt scan/photo, manual entry (no OCR), auto-calculated expense amount reviewed inline on the same form before submit. Live in prod.
+- [ ] Vercel Blob store not yet connected to `mantra-os-web-zoc9`'s Development environment — local `next start` can't exercise the actual upload (OIDC requires Vercel's runtime); everything else about the flow is verified locally
+
 ## Later
 
 - [ ] Custom role builder (V2) — schema already supports it via Role/RolePermission, UI does not exist yet

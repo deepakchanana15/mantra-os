@@ -64,6 +64,7 @@ model Organization {
   opportunities      Opportunity[]
   invoices           Invoice[]
   supportTickets     SupportTicket[]
+  expenses           Expense[]
 
   @@map("organizations")
 }
@@ -271,6 +272,7 @@ model Company {
   opportunities  Opportunity[]
   invoices       Invoice[]
   supportTickets SupportTicket[]
+  expenses       Expense[]
 
   @@index([organizationId])
   @@map("companies")
@@ -316,6 +318,7 @@ model Country {
   opportunities  Opportunity[]
   invoices       Invoice[]
   supportTickets SupportTicket[]
+  expenses       Expense[]
 
   @@unique([companyId, isoCode])
   @@index([organizationId])
@@ -794,6 +797,7 @@ model Supplier {
   company        Company?        @relation(fields: [companyId], references: [id])
   country        Country?        @relation(fields: [countryId], references: [id])
   purchaseOrders PurchaseOrder[]
+  expenses       Expense[]
 
   @@index([organizationId])
   @@index([companyId])
@@ -830,6 +834,7 @@ model PurchaseOrder {
   supplier      Supplier            @relation(fields: [supplierId], references: [id])
   lines         PurchaseOrderLine[]
   goodsReceipts GoodsReceipt[]
+  expenses      Expense[]
 
   @@index([organizationId])
   @@index([supplierId])
@@ -863,12 +868,16 @@ model GoodsReceipt {
   purchaseOrderId String
   warehouseId     String
   receivedAt      DateTime @default(now())
+  /// Photo/scan of the vendor's hard-copy receipt, uploaded direct to Vercel
+  /// Blob from the browser — see DECISIONS.md "Goods receipt upload + Expense".
+  receiptFileUrl  String?
   createdBy       String
 
   organization  Organization       @relation(fields: [organizationId], references: [id])
   purchaseOrder PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
   warehouse     Warehouse          @relation(fields: [warehouseId], references: [id])
   lines         GoodsReceiptLine[]
+  expenses      Expense[]
 
   @@index([organizationId])
   @@index([purchaseOrderId])
@@ -890,6 +899,61 @@ model GoodsReceiptLine {
   @@index([organizationId])
   @@index([goodsReceiptId])
   @@map("goods_receipt_lines")
+}
+
+enum ExpenseCategory {
+  GOODS_RECEIPT
+  RENT
+  UTILITIES
+  SALARIES
+  SHIPPING
+  MARKETING
+  OFFICE_SUPPLIES
+  PROFESSIONAL_SERVICES
+  OTHER
+}
+
+/// Minimal expense tracking — see DECISIONS.md "Goods receipt upload +
+/// Expense". Usually created alongside a GoodsReceipt (vendor hard-copy
+/// receipt uploaded, amount auto-calculated from received line costs,
+/// reviewed before saving), but stands alone so non-goods expenses (rent,
+/// software) can use the same entity later.
+model Expense {
+  id              String          @id @default(uuid())
+  organizationId  String
+  companyId       String?
+  countryId       String?
+  supplierId      String?
+  goodsReceiptId  String?
+  purchaseOrderId String?
+  vendorName      String
+  category        ExpenseCategory @default(OTHER)
+  amount          Decimal         @db.Decimal(12, 2)
+  expenseDate     DateTime        @default(now())
+  /// Same upload as GoodsReceipt.receiptFileUrl when created together;
+  /// present independently for expenses with no linked GoodsReceipt.
+  receiptFileUrl  String?
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  createdBy       String
+  updatedBy       String
+  deletedAt       DateTime?
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  company       Company?       @relation(fields: [companyId], references: [id])
+  country       Country?       @relation(fields: [countryId], references: [id])
+  supplier      Supplier?      @relation(fields: [supplierId], references: [id])
+  goodsReceipt  GoodsReceipt?  @relation(fields: [goodsReceiptId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+
+  @@index([organizationId])
+  @@index([supplierId])
+  @@index([goodsReceiptId])
+  @@index([purchaseOrderId])
+  @@index([companyId])
+  @@index([countryId])
+  @@map("expenses")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

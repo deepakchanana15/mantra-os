@@ -235,6 +235,12 @@ CREATE POLICY tenant_isolation ON "goods_receipt_lines"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
 
+ALTER TABLE "expenses" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "expenses" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "expenses"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
 -- ── Marketing ────────────────────────────────────────────────────────────
 
 ALTER TABLE "segments" ENABLE ROW LEVEL SECURITY;

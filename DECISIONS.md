@@ -4,6 +4,26 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-22 — Goods receipt upload + Expense (manual entry, not OCR)
+
+**Context:** Goods are received against hard-copy vendor receipts, and staff wanted the ability to attach the physical receipt and have it become an expense record. Options ranged from AI/vision extraction to plain manual entry with an attached scan. User chose manual entry (no OCR/AI), always-review-before-posting, and a minimal Expense entity built now rather than deferred — matching the "minimal version" precedent set by Sub-phase C.
+
+**Storage — Vercel Blob, not a new vendor:** Since MantraOS is 100% Vercel (locked Phase 1 decision), file storage uses Vercel Blob rather than introducing S3/Cloudinary. The store is connected to `mantra-os-web-zoc9`'s Production/Preview (and ideally Development) environments and uses Vercel's OIDC-based auth (`BLOB_STORE_ID` + `BLOB_WEBHOOK_PUBLIC_KEY`, no static `BLOB_READ_WRITE_TOKEN`) — the `@vercel/blob` SDK picks this up automatically when running on Vercel's infrastructure. This means the actual file-upload flow can't be exercised from local `next start`; local verification covered every other part of the flow (Goods Receipt/Expense creation, linking, RLS), with the upload itself confirmed on a Vercel deployment.
+
+**Client-direct upload, not routed through the file's bytes via NestJS:** `apps/web/app/api/uploads/route.ts` uses `@vercel/blob/client`'s `handleUpload` to issue short-lived client tokens; the browser uploads straight to Blob storage. This keeps a multi-MB phone photo from ever hitting Vercel's serverless function body-size limit, and keeps it out of the NestJS API entirely — that API project doesn't even have the Blob env vars connected. Authorization on the upload route is a baseline "logged in with an org selected" check (same as every other Next.js route), not a full RBAC permission check — the real gate is that the uploaded file only becomes useful data when a GoodsReceipt/Expense record referencing its URL is created, which does go through full RBAC. An uploaded-but-unused file sitting in Blob storage carries no risk.
+
+**Access level — `public`, not `private`:** Vercel Blob's `private` access requires generating a signed URL every time a file is displayed; `public` blobs are reachable by anyone with the exact URL, but the URL includes a random suffix (`addRandomSuffix: true`) making it unguessable. Given the app is already authenticated end-to-end and this isn't public-facing content, `public` was chosen as the minimal option — upgradeable to `private` + signed URLs later if a stricter requirement emerges.
+
+**Expense is its own entity, not folded into GoodsReceipt:** `GoodsReceipt` stays append-only (per DATABASE.md); `Expense` is a separate, soft-deletable entity with optional links to `GoodsReceipt`/`PurchaseOrder`/`Supplier`, `companyId`/`countryId` scoping from the start (Sub-phase C's pattern), and its own `receiptFileUrl` (same upload, referenced from both records) — so it can stand alone for expenses with no goods receipt (rent, software) in the future without a schema change.
+
+**Flow — no OCR, review is the form itself:** The New Goods Receipt form gained a file-attach control and an "Also record as an expense" section that's pre-filled (vendor from the PO's supplier, amount auto-summed from received-quantity × unit-cost) but fully editable before the single submit — this *is* the review step; there's no separate confirmation screen. On submit, the GoodsReceipt is created first, then the Expense (two sequential API calls, not one combined transaction) — keeps each write within its existing service's own transaction scope rather than risking Prisma's interactive-transaction timeout across two entities' worth of side effects (see the Phase 5 timeout bug elsewhere in this file).
+
+**RLS applied via the same narrow one-off pattern as Sub-phase C** (`packages/db/scripts/apply-expenses-rls.js`) — not `setup-app-role.js`, which also rotates the `mantraos_app` password and would require simultaneously updating Vercel's env var.
+
+**Reversibility:** High. Nothing here is hard to walk back — the manual-entry choice can be upgraded to OCR/AI extraction later without a schema change (the DTOs already accept the same shape an extraction step would produce), and `public` blob access can move to `private` + signed URLs if needed.
+
+---
+
 ## 2026-07-21 — Global multi-country, multi-company, multi-brand architecture (design)
 
 **Context:** MantraOS must expand from modeling a single business (Mantra Sports) to an enterprise architecture that supports multiple legal entities, countries, brands, and websites — without a future database redesign. Current countries: US, Canada, Australia, New Zealand, Netherlands, Germany; next planned: India. This is a foundational re-architecture, not a feature — it touches the domain model broadly and needed its own design pass before any schema work, the same way Phases 1–2 did for the original architecture.

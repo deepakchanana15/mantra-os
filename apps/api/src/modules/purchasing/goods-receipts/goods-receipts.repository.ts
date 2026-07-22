@@ -47,6 +47,7 @@ export class GoodsReceiptsRepository extends BaseRepository {
         organizationId: this.organizationId,
         purchaseOrderId: dto.purchaseOrderId,
         warehouseId: dto.warehouseId,
+        receiptFileUrl: dto.receiptFileUrl,
         createdBy: this.userId,
         lines: {
           create: dto.lines.map((line) => ({

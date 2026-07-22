@@ -118,6 +118,13 @@ export const PERMISSIONS = {
   SUPPORT_TICKETS_UPDATE: "support_tickets:update",
   SUPPORT_TICKETS_DELETE: "support_tickets:delete",
 
+  EXPENSES_CREATE: "expenses:create",
+  EXPENSES_READ: "expenses:read",
+  EXPENSES_UPDATE: "expenses:update",
+  EXPENSES_DELETE: "expenses:delete",
+
+  UPLOADS_CREATE: "uploads:create",
+
   REPORTS_READ: "reports:read",
 } as const;
 
