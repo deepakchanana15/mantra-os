@@ -25,10 +25,12 @@ function NavLink({ href, label, icon: Icon }: { href: string; label: string; ico
 
 export function Sidebar({ currentOrg, organizations }: { currentOrg: OrgSwitcherOrg; organizations: OrgSwitcherOrg[] }) {
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col gap-1 border-r border-border bg-surface p-3">
-      <OrgSwitcher currentOrg={currentOrg} organizations={organizations} />
+    <aside className="flex h-screen w-60 shrink-0 flex-col gap-1 overflow-hidden border-r border-border bg-surface p-3">
+      <div className="shrink-0">
+        <OrgSwitcher currentOrg={currentOrg} organizations={organizations} />
+      </div>
 
-      <nav className="mt-2 flex flex-col gap-0.5">
+      <nav className="mt-2 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
         <NavLink {...NAV_TOP} />
 
         {NAV_GROUPS.map((group) => (
@@ -43,7 +45,7 @@ export function Sidebar({ currentOrg, organizations }: { currentOrg: OrgSwitcher
         ))}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-0.5 border-t border-border pt-2">
+      <div className="mt-auto flex shrink-0 flex-col gap-0.5 border-t border-border pt-2">
         <NavLink {...NAV_BOTTOM} />
       </div>
     </aside>

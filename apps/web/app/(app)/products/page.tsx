@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SearchInput } from "@/components/domain/search-input";
 import { ExportCsvButton } from "@/components/domain/export-csv-button";
+import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
 
 interface Product {
   id: string;
@@ -18,7 +19,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: { s
   const params = new URLSearchParams();
   if (searchParams.search) params.set("search", searchParams.search);
   const products = await apiFetch<Product[]>(`/v1/products?${params.toString()}`);
-  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", currencyDisplay: "code" });
   const exportRows = products.map((p) => ({
     SKU: p.sku,
     Name: p.name,
@@ -60,12 +61,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: { s
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
               <TableHead className="text-right">Unit Price</TableHead>
+              <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {products.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-10 text-center text-sm text-faint">
+                <TableCell colSpan={5} className="py-10 text-center text-sm text-faint">
                   No products yet.
                 </TableCell>
               </TableRow>
@@ -80,6 +82,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: { s
                   </TableCell>
                   <TableCell className="text-muted-foreground">{product.category?.name ?? "—"}</TableCell>
                   <TableCell className="text-right tabular-nums">{currency.format(Number(product.unitPrice))}</TableCell>
+                  <TableCell>
+                    <DeleteEntityButton apiPath={`/api/v1/products/${product.id}`} entityLabel="Product" />
+                  </TableCell>
                 </TableRow>
               ))
             )}

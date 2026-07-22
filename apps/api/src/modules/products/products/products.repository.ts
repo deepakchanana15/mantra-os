@@ -15,6 +15,7 @@ export class ProductsRepository extends BaseRepository {
     };
     return this.db.product.findMany({
       where,
+      include: { category: true },
       skip: params.skip ?? 0,
       take: params.take ?? 50,
       orderBy: { createdAt: "desc" },

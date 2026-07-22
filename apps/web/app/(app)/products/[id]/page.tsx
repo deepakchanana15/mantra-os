@@ -16,7 +16,7 @@ interface Product {
 
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
   const product = await apiFetch<Product>(`/v1/products/${params.id}`);
-  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", currencyDisplay: "code" });
 
   return (
     <div className="flex flex-col gap-5 p-7">
