@@ -103,11 +103,12 @@ Notifications  (listens to domain events from all of the above — never importe
 | **Support** (added Sub-phase C) | SupportTicket | subject/description/status/priority, plus `assignedToId` (must be a member of the ticket's org) and a fixed `slaHours` (24/36/48/72) with a stored, computed `dueAt` — see [DECISIONS.md](DECISIONS.md) "SupportTicket assignment + SLA". |
 | **Notifications** | Notification | Populated by listening to domain events, not by direct calls from other modules. |
 | **Settings** | OrganizationSettings, UserPreferences | Deliberately thin. |
-| **Marketing** | Segment, EmailTemplate, Campaign | Email-only for V1 — a Campaign sends an EmailTemplate to a saved Segment (a filter over CRM Customers/Contacts) via Resend, with delivery/open/click tracking via Resend webhooks. No landing pages, no social/ad channels — those would need vendors outside the current stack. |
+| **Marketing** | Segment, EmailTemplate, Campaign | Email-only for V1 — a Campaign sends an EmailTemplate to a saved Segment (a filter over CRM Customers/Contacts) via Brevo, with aggregate delivery/open/click tracking via Brevo webhooks (see [DECISIONS.md](DECISIONS.md) "Switched email provider to Brevo"). Has a real frontend (Campaigns/Segments/Templates tabs) — not a gap. No landing pages, no social/ad channels — those would need vendors outside the current stack. |
 
 **Reports and Dashboard are not domains.** They're read-only query layers aggregating across Sales/Inventory/CRM/etc. Giving them their own entities would duplicate data that already lives in the real domains.
 
-**Domain events, not direct coupling:** cross-domain reactions (e.g. Notifications reacting to a new Sales Order) go through NestJS's in-process event emitter (`@nestjs/event-emitter`) — `SalesModule` emits `sales-order.created`, `NotificationsModule` listens. No domain module ever imports another domain's service directly except along the dependency arrows above. This is what keeps a modular monolith from turning into a tangled ball of mud as more modules are added. Because there's no persistent background worker (serverless), event listeners must complete their work synchronously within the request's execution window — fine for V1's lightweight writes (a Notification row, a Resend API call); a real queue is a V2 concern if listener work gets heavier.
+**Domain events, not direct coupling:** cross-domain reactions (e.g. Notifications reacting to a new Sales Order) go through NestJS's in-process event emitter (`@nestjs/event-emitter`) — `SalesModule` emits `sales-order.created`, `NotificationsModule` listens. No domain module ever imports another domain's service directly except along the dependency arrows above. This is what keeps a modular monolith from turning into a tangled ball of mud as more modules are added. Because there's no persistent background worker (serverless), event listeners must complete their work synchronously within the request's execution window — fine for V1's lightweight writes (a Notification row, a Brevo API call); a real queue is a V2 concern if listener work gets heavier.
+
 
 ## Modular monolith, not microservices
 
@@ -138,7 +139,7 @@ Deletion is deliberately **not** a role-level permission. It's a separately gove
 - **No one can delete a record they personally created** — this holds even for a user holding a delegated grant. The sole exception is the Owner, who is the floor of the escalation chain and may delete their own records (still logged, still rate-limited, still self-notified).
 - Grants are **global per user for V1**, not scoped per domain (a grant means "can delete anywhere," not "can delete in Sales only"). Domain-scoped grants are a straightforward V2 extension of the same table if it turns out to be needed — not designed against speculatively now.
 - Every deletion is a **soft delete** (`deletedAt`, per the project's DB principles) and writes an **audit log entry** (who deleted it, whose record it was, when) that surfaces in Reports — deletions are never silent.
-- Every deletion emits a `record.deleted` domain event → Notifications sends an email to the Owner via Resend, using the same event pattern as everything else cross-domain.
+- Every deletion emits a `record.deleted` domain event → Notifications sends an email to the Owner via Brevo, using the same event pattern as everything else cross-domain.
 - **Rate limit: 1 deletion per day per person performing the deletion** (Owner included), enforced at the service layer against the audit log.
 
 ## Monorepo layout
@@ -198,19 +199,19 @@ The `SET LOCAL`-inside-a-transaction pattern specifically addresses pooled conne
 - `src/common/` — guards (`JwtAuthGuard`, `TenantMembershipGuard`, `PermissionGuard`), `TenantContextInterceptor`, `TenantContextService` (ALS), `DeletionGuardService` (with a `deleteWithGovernance()` convenience wrapper every domain service uses), `BaseRepository`, global exception filter, and `permissions/permission-keys.ts` — the single source of truth for every `@RequirePermission()` key, shared with `packages/db/scripts/seed-rbac.js`.
 - `src/modules/auth/` — login, forgot-password, reset-password. Self-hosted (bcrypt + JWT), no third-party identity vendor — see DECISIONS.md.
 - `src/modules/identity/` — Organizations, Memberships, DeletionGrants, Roles.
-- `src/modules/notifications/` — the `record.deleted` event listener + Resend wrapper (also reused by Marketing's campaign sends).
+- `src/modules/notifications/` — the `record.deleted` event listener + Brevo wrapper, plus the `/v1/webhooks/brevo` receiver that folds delivery/open/click events back into Campaign stats (also reused by Marketing's campaign sends).
 - `src/modules/crm/` — Customers, Contacts. First domain to exercise `DeletionGuardService` on a real business record.
 - `src/modules/products/` — Products, Categories.
 - `src/modules/inventory/` — Warehouses, plus `InventoryService.recordMovement()` — the one place `InventoryTransaction` + `StockLevel` are written together, called directly (not via events) by Sales and Purchasing per the DDD dependency graph.
 - `src/modules/sales/` — Quotes, SalesOrders, Shipments. Shipment creation calls `InventoryService.recordMovement()` (type `SHIPMENT`, negative delta) and recomputes the parent SalesOrder's status (`SHIPPED`/`PARTIALLY_SHIPPED`) from cumulative shipped-vs-ordered quantity per line.
 - `src/modules/purchasing/` — Suppliers, PurchaseOrders, GoodsReceipt (+ the `GoodsReceiptLine` table added mid-implementation, see DECISIONS.md). Mirrors Shipments in reverse: receiving calls `recordMovement()` with type `RECEIPT` and a positive delta.
-- `src/modules/marketing/` — Segments (a deliberately minimal filter DSL — see `segment-filter.dto.ts`), EmailTemplates, Campaigns (`POST /v1/campaigns/:id/send` resolves the segment's recipients and sends via the same `ResendService` Notifications uses).
+- `src/modules/marketing/` — Segments (a deliberately minimal filter DSL — see `segment-filter.dto.ts`), EmailTemplates, Campaigns (`POST /v1/campaigns/:id/send` resolves the segment's recipients and sends via the same `BrevoService` Notifications uses).
 - `src/modules/reports/` — one dashboard-summary endpoint aggregating across CRM/Sales/Inventory. No entities of its own, per the "Reports and Dashboard are not domains" note above.
 - `api/index.ts` — the Vercel serverless handler, Nest app cached at module scope per the deployment section above.
 
 **Live since 2026-07-19** against the real Neon project (see DATABASE.md). Login was driven end-to-end over real HTTP at the time: wrong password → 401, correct password → a real signed token, that token against a protected route → 200, no token → 401. All ten domain modules wired, zero DI errors — **but this was DI-wiring and route-mapping verification, not proof the RLS transaction mechanism itself was active.** It wasn't — see DECISIONS.md "Critical bug found: TenantContextInterceptor was never actually running", caught and fixed once Phase 5's frontend made a genuine end-to-end request possible.
 
-**Explicitly out of scope for V1**, noted rather than silently skipped: user invite/onboarding flow (Identity assumes a User row already exists — now also needs an initial password set, not just a Firebase account created), a real Segment query DSL beyond one filter field, and Campaign send batching/rate-limiting beyond what Resend itself provides.
+**Explicitly out of scope for V1**, noted rather than silently skipped: user invite/onboarding flow (Identity assumes a User row already exists — now also needs an initial password set, not just a Firebase account created), a real Segment query DSL beyond one filter field, and Campaign send batching/rate-limiting beyond what Brevo itself provides.
 
 ## Phase 5 — Frontend
 

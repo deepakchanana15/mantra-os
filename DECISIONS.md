@@ -4,6 +4,26 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-23 — Switched email provider to Brevo; wired real Campaign send-tracking
+
+**Context:** Turning on real email sending (deferred since Phase 7 launch — see "Phase 7 launch decisions" below) started with picking a provider. Researched Resend vs. Brevo: Resend's free tier is 3,000 emails/month (100/day); Brevo's is ~9,000/month (300/day) and — more importantly for MantraOS specifically — Brevo separates transactional and marketing sending into different streams, so a rough Campaign blast (bounces, spam complaints) can't hurt the deliverability of something like a password-reset email the way it could on a single shared stream. Nothing had gone live on Resend yet (still the placeholder key, no domain verified), so switching cost nothing sunk.
+
+**Also surfaced while investigating:** ARCHITECTURE.md's "Campaign has no frontend UI at all" was stale — a real Marketing page (Campaigns/Segments/Templates tabs, create dialogs, a working Send button that genuinely calls the email provider) already existed. What was actually missing was: a real (non-placeholder) API key, a webhook receiver for delivery/open/click events (didn't exist for either provider), and per-campaign tracking beyond a bare `{sent: n}` count.
+
+**What changed:**
+- `ResendService` replaced by `BrevoService` (same thin-`fetch`-wrapper shape, not the vendor SDK) — one-for-one swap across `AuthService` (password reset), `RecordDeletedListener` (deletion-governance owner notifications), and `CampaignsService` (Campaign send).
+- `sendEmail()` now returns `{ success, messageId }` instead of `void` — callers that don't care (Auth, deletion notifications) ignore it, same fire-and-forget behavior as before; `CampaignsService` uses it to record `sent`/`failed` counts and now throws if literally everything failed, instead of silently reporting success.
+- New `POST /v1/webhooks/brevo` receiver, folding `delivered`/`uniqueOpened`/`click`/bounce-family events into `Campaign.stats` as they arrive. **Aggregate tracking only for V1** (counts and rates — "40% open rate"), not per-recipient ("did this specific person open it") — the latter is a fast-follow if it turns out to matter, not built speculatively now.
+- Each Campaign send is tagged `campaign:<id>` + `org:<organizationId>` (Brevo's `tags` field, echoed back unmodified on every webhook event) — this is how the webhook, which carries no JWT or org header since Brevo isn't a logged-in MantraOS user, knows which tenant's RLS context to run under. Safe specifically because it's MantraOS's own data being reflected back over an authenticated channel (shared-secret header, verified before anything else runs), not arbitrary external input — still defensively UUID-validated before use, matching `TenantMembershipGuard`'s convention. See `apps/api/src/modules/notifications/brevo/brevo-webhook.controller.ts` for the full reasoning.
+- Marketing page now shows Opened/Clicked counts and rates per campaign, not just a raw Sent count, and its copy no longer says "sent via Resend."
+- New `packages/db/scripts/register-brevo-webhook.js` — one-off, run once per environment against that environment's deployed API URL (Brevo needs a real reachable URL; can't target localhost) to create/update the webhook registration with the right secret header.
+
+**Still open:** the sending domain (`BREVO_FROM_EMAIL`) is still a placeholder (`notifications@mantraos.app`) — domain verification for a `mantrasports.com.au` subdomain was in progress but not finished as of this entry. A real send to an unverified sender succeeded in testing (Brevo didn't hard-block it), but that's riding on Brevo's own shared reputation, not a signal that real customer-facing deliverability is solid — don't treat this as done until the domain is verified and `BREVO_FROM_EMAIL` is updated to match.
+
+**Reversibility:** High. `BrevoService` is a thin, swappable wrapper by design (same reasoning as the Resend wrapper it replaces). The webhook/tagging design is provider-shaped but not deeply so — moving providers again later means rewriting one service and one webhook controller, not the Campaign domain itself.
+
+---
+
 ## 2026-07-23 — Attachments switched to private access, reversing the prior "public" decision
 
 **Context:** Connecting the Blob store to the Development environment (so local `next dev` could upload files) surfaced that the store is actually configured "private" — it flatly rejects `access: "public"` requests. This exposed two things: (1) `MultiFileUpload`'s hardcoded `access: "public"` would have made any real production upload fail outright with an error (never caught, because zero real attachments had been uploaded to prod yet), and (2) the original "public, not private" decision (see "Goods receipt upload + Expense" below) was re-examined with the user and reversed.

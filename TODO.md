@@ -26,7 +26,7 @@
 ## Authentication — done (self-hosted, replacing Firebase)
 
 - [x] Firebase Authentication replaced entirely — see [DECISIONS.md](DECISIONS.md) "Self-hosted authentication replaces Firebase"
-- [x] `AuthModule`: login, forgot-password, reset-password, bcrypt + signed JWT, reset emails via Resend
+- [x] `AuthModule`: login, forgot-password, reset-password, bcrypt + signed JWT, reset emails via Brevo (switched from Resend — see [DECISIONS.md](DECISIONS.md) "Switched email provider to Brevo")
 - [x] Verified end-to-end against the live database and a running server — `packages/db/scripts/verify-auth.js`
 
 ## Phase 5 — Frontend: complete, all V1 domains built
@@ -42,15 +42,17 @@
 
 ## Still needed before real end-user traffic
 
-- [ ] Real Resend API key + verified sending domain (currently a placeholder value; explicitly deferred past Phase 7 launch — see DECISIONS.md "Phase 7 launch decisions")
+- [x] Real Brevo API key connected (dev), confirmed working with a real test send — see "2026-07-23 — Switched email provider to Brevo" below
+- [ ] Verified sending domain (a `mantrasports.com.au` subdomain) — in progress but not finished; `BREVO_FROM_EMAIL` is still a placeholder until this lands, and prod hasn't been given the real API key/webhook secret yet either
 - [ ] Decide when to move off Neon's free tier — trigger is "real daily usage annoyed by cold starts," not a specific storage number (see DECISIONS.md)
-- [ ] Self-service invite-by-email flow — Owner/Admin can now create a teammate's login directly (see "2026-07-23 — Feature batch" below), but there's still no invite-email step; the Owner shares the temporary password out of band until Resend is connected
+- [ ] Self-service invite-by-email flow — Owner/Admin can now create a teammate's login directly (see "2026-07-23 — Feature batch" below), but there's still no invite-email step; the Owner shares the temporary password out of band (this is a deliberate design choice, not just blocked on email — see DECISIONS.md "Member creation (no self-service invite)")
 - [ ] Contacts search — `ContactsRepository.findAll` doesn't implement text search yet (only `customerId` filtering); the Contacts page has no search box until this exists, rather than shipping one that silently does nothing
 
 ## Explicitly out of scope for V1 (not forgotten)
 
 - [ ] Richer Segment filter DSL — V1 supports one field (`customerType`); see `segment-filter.dto.ts`
-- [ ] Campaign send batching/rate-limiting beyond what Resend itself provides, if send volume ever needs it
+- [ ] Campaign send batching/rate-limiting beyond what Brevo itself provides, if send volume ever needs it
+- [ ] Per-recipient tracking (who specifically opened/clicked, not just aggregate rates) — deliberately deferred, see DECISIONS.md "Switched email provider to Brevo"
 
 ## Phase 6 — Testing: done
 
@@ -98,10 +100,23 @@ See DECISIONS.md "Feature batch: Product currency, Opportunity→Quote link, Inv
 - [x] Quote linked to Opportunity via optional `opportunityId`; Opportunities list gained a "Create Quote" action that deep-links into the Quote form and prefills the customer.
 - [x] Invoice gained optional itemized `InvoiceLine`s (product/quantity/unit price), server-computed total when lines are present; the original single-`amount` path still works unchanged. New Invoice detail page.
 - [x] SupportTicket gained `assignedToId` (validated against org membership) and a fixed `slaHours` (24/36/48/72) with a stored, computed `dueAt`; overdue tickets flagged in the list and detail views. New `GET /v1/support-tickets/assignable-members` endpoint and SupportTicket detail/edit page.
-- [x] Owner/Admin can create a teammate's login directly from Settings (email/name/temporary password/role) — new `POST /v1/members`, `members:create` permission. Existing users invited into a new org get a new membership rather than a duplicate user; same email in the same org is rejected as a 409. No invite email yet — deliberately deferred until Resend is connected.
-- [x] Campaign frontend UI explicitly parked, not part of this batch, per user request.
+- [x] Owner/Admin can create a teammate's login directly from Settings (email/name/temporary password/role) — new `POST /v1/members`, `members:create` permission. Existing users invited into a new org get a new membership rather than a duplicate user; same email in the same org is rejected as a 409. No invite email yet — deliberate design choice, not a Resend/Brevo dependency (see DECISIONS.md "Member creation (no self-service invite)").
+- [x] Campaign frontend UI explicitly parked, not part of this batch, per user request. **Correction (2026-07-23):** turned out this already existed — see the Brevo entry below.
 - [x] Full local verification suite (Vitest, `verify-frontend-e2e.js`, `verify-governance.js`, `verify-rls.js`, `verify-auth.js`) plus an 18-check manual smoke test covering all five features, including the member-creation conflict and cross-org-existing-user paths.
 - [x] Prod migration, `invoice_lines` RLS, and RBAC re-seed applied. Pushed to `main` (commit `6dbc9a1`) — Vercel auto-deploy in progress; pending user confirmation the live deploy is up.
+- [x] Vercel Blob connected to the `mantra-os-web-zoc9` Development environment (with a real `BLOB_READ_WRITE_TOKEN`) — uncovered the store is private-mode, not public as originally designed. See DECISIONS.md "Attachments switched to private access": `MultiFileUpload` now requests `private` access (would have failed outright in prod otherwise), new `/api/attachments/view-url` route issues short-lived signed URLs, new shared `AttachmentLink` component replaces every plain attachment `<a href>`. Verified end-to-end locally (raw URL confirmed unreachable, signed URL confirmed working, unauthenticated request confirmed refused). Pushed (commit `a03a7fb`).
+
+## 2026-07-23 — Switched email provider to Brevo; real Campaign send-tracking
+
+See DECISIONS.md "Switched email provider to Brevo" for full rationale (why Brevo over Resend, what the webhook/tagging design looks like, what's still open).
+
+- [x] `ResendService` replaced by `BrevoService` everywhere it was used (password reset, deletion-governance owner notifications, Campaign sends) — same thin-wrapper shape, now returns `{success, messageId}` instead of `void` so callers that care (Campaigns) can tell whether a send actually worked.
+- [x] New `POST /v1/webhooks/brevo` — public (Brevo isn't a logged-in user), verified via a shared-secret header, folds `delivered`/`uniqueOpened`/`click`/bounce-family events into `Campaign.stats`. Aggregate tracking only for V1 (rates, not per-recipient detail).
+- [x] Campaign sends now tagged `campaign:<id>` + `org:<organizationId>` so the webhook (no JWT/org header available) knows which tenant's RLS context to run the stats update under.
+- [x] New `packages/db/scripts/register-brevo-webhook.js` — one-off, registers/updates the webhook against a given deployed API URL (Brevo needs a real reachable URL, can't target localhost).
+- [x] Marketing page shows real Opened/Clicked counts and rates per campaign now, not just a bare Sent count; corrected its "sent via Resend" copy and ARCHITECTURE.md's stale "Campaign has no frontend UI at all" claim (a real one already existed).
+- [x] Full local verification: `apps/api` typecheck/tests/build clean, an 11-check smoke test covering the real create-segment/template/campaign/send flow against the actual Brevo API plus simulated webhook callbacks (including a bad-secret rejection), confirming `Campaign.stats` updates correctly end to end.
+- [ ] Not yet live in prod — dev only so far. Still needed: a verified sending domain (`mantrasports.com.au` subdomain, in progress), updating `BREVO_FROM_EMAIL` once that's done, setting `BREVO_API_KEY`/`BREVO_WEBHOOK_SECRET` in prod's Vercel env vars, and running `register-brevo-webhook.js` against the live `mantra-os-api.vercel.app` URL.
 
 ## Later
 

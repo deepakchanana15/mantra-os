@@ -26,7 +26,12 @@ interface Campaign {
   sentAt: string | null;
   segment: { name: string };
   template: { name: string };
-  stats: { sent?: number } | null;
+  stats: { sent?: number; delivered?: number; opened?: number; clicked?: number; bounced?: number } | null;
+}
+
+function rate(count: number | undefined, of: number | undefined): string {
+  if (!count || !of) return "—";
+  return `${Math.round((count / of) * 100)}%`;
 }
 
 const CAMPAIGN_STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "neutral"> = {
@@ -48,7 +53,7 @@ export default async function MarketingPage() {
     <div className="flex flex-col gap-5 p-7">
       <div>
         <h1 className="text-xl font-bold text-foreground">Marketing</h1>
-        <p className="text-sm text-muted-foreground">Email campaigns to your CRM segments, sent via Resend.</p>
+        <p className="text-sm text-muted-foreground">Email campaigns to your CRM segments, sent via Brevo.</p>
       </div>
 
       <Tabs defaultValue="campaigns">
@@ -70,13 +75,15 @@ export default async function MarketingPage() {
                   <TableHead>Template</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Sent</TableHead>
+                  <TableHead className="text-right">Opened</TableHead>
+                  <TableHead className="text-right">Clicked</TableHead>
                   <TableHead className="w-32" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {campaigns.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-10 text-center text-sm text-faint">
+                    <TableCell colSpan={7} className="py-10 text-center text-sm text-faint">
                       No campaigns yet.
                     </TableCell>
                   </TableRow>
@@ -89,6 +96,12 @@ export default async function MarketingPage() {
                         <Badge variant={CAMPAIGN_STATUS_VARIANT[campaign.status] ?? "neutral"}>{campaign.status}</Badge>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{campaign.stats?.sent ?? "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {campaign.stats?.opened ?? 0} ({rate(campaign.stats?.opened, campaign.stats?.delivered)})
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {campaign.stats?.clicked ?? 0} ({rate(campaign.stats?.clicked, campaign.stats?.delivered)})
+                      </TableCell>
                       <TableCell>
                         {campaign.status === "DRAFT" || campaign.status === "SCHEDULED" ? (
                           <SendCampaignButton campaignId={campaign.id} />

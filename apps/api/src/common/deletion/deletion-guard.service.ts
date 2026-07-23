@@ -75,7 +75,7 @@ export class DeletionGuardService {
     });
 
     // emitAsync, not emit — this listener is async (writes a Notification +
-    // calls Resend), and it runs inside the same request transaction via
+    // calls Brevo), and it runs inside the same request transaction via
     // TenantContextService's AsyncLocalStorage. Plain emit() doesn't await
     // async listeners, so the transaction was committing (and closing)
     // before the listener finished, throwing "Transaction already closed."

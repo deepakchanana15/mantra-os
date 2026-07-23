@@ -6,7 +6,7 @@ Two independently-deployed Vercel projects from the same GitHub repo ([github.co
 
 - **Vercel Hobby plan, accepted as a known risk.** Production/commercial use technically requires Pro ($20/mo/seat) per Vercel's ToS; you've chosen to launch on Hobby anyway. Revisit if Vercel enforces this or before it matters to the business.
 - **Fresh Neon project for production**, separate from the dev/test project used through Phases 3–6 (which keeps all the demo/test-script data as a scratch DB).
-- **Resend deferred.** Ships with the placeholder API key — password reset and deletion-governance owner-notification emails will silently fail (the request itself still succeeds; only the email send fails). Come back to this before real users depend on either flow.
+- **Email provider deferred at launch, since switched to Brevo (dev only so far).** Shipped with a placeholder API key — password reset and deletion-governance owner-notification emails silently failed (the request itself still succeeded; only the email send failed). See DECISIONS.md "Switched email provider to Brevo" — still needs real prod env vars and a verified sending domain before this is solid for real users.
 - **Custom domain deferred.** Both projects launch on their default `*.vercel.app` subdomains. Add a custom domain later whenever you're ready — it's a Vercel dashboard setting, not a code change.
 
 ## Step 1 — Provision the production Neon database
@@ -34,7 +34,7 @@ Two independently-deployed Vercel projects from the same GitHub repo ([github.co
 4. Environment variables (Production):
    - `DATABASE_URL` — the prod Neon pooled connection string from Step 1.
    - `AUTH_JWT_SECRET` — a real per-environment secret. One was generated for you locally rather than posted in chat: see the file path shared separately. Never reuse the dev secret.
-   - `RESEND_API_KEY` — leave as the placeholder for now (Phase 7 decision above), or paste a real key if you've since set one up.
+   - `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, `BREVO_FROM_NAME`, `BREVO_WEBHOOK_SECRET` — switched from Resend to Brevo, see DECISIONS.md "Switched email provider to Brevo". Not yet set in prod as of that entry — dev only so far. Once set, run `packages/db/scripts/register-brevo-webhook.js` against this project's deployed URL to wire up the webhook.
 5. Deploy. Note the resulting URL (`https://<something>.vercel.app`) — this is `apps/api`'s production URL, needed in Step 3.
 6. Sanity check once deployed:
    ```
@@ -58,4 +58,4 @@ Once both are up, the fastest real check is the same one used throughout Phases 
 
 - No CI pipeline yet — deploys happen on push to `main` via Vercel's own Git integration, but nothing runs the Vitest/verify-*.js suite automatically before that. Worth adding before this repo has more than one contributor.
 - User invite/onboarding flow still doesn't exist — every account (including the demo one) is created directly against the database, not through the product itself.
-- Resend and the custom domain, as noted above.
+- Brevo's production env vars/webhook registration and the custom domain, as noted above.

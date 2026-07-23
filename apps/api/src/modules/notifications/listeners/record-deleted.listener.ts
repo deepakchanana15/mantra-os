@@ -2,8 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 import { RECORD_DELETED_EVENT, RecordDeletedEvent } from "../../../common/events/record-deleted.event";
 import { PrismaService } from "../../../prisma/prisma.service";
+import { BrevoService } from "../brevo/brevo.service";
 import { NotificationsRepository } from "../notifications.repository";
-import { ResendService } from "../resend/resend.service";
 
 /**
  * Reacts to every deletion across every domain — see DECISIONS.md
@@ -21,7 +21,7 @@ export class RecordDeletedListener {
 
   constructor(
     private readonly notifications: NotificationsRepository,
-    private readonly resend: ResendService,
+    private readonly brevo: BrevoService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -44,7 +44,7 @@ export class RecordDeletedListener {
         });
 
         if (owner.user.email) {
-          await this.resend.sendEmail({
+          await this.brevo.sendEmail({
             to: owner.user.email,
             subject: `[MantraOS] ${title}`,
             html: `<p>${performer?.name ?? "A team member"} (${performer?.email ?? "unknown"}) deleted a ${
