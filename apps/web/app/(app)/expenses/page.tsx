@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Paperclip, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
+import { AttachmentLink } from "@/components/domain/attachment-link";
 
 interface Expense {
   id: string;
@@ -80,16 +81,7 @@ export default async function ExpensesPage() {
                     {expense.attachments.length > 0 ? (
                       <div className="flex flex-col gap-0.5">
                         {expense.attachments.map((attachment) => (
-                          <a
-                            key={attachment.id}
-                            href={attachment.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex w-fit items-center gap-1 text-accent hover:underline"
-                          >
-                            <Paperclip className="h-3.5 w-3.5" />
-                            {attachment.fileName}
-                          </a>
+                          <AttachmentLink key={attachment.id} url={attachment.fileUrl} fileName={attachment.fileName} />
                         ))}
                       </div>
                     ) : (

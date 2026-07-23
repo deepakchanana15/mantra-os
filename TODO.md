@@ -77,7 +77,7 @@ See DECISIONS.md "Global multi-country, multi-company, multi-brand architecture"
 - [x] Products list: missing category include fixed (list always showed "—" even when set), delete button added to match every other domain list
 - [x] Product price now shows the currency code (e.g. "USD 1,198.00") instead of a bare "$" — still hardcoded to USD everywhere; a real per-product/per-country currency needs a design decision (Product has no Company/Country link yet, only Brand) — **resolved 2026-07-23, see below**
 - [x] Goods Receipt upload + minimal `Expense` entity — see DECISIONS.md "Goods receipt upload + Expense". Vercel Blob (client-direct-upload), manual entry (no OCR), auto-calculated expense amount reviewed inline on the same form before submit. Live in prod. (Single-file upload superseded the next day by multi-document support below.)
-- [ ] Vercel Blob store not yet connected to `mantra-os-web-zoc9`'s Development environment — local `next start` can't exercise the actual upload (OIDC requires Vercel's runtime); everything else about the flow is verified locally
+- [x] Vercel Blob store connected to `mantra-os-web-zoc9`'s Development environment (with a real `BLOB_READ_WRITE_TOKEN`, since local `next dev` has no OIDC context) — local uploads now fully testable. See DECISIONS.md "Attachments switched to private access" for what this uncovered: the store is actually private-mode, `MultiFileUpload` was hardcoded to request `public` (would have failed outright on a real prod upload), and the team decided to keep it private and build real signed-URL viewing rather than switch the store to public.
 
 ## 2026-07-23 — Feature batch: multi-document attachments, Supplier phones, Sales Channel
 

@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft, Paperclip } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AttachmentLink } from "@/components/domain/attachment-link";
 
 interface GoodsReceipt {
   id: string;
@@ -31,15 +32,11 @@ export default async function GoodsReceiptDetailPage({ params }: { params: { id:
           <ul className="mt-1 flex flex-col gap-0.5">
             {receipt.attachments.map((attachment) => (
               <li key={attachment.id}>
-                <a
-                  href={attachment.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <AttachmentLink
+                  url={attachment.fileUrl}
+                  fileName={attachment.fileName}
                   className="flex w-fit items-center gap-1 text-xs text-accent hover:underline"
-                >
-                  <Paperclip className="h-3 w-3" />
-                  {attachment.fileName}
-                </a>
+                />
               </li>
             ))}
           </ul>

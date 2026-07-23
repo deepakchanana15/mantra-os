@@ -5,6 +5,7 @@ import { upload } from "@vercel/blob/client";
 import { Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import { AttachmentLink } from "@/components/domain/attachment-link";
 
 export interface UploadedAttachment {
   fileUrl: string;
@@ -37,7 +38,7 @@ export function MultiFileUpload({
     try {
       const uploaded: UploadedAttachment[] = [];
       for (const file of Array.from(files)) {
-        const blob = await upload(file.name, file, { access: "public", handleUploadUrl: "/api/uploads" });
+        const blob = await upload(file.name, file, { access: "private", handleUploadUrl: "/api/uploads" });
         uploaded.push({ fileUrl: blob.url, fileName: file.name, contentType: file.type || undefined });
       }
       onChange([...attachments, ...uploaded]);
@@ -77,14 +78,7 @@ export function MultiFileUpload({
               key={`${attachment.fileUrl}-${index}`}
               className="flex items-center justify-between gap-2 rounded-md border border-border px-2.5 py-1.5 text-xs"
             >
-              <a
-                href={attachment.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="truncate text-accent hover:underline"
-              >
-                {attachment.fileName}
-              </a>
+              <AttachmentLink url={attachment.fileUrl} fileName={attachment.fileName} className="truncate text-accent hover:underline" />
               <button
                 type="button"
                 onClick={() => removeAt(index)}
