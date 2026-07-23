@@ -101,7 +101,7 @@ See DECISIONS.md "Feature batch: Product currency, Opportunity→Quote link, Inv
 - [x] Owner/Admin can create a teammate's login directly from Settings (email/name/temporary password/role) — new `POST /v1/members`, `members:create` permission. Existing users invited into a new org get a new membership rather than a duplicate user; same email in the same org is rejected as a 409. No invite email yet — deliberately deferred until Resend is connected.
 - [x] Campaign frontend UI explicitly parked, not part of this batch, per user request.
 - [x] Full local verification suite (Vitest, `verify-frontend-e2e.js`, `verify-governance.js`, `verify-rls.js`, `verify-auth.js`) plus an 18-check manual smoke test covering all five features, including the member-creation conflict and cross-org-existing-user paths.
-- [ ] Not yet deployed to prod — migration + RLS + RBAC re-seed + deploy still pending
+- [x] Prod migration, `invoice_lines` RLS, and RBAC re-seed applied. Pushed to `main` (commit `6dbc9a1`) — Vercel auto-deploy in progress; pending user confirmation the live deploy is up.
 
 ## Later
 
