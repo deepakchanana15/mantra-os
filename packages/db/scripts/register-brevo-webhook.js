@@ -37,8 +37,14 @@ async function main() {
   const headers = { "api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" };
 
   const existingRes = await fetch("https://api.brevo.com/v3/webhooks", { headers });
-  if (!existingRes.ok) throw new Error(`Couldn't list webhooks: ${existingRes.status} ${await existingRes.text()}`);
-  const existing = (await existingRes.json()).webhooks ?? [];
+  const existingBody = await existingRes.json();
+  // Brevo returns 400 "document_not_found" instead of an empty list when
+  // the account has zero webhooks configured yet — treat that as "none",
+  // not a failure.
+  if (!existingRes.ok && existingBody.code !== "document_not_found") {
+    throw new Error(`Couldn't list webhooks: ${existingRes.status} ${JSON.stringify(existingBody)}`);
+  }
+  const existing = existingBody.webhooks ?? [];
   const match = existing.find((w) => w.url === webhookUrl);
 
   if (match) {
