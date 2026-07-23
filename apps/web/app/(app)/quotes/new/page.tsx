@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -22,10 +22,20 @@ interface Customer {
   name: string;
 }
 
-export default function NewQuotePage() {
+interface Opportunity {
+  id: string;
+  name: string;
+  customerId: string;
+}
+
+function NewQuoteForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const opportunityId = searchParams.get("opportunityId") ?? undefined;
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
+  const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
   const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
@@ -35,7 +45,15 @@ export default function NewQuotePage() {
   useEffect(() => {
     fetch("/api/v1/customers").then((res) => (res.ok ? res.json() : [])).then(setCustomers);
     fetch("/api/v1/products").then((res) => (res.ok ? res.json() : [])).then(setProducts);
-  }, []);
+    if (opportunityId) {
+      fetch(`/api/v1/opportunities/${opportunityId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: Opportunity | null) => {
+          setOpportunity(data);
+          if (data) setCustomerId(data.customerId);
+        });
+    }
+  }, [opportunityId]);
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const validLines = lines.filter((l) => l.productId);
@@ -48,7 +66,7 @@ export default function NewQuotePage() {
       const res = await fetch("/api/v1/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId, companyId, countryId, lines: validLines }),
+        body: JSON.stringify({ customerId, companyId, countryId, opportunityId, lines: validLines }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -63,6 +81,66 @@ export default function NewQuotePage() {
   }
 
   return (
+    <Card className="max-w-2xl">
+      <CardContent className="p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          {opportunity && (
+            <div className="rounded-md border border-border bg-surface-secondary px-3 py-2 text-sm text-muted-foreground">
+              Creating a quote from opportunity <span className="font-medium text-foreground">{opportunity.name}</span>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Customer</Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" type="button" className="w-full justify-start">
+                  {selectedCustomer?.name ?? "Select a customer"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="max-h-64 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
+                {customers.map((c) => (
+                  <DropdownMenuItem key={c.id} onSelect={() => setCustomerId(c.id)}>
+                    {c.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <CompanyCountrySelect
+            companyId={companyId}
+            countryId={countryId}
+            onCompanyChange={setCompanyId}
+            onCountryChange={setCountryId}
+          />
+
+          <LineItemsEditor
+            products={products}
+            priceLabel="Unit Price"
+            priceSource="unitPrice"
+            lines={lines}
+            onChange={setLines}
+          />
+
+          <div className="mt-2 flex gap-2">
+            <Button type="submit" disabled={loading || !customerId || validLines.length === 0}>
+              {loading ? "Creating…" : "Create quote"}
+            </Button>
+            <Link href="/quotes">
+              <Button type="button" variant="ghost">
+                Cancel
+              </Button>
+            </Link>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function NewQuotePage() {
+  return (
     <div className="flex flex-col gap-5 p-7">
       <div>
         <Link href="/quotes" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -71,56 +149,9 @@ export default function NewQuotePage() {
         </Link>
         <h1 className="mt-1 text-xl font-bold text-foreground">New Quote</h1>
       </div>
-
-      <Card className="max-w-2xl">
-        <CardContent className="p-5">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <div className="flex flex-col gap-1.5">
-              <Label>Customer</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" type="button" className="w-full justify-start">
-                    {selectedCustomer?.name ?? "Select a customer"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-64 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
-                  {customers.map((c) => (
-                    <DropdownMenuItem key={c.id} onSelect={() => setCustomerId(c.id)}>
-                      {c.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <CompanyCountrySelect
-              companyId={companyId}
-              countryId={countryId}
-              onCompanyChange={setCompanyId}
-              onCountryChange={setCountryId}
-            />
-
-            <LineItemsEditor
-              products={products}
-              priceLabel="Unit Price"
-              priceSource="unitPrice"
-              lines={lines}
-              onChange={setLines}
-            />
-
-            <div className="mt-2 flex gap-2">
-              <Button type="submit" disabled={loading || !customerId || validLines.length === 0}>
-                {loading ? "Creating…" : "Create quote"}
-              </Button>
-              <Link href="/quotes">
-                <Button type="button" variant="ghost">
-                  Cancel
-                </Button>
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      <Suspense>
+        <NewQuoteForm />
+      </Suspense>
     </div>
   );
 }

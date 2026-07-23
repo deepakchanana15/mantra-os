@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { CreateMemberDto } from "./dto/create-member.dto";
 import { MembershipsRepository } from "./memberships.repository";
 
 @Injectable()
@@ -7,6 +8,10 @@ export class MembershipsService {
 
   findAll() {
     return this.memberships.findAll();
+  }
+
+  create(dto: CreateMemberDto) {
+    return this.memberships.create(dto);
   }
 
   updateRole(membershipId: string, roleKey: string) {

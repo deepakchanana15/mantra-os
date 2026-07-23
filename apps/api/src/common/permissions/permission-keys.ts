@@ -6,6 +6,7 @@
  */
 export const PERMISSIONS = {
   ORG_SETTINGS_UPDATE: "org_settings:update",
+  MEMBERS_CREATE: "members:create",
   MEMBERS_READ: "members:read",
   MEMBERS_UPDATE: "members:update",
   MEMBERS_DELETE: "members:delete",

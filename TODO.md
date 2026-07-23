@@ -44,7 +44,7 @@
 
 - [ ] Real Resend API key + verified sending domain (currently a placeholder value; explicitly deferred past Phase 7 launch — see DECISIONS.md "Phase 7 launch decisions")
 - [ ] Decide when to move off Neon's free tier — trigger is "real daily usage annoyed by cold starts," not a specific storage number (see DECISIONS.md)
-- [ ] User invite/onboarding flow — Identity currently assumes a User row already exists, and now also needs an initial password set as part of that flow (not just a Firebase account created)
+- [ ] Self-service invite-by-email flow — Owner/Admin can now create a teammate's login directly (see "2026-07-23 — Feature batch" below), but there's still no invite-email step; the Owner shares the temporary password out of band until Resend is connected
 - [ ] Contacts search — `ContactsRepository.findAll` doesn't implement text search yet (only `customerId` filtering); the Contacts page has no search box until this exists, rather than shipping one that silently does nothing
 
 ## Explicitly out of scope for V1 (not forgotten)
@@ -68,13 +68,14 @@ See DECISIONS.md "Global multi-country, multi-company, multi-brand architecture"
 - [x] Sub-phase A: `Currency`, `Company`, `Country`, `Brand`, `Website` master data — schema, RBAC (Owner/Admin), settings UI, seeded with the 6 current countries. Live in prod.
 - [x] Sub-phase B: `companyId`/`countryId` scoping on Customer/Quote/SalesOrder/PurchaseOrder/Supplier; `brandId` on Product/Campaign. DTOs, repositories, and create-form selectors updated for all 7 entities (Campaign has no frontend UI at all yet, so its field is backend-only). Global master-data reads reopened to all roles so Manager/Member can populate the selectors. Live in prod.
 - [x] Sub-phase C: minimal `Opportunity`, `Invoice`, `SupportTicket` entities, scoped to Company/Country from the start. Full CRUD backend + RLS + RBAC + create/list frontend pages, no edit/detail pages yet (matches the existing Supplier precedent). Opportunity not yet linked to Quote. Live in prod, verified via local suite + a manual smoke test of all three new endpoints (create/list/update/duplicate-invoice-number-rejected/delete-governance).
-- [ ] Follow-on, explicitly deferred: currency conversion/exchange rates, the full tax rule engine, price lists, shipping zones, the extended multi-dimensional permission model, dashboard/report filtering by Company/Country/Brand, linking Opportunity → Quote, itemized Invoice lines, SupportTicket assignment/SLA
+- [x] Linking Opportunity → Quote, itemized Invoice lines, and SupportTicket assignment/SLA all shipped — see "2026-07-23 — Feature batch: Product currency, Opportunity→Quote link, Invoice lines, SupportTicket SLA, Member creation" below
+- [ ] Follow-on, still explicitly deferred: currency conversion/exchange rates, the full tax rule engine, price lists, shipping zones, the extended multi-dimensional permission model, dashboard/report filtering by Company/Country/Brand
 
 ## 2026-07-22 fixes and Goods Receipt upload + Expense
 
 - [x] Sidebar nav now scrolls independently instead of clipping items when the browser is zoomed in
 - [x] Products list: missing category include fixed (list always showed "—" even when set), delete button added to match every other domain list
-- [x] Product price now shows the currency code (e.g. "USD 1,198.00") instead of a bare "$" — still hardcoded to USD everywhere; a real per-product/per-country currency needs a design decision (Product has no Company/Country link yet, only Brand)
+- [x] Product price now shows the currency code (e.g. "USD 1,198.00") instead of a bare "$" — still hardcoded to USD everywhere; a real per-product/per-country currency needs a design decision (Product has no Company/Country link yet, only Brand) — **resolved 2026-07-23, see below**
 - [x] Goods Receipt upload + minimal `Expense` entity — see DECISIONS.md "Goods receipt upload + Expense". Vercel Blob (client-direct-upload), manual entry (no OCR), auto-calculated expense amount reviewed inline on the same form before submit. Live in prod. (Single-file upload superseded the next day by multi-document support below.)
 - [ ] Vercel Blob store not yet connected to `mantra-os-web-zoc9`'s Development environment — local `next start` can't exercise the actual upload (OIDC requires Vercel's runtime); everything else about the flow is verified locally
 
@@ -88,6 +89,19 @@ See DECISIONS.md "Feature batch: multi-document attachments, Supplier phones, Sa
 - [x] SalesOrder gained a required-going-forward `salesChannel` (Online/Offline) with conditional sub-fields (Online: Website/Store vs. Marketplace + free-text order reference; Offline: a 7-value categorical sub-type), filterable via `?salesChannel=` and a "Sales by channel" breakdown on Dashboard + Reports.
 - [x] Regression caught during verification: `verify-frontend-e2e.js`'s existing Sales Order creation step predated the new required field — fixed the test, not the requirement.
 - [x] Full local verification suite + a 16-check manual smoke test (attachments, optional-supplier expense, supplier phone replace, sales channel required-validation + filtering + dashboard breakdown) all pass. Live in prod.
+
+## 2026-07-23 — Feature batch: Product currency, Opportunity→Quote link, Invoice lines, SupportTicket SLA, Member creation
+
+See DECISIONS.md "Feature batch: Product currency, Opportunity→Quote link, Invoice lines, SupportTicket SLA, Member creation" for full design rationale.
+
+- [x] Product currency now follows Company/Country (`country.currency` → `company.baseCurrency` → USD fallback) instead of being hardcoded — `companyId`/`countryId` added to Product, resolved client-side in `apps/web/lib/product-currency.ts`.
+- [x] Quote linked to Opportunity via optional `opportunityId`; Opportunities list gained a "Create Quote" action that deep-links into the Quote form and prefills the customer.
+- [x] Invoice gained optional itemized `InvoiceLine`s (product/quantity/unit price), server-computed total when lines are present; the original single-`amount` path still works unchanged. New Invoice detail page.
+- [x] SupportTicket gained `assignedToId` (validated against org membership) and a fixed `slaHours` (24/36/48/72) with a stored, computed `dueAt`; overdue tickets flagged in the list and detail views. New `GET /v1/support-tickets/assignable-members` endpoint and SupportTicket detail/edit page.
+- [x] Owner/Admin can create a teammate's login directly from Settings (email/name/temporary password/role) — new `POST /v1/members`, `members:create` permission. Existing users invited into a new org get a new membership rather than a duplicate user; same email in the same org is rejected as a 409. No invite email yet — deliberately deferred until Resend is connected.
+- [x] Campaign frontend UI explicitly parked, not part of this batch, per user request.
+- [x] Full local verification suite (Vitest, `verify-frontend-e2e.js`, `verify-governance.js`, `verify-rls.js`, `verify-auth.js`) plus an 18-check manual smoke test covering all five features, including the member-creation conflict and cross-org-existing-user paths.
+- [ ] Not yet deployed to prod — migration + RLS + RBAC re-seed + deploy still pending
 
 ## Later
 

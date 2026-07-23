@@ -15,7 +15,11 @@ export class ProductsRepository extends BaseRepository {
     };
     return this.db.product.findMany({
       where,
-      include: { category: true },
+      include: {
+        category: true,
+        country: { include: { currency: true } },
+        company: { include: { baseCurrency: true } },
+      },
       skip: params.skip ?? 0,
       take: params.take ?? 50,
       orderBy: { createdAt: "desc" },
@@ -25,7 +29,11 @@ export class ProductsRepository extends BaseRepository {
   async findOneOrThrow(id: string) {
     const product = await this.db.product.findFirst({
       where: { id, organizationId: this.organizationId, deletedAt: null },
-      include: { category: true },
+      include: {
+        category: true,
+        country: { include: { currency: true } },
+        company: { include: { baseCurrency: true } },
+      },
     });
     if (!product) {
       throw new NotFoundException("Product not found");
@@ -49,6 +57,8 @@ export class ProductsRepository extends BaseRepository {
         unitPrice: dto.unitPrice,
         unitCost: dto.unitCost,
         brandId: dto.brandId,
+        companyId: dto.companyId,
+        countryId: dto.countryId,
         organizationId: this.organizationId,
         createdBy: this.userId,
         updatedBy: this.userId,
@@ -68,6 +78,8 @@ export class ProductsRepository extends BaseRepository {
         unitPrice: dto.unitPrice,
         unitCost: dto.unitCost,
         brandId: dto.brandId,
+        companyId: dto.companyId,
+        countryId: dto.countryId,
         updatedBy: this.userId,
       },
     });

@@ -6,8 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { SearchInput } from "@/components/domain/search-input";
 import { ExportCsvButton } from "@/components/domain/export-csv-button";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
+import { formatProductPrice, type ProductCurrencySource } from "@/lib/product-currency";
 
-interface Product {
+interface Product extends ProductCurrencySource {
   id: string;
   sku: string;
   name: string;
@@ -19,7 +20,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: { s
   const params = new URLSearchParams();
   if (searchParams.search) params.set("search", searchParams.search);
   const products = await apiFetch<Product[]>(`/v1/products?${params.toString()}`);
-  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", currencyDisplay: "code" });
   const exportRows = products.map((p) => ({
     SKU: p.sku,
     Name: p.name,
@@ -81,7 +81,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: { s
                     </Link>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{product.category?.name ?? "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{currency.format(Number(product.unitPrice))}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatProductPrice(product.unitPrice, product)}</TableCell>
                   <TableCell>
                     <DeleteEntityButton apiPath={`/api/v1/products/${product.id}`} entityLabel="Product" />
                   </TableCell>

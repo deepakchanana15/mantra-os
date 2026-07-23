@@ -287,6 +287,12 @@ CREATE POLICY tenant_isolation ON "invoices"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
 
+ALTER TABLE "invoice_lines" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "invoice_lines" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "invoice_lines"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
 -- ── Support (Sub-phase C) ────────────────────────────────────────────────
 
 ALTER TABLE "support_tickets" ENABLE ROW LEVEL SECURITY;

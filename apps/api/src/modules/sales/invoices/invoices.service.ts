@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { DeletionGuardService } from "../../../common/deletion/deletion-guard.service";
 import { CreateInvoiceDto } from "./dto/create-invoice.dto";
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
@@ -20,7 +20,14 @@ export class InvoicesService {
   }
 
   create(dto: CreateInvoiceDto) {
-    return this.invoices.create(dto);
+    if (dto.lines?.length) {
+      const amount = dto.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+      return this.invoices.create({ ...dto, amount });
+    }
+    if (dto.amount === undefined) {
+      throw new BadRequestException("Provide either an amount or line items");
+    }
+    return this.invoices.create({ ...dto, amount: dto.amount });
   }
 
   update(id: string, dto: UpdateInvoiceDto) {

@@ -63,6 +63,7 @@ model Organization {
   notifications      Notification[]
   opportunities      Opportunity[]
   invoices           Invoice[]
+  invoiceLines       InvoiceLine[]
   supportTickets     SupportTicket[]
   expenses           Expense[]
   attachments        Attachment[]
@@ -88,6 +89,7 @@ model User {
   auditLogs           AuditLog[]           @relation("AuditPerformedBy")
   notifications       Notification[]
   passwordResetTokens PasswordResetToken[]
+  assignedTickets     SupportTicket[]      @relation("SupportTicketAssignee")
 
   @@map("users")
 }
@@ -275,6 +277,7 @@ model Company {
   invoices       Invoice[]
   supportTickets SupportTicket[]
   expenses       Expense[]
+  products       Product[]
 
   @@index([organizationId])
   @@map("companies")
@@ -321,6 +324,7 @@ model Country {
   invoices       Invoice[]
   supportTickets SupportTicket[]
   expenses       Expense[]
+  products       Product[]
 
   @@unique([companyId, isoCode])
   @@index([organizationId])
@@ -499,6 +503,11 @@ model Product {
   categoryId     String?
   /// Nullable — see DECISIONS.md Sub-phase B.
   brandId        String?
+  /// Nullable — see DECISIONS.md "Product currency follows Company/Country".
+  /// Effective display currency: country.currency, else company.baseCurrency,
+  /// else a hardcoded USD fallback in the frontend.
+  companyId      String?
+  countryId      String?
   sku            String
   name           String
   description    String?
@@ -513,16 +522,21 @@ model Product {
   organization          Organization           @relation(fields: [organizationId], references: [id])
   category              Category?              @relation(fields: [categoryId], references: [id])
   brand                 Brand?                 @relation(fields: [brandId], references: [id])
+  company               Company?               @relation(fields: [companyId], references: [id])
+  country               Country?               @relation(fields: [countryId], references: [id])
   stockLevels           StockLevel[]
   inventoryTransactions InventoryTransaction[]
   quoteLines            QuoteLine[]
   salesOrderLines       SalesOrderLine[]
   purchaseOrderLines    PurchaseOrderLine[]
+  invoiceLines          InvoiceLine[]
 
   @@unique([organizationId, sku])
   @@index([organizationId])
   @@index([categoryId])
   @@index([brandId])
+  @@index([companyId])
+  @@index([countryId])
   @@map("products")
 }
 
@@ -631,6 +645,9 @@ model Quote {
   companyId      String?
   countryId      String?
   customerId     String
+  /// Optional — the Opportunity this Quote was raised from, if any. See
+  /// DECISIONS.md "Opportunity linked to Quote".
+  opportunityId  String?
   status         QuoteStatus @default(DRAFT)
   validUntil     DateTime?
   createdAt      DateTime    @default(now())
@@ -643,6 +660,7 @@ model Quote {
   company      Company?     @relation(fields: [companyId], references: [id])
   country      Country?     @relation(fields: [countryId], references: [id])
   customer     Customer     @relation(fields: [customerId], references: [id])
+  opportunity  Opportunity? @relation(fields: [opportunityId], references: [id])
   lines        QuoteLine[]
   salesOrder   SalesOrder?
 
@@ -650,6 +668,7 @@ model Quote {
   @@index([customerId])
   @@index([companyId])
   @@index([countryId])
+  @@index([opportunityId])
   @@map("quotes")
 }
 
@@ -1118,7 +1137,7 @@ enum OpportunityStage {
   LOST
 }
 
-/// Pre-Quote sales pipeline stage — minimal version, not yet linked to Quote.
+/// Pre-Quote sales pipeline stage — see DECISIONS.md "Opportunity linked to Quote".
 model Opportunity {
   id                String           @id @default(uuid())
   organizationId    String
@@ -1140,6 +1159,7 @@ model Opportunity {
   company      Company?     @relation(fields: [companyId], references: [id])
   country      Country?     @relation(fields: [countryId], references: [id])
   customer     Customer     @relation(fields: [customerId], references: [id])
+  quotes       Quote[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -1156,8 +1176,12 @@ enum InvoiceStatus {
   VOID
 }
 
-/// Minimal version — a single amount, not itemized lines. Optionally tied
-/// to a SalesOrder; standalone invoices are also allowed.
+/// Optionally itemized — see DECISIONS.md "Invoice line items". When
+/// InvoiceLine rows exist, `amount` is server-computed from them
+/// (quantity x unitPrice, summed) and the field becomes read-only from the
+/// client's perspective; standalone invoices with no lines still set
+/// `amount` directly, unchanged from the original minimal version.
+/// Optionally tied to a SalesOrder; standalone invoices are also allowed.
 model Invoice {
   id             String        @id @default(uuid())
   organizationId String
@@ -1176,11 +1200,12 @@ model Invoice {
   updatedBy      String
   deletedAt      DateTime?
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  company      Company?     @relation(fields: [companyId], references: [id])
-  country      Country?     @relation(fields: [countryId], references: [id])
-  customer     Customer     @relation(fields: [customerId], references: [id])
-  salesOrder   SalesOrder?  @relation(fields: [salesOrderId], references: [id])
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  company      Company?      @relation(fields: [companyId], references: [id])
+  country      Country?      @relation(fields: [countryId], references: [id])
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  salesOrder   SalesOrder?   @relation(fields: [salesOrderId], references: [id])
+  lines        InvoiceLine[]
 
   @@unique([organizationId, invoiceNumber])
   @@index([organizationId])
@@ -1189,6 +1214,23 @@ model Invoice {
   @@index([companyId])
   @@index([countryId])
   @@map("invoices")
+}
+
+model InvoiceLine {
+  id             String  @id @default(uuid())
+  organizationId String
+  invoiceId      String
+  productId      String
+  quantity       Int
+  unitPrice      Decimal @db.Decimal(12, 2)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  invoice      Invoice      @relation(fields: [invoiceId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@map("invoice_lines")
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -1219,6 +1261,14 @@ model SupportTicket {
   description    String?
   status         SupportTicketStatus   @default(OPEN)
   priority       SupportTicketPriority @default(MEDIUM)
+  /// Optional — see DECISIONS.md "SupportTicket assignment + SLA".
+  assignedToId   String?
+  /// One of 24/36/48/72 (validated in CreateSupportTicketDto, not a DB
+  /// constraint — same "framework not data" pragmatism as Country.taxPercentage).
+  slaHours       Int?
+  /// Computed at creation from createdAt + slaHours — stored rather than
+  /// derived on every read so it can be indexed/sorted for an "overdue" view later.
+  dueAt          DateTime?
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   createdBy      String
@@ -1229,11 +1279,13 @@ model SupportTicket {
   company      Company?     @relation(fields: [companyId], references: [id])
   country      Country?     @relation(fields: [countryId], references: [id])
   customer     Customer     @relation(fields: [customerId], references: [id])
+  assignedTo   User?        @relation("SupportTicketAssignee", fields: [assignedToId], references: [id])
 
   @@index([organizationId])
   @@index([customerId])
   @@index([companyId])
   @@index([countryId])
+  @@index([assignedToId])
   @@map("support_tickets")
 }
 

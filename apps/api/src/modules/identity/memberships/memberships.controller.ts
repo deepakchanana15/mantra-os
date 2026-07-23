@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Patch, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { RequirePermission } from "../../../common/decorators/require-permission.decorator";
 import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard";
 import { PermissionGuard } from "../../../common/guards/permission.guard";
 import { TenantMembershipGuard } from "../../../common/guards/tenant-membership.guard";
 import { PERMISSIONS } from "../../../common/permissions/permission-keys";
+import { CreateMemberDto } from "./dto/create-member.dto";
 import { UpdateMemberRoleDto } from "./dto/update-member-role.dto";
 import { MembershipsService } from "./memberships.service";
 
@@ -24,6 +25,12 @@ export class MembershipsController {
   @RequirePermission(PERMISSIONS.MEMBERS_READ)
   findAll() {
     return this.memberships.findAll();
+  }
+
+  @Post()
+  @RequirePermission(PERMISSIONS.MEMBERS_CREATE)
+  create(@Body() dto: CreateMemberDto) {
+    return this.memberships.create(dto);
   }
 
   @Patch(":id/role")

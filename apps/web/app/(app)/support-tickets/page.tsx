@@ -10,7 +10,9 @@ interface SupportTicket {
   subject: string;
   status: string;
   priority: string;
+  dueAt: string | null;
   customer: { name: string };
+  assignedTo: { name: string } | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -53,28 +55,43 @@ export default async function SupportTicketsPage() {
               <TableHead>Customer</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Priority</TableHead>
+              <TableHead>Assigned to</TableHead>
+              <TableHead>Due by</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {tickets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-sm text-faint">
+                <TableCell colSpan={7} className="py-10 text-center text-sm text-faint">
                   No support tickets yet.
                 </TableCell>
               </TableRow>
             ) : (
-              tickets.map((ticket) => (
-                <TableRow key={ticket.id}>
-                  <TableCell className="font-medium text-foreground">{ticket.subject}</TableCell>
-                  <TableCell className="text-muted-foreground">{ticket.customer.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{STATUS_LABELS[ticket.status] ?? ticket.status}</TableCell>
-                  <TableCell className="text-muted-foreground">{PRIORITY_LABELS[ticket.priority] ?? ticket.priority}</TableCell>
-                  <TableCell>
-                    <DeleteEntityButton apiPath={`/api/v1/support-tickets/${ticket.id}`} entityLabel="Support ticket" />
-                  </TableCell>
-                </TableRow>
-              ))
+              tickets.map((ticket) => {
+                const isOverdue =
+                  ticket.dueAt && new Date(ticket.dueAt) < new Date() && !["RESOLVED", "CLOSED"].includes(ticket.status);
+                return (
+                  <TableRow key={ticket.id}>
+                    <TableCell>
+                      <Link href={`/support-tickets/${ticket.id}`} className="font-medium text-foreground hover:text-accent">
+                        {ticket.subject}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{ticket.customer.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{STATUS_LABELS[ticket.status] ?? ticket.status}</TableCell>
+                    <TableCell className="text-muted-foreground">{PRIORITY_LABELS[ticket.priority] ?? ticket.priority}</TableCell>
+                    <TableCell className="text-muted-foreground">{ticket.assignedTo?.name ?? "—"}</TableCell>
+                    <TableCell className={isOverdue ? "font-medium text-destructive" : "text-muted-foreground"}>
+                      {ticket.dueAt ? new Date(ticket.dueAt).toLocaleString() : "—"}
+                      {isOverdue && " (overdue)"}
+                    </TableCell>
+                    <TableCell>
+                      <DeleteEntityButton apiPath={`/api/v1/support-tickets/${ticket.id}`} entityLabel="Support ticket" />
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

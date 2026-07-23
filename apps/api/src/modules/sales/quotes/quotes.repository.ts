@@ -12,7 +12,7 @@ export class QuotesRepository extends BaseRepository {
         deletedAt: null,
         ...(params.customerId ? { customerId: params.customerId } : {}),
       },
-      include: { customer: true, lines: { include: { product: true } } },
+      include: { customer: true, lines: { include: { product: true } }, opportunity: true },
       skip: params.skip ?? 0,
       take: params.take ?? 50,
       orderBy: { createdAt: "desc" },
@@ -22,7 +22,7 @@ export class QuotesRepository extends BaseRepository {
   async findOneOrThrow(id: string) {
     const quote = await this.db.quote.findFirst({
       where: { id, organizationId: this.organizationId, deletedAt: null },
-      include: { customer: true, lines: { include: { product: true } } },
+      include: { customer: true, lines: { include: { product: true } }, opportunity: true },
     });
     if (!quote) {
       throw new NotFoundException("Quote not found");
@@ -37,6 +37,7 @@ export class QuotesRepository extends BaseRepository {
         customerId: dto.customerId,
         companyId: dto.companyId,
         countryId: dto.countryId,
+        opportunityId: dto.opportunityId,
         validUntil: dto.validUntil,
         createdBy: this.userId,
         updatedBy: this.userId,

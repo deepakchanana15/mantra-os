@@ -22,6 +22,11 @@ interface Customer {
   name: string;
 }
 
+interface Member {
+  id: string;
+  name: string;
+}
+
 const PRIORITIES = [
   { value: "LOW", label: "Low" },
   { value: "MEDIUM", label: "Medium" },
@@ -29,23 +34,30 @@ const PRIORITIES = [
   { value: "URGENT", label: "Urgent" },
 ];
 
+const SLA_OPTIONS = [24, 36, 48, 72];
+
 export default function NewSupportTicketPage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
+  const [assignedToId, setAssignedToId] = useState<string | undefined>(undefined);
+  const [slaHours, setSlaHours] = useState<number | undefined>(undefined);
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/v1/customers").then((res) => (res.ok ? res.json() : [])).then(setCustomers);
+    fetch("/api/v1/support-tickets/assignable-members").then((res) => (res.ok ? res.json() : [])).then(setMembers);
   }, []);
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const selectedPriority = PRIORITIES.find((p) => p.value === priority);
+  const selectedAssignee = members.find((m) => m.id === assignedToId);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,6 +72,8 @@ export default function NewSupportTicketPage() {
           subject,
           description: description || undefined,
           priority,
+          assignedToId,
+          slaHours,
           companyId,
           countryId,
         }),
@@ -133,6 +147,45 @@ export default function NewSupportTicketPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label>Assign to (optional)</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" type="button" className="w-full justify-start">
+                      {selectedAssignee?.name ?? "Unassigned"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-64 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
+                    <DropdownMenuItem onSelect={() => setAssignedToId(undefined)}>Unassigned</DropdownMenuItem>
+                    {members.map((m) => (
+                      <DropdownMenuItem key={m.id} onSelect={() => setAssignedToId(m.id)}>
+                        {m.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>SLA (optional)</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" type="button" className="w-full justify-start">
+                      {slaHours ? `${slaHours} hours` : "No SLA"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                    <DropdownMenuItem onSelect={() => setSlaHours(undefined)}>No SLA</DropdownMenuItem>
+                    {SLA_OPTIONS.map((hours) => (
+                      <DropdownMenuItem key={hours} onSelect={() => setSlaHours(hours)}>
+                        {hours} hours
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
             <CompanyCountrySelect

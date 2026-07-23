@@ -22,7 +22,7 @@ export class InvoicesRepository extends BaseRepository {
   async findOneOrThrow(id: string) {
     const invoice = await this.db.invoice.findFirst({
       where: { id, organizationId: this.organizationId, deletedAt: null },
-      include: { customer: true, salesOrder: true },
+      include: { customer: true, salesOrder: true, lines: { include: { product: true } } },
     });
     if (!invoice) {
       throw new NotFoundException("Invoice not found");
@@ -30,7 +30,8 @@ export class InvoicesRepository extends BaseRepository {
     return invoice;
   }
 
-  async create(dto: CreateInvoiceDto) {
+  /** dto.amount must already be the final total — InvoicesService computes it from dto.lines when lines are given. */
+  async create(dto: CreateInvoiceDto & { amount: number }) {
     const existing = await this.db.invoice.findUnique({
       where: { organizationId_invoiceNumber: { organizationId: this.organizationId, invoiceNumber: dto.invoiceNumber } },
     });
@@ -51,7 +52,20 @@ export class InvoicesRepository extends BaseRepository {
         organizationId: this.organizationId,
         createdBy: this.userId,
         updatedBy: this.userId,
+        ...(dto.lines?.length
+          ? {
+              lines: {
+                create: dto.lines.map((line) => ({
+                  organizationId: this.organizationId,
+                  productId: line.productId,
+                  quantity: line.quantity,
+                  unitPrice: line.unitPrice,
+                })),
+              },
+            }
+          : {}),
       },
+      include: { lines: true },
     });
   }
 

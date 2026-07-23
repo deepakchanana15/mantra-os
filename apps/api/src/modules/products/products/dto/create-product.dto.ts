@@ -32,4 +32,13 @@ export class CreateProductDto {
   @IsOptional()
   @IsUUID()
   brandId?: string;
+
+  /** Optional — see DECISIONS.md "Product currency follows Company/Country". */
+  @IsOptional()
+  @IsUUID()
+  companyId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  countryId?: string;
 }

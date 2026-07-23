@@ -11,6 +11,7 @@ interface Quote {
   createdAt: string;
   validUntil: string | null;
   customer: { name: string };
+  opportunity: { id: string; name: string } | null;
   lines: { id: string; quantity: number; unitPrice: string; product: { name: string; sku: string } }[];
 }
 
@@ -31,6 +32,11 @@ export default async function QuoteDetailPage({ params }: { params: { id: string
           </Link>
           <h1 className="mt-1 text-xl font-bold text-foreground">Quote for {quote.customer.name}</h1>
           <p className="text-xs text-faint">Created {new Date(quote.createdAt).toLocaleDateString()}</p>
+          {quote.opportunity && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              From opportunity: <span className="text-foreground">{quote.opportunity.name}</span>
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <StatusUpdater apiPath={`/api/v1/quotes/${quote.id}/status`} statuses={STATUSES} currentStatus={quote.status} />

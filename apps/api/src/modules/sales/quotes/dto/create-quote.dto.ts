@@ -15,6 +15,11 @@ export class CreateQuoteDto {
   @IsUUID()
   countryId?: string;
 
+  /** Optional — see DECISIONS.md "Opportunity linked to Quote". */
+  @IsOptional()
+  @IsUUID()
+  opportunityId?: string;
+
   @IsOptional()
   validUntil?: Date;
 

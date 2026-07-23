@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BrandSelect } from "@/components/domain/brand-select";
+import { CompanyCountrySelect } from "@/components/domain/company-country-select";
 
 interface Category {
   id: string;
@@ -29,6 +30,8 @@ export default function NewProductPage() {
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [brandId, setBrandId] = useState<string | undefined>(undefined);
+  const [companyId, setCompanyId] = useState<string | undefined>(undefined);
+  const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [unitPrice, setUnitPrice] = useState("");
   const [unitCost, setUnitCost] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,6 +57,8 @@ export default function NewProductPage() {
           name,
           categoryId,
           brandId,
+          companyId,
+          countryId,
           unitPrice: Number(unitPrice),
           unitCost: unitCost ? Number(unitCost) : undefined,
         }),
@@ -113,6 +118,13 @@ export default function NewProductPage() {
             </div>
 
             <BrandSelect brandId={brandId} onChange={setBrandId} />
+
+            <CompanyCountrySelect
+              companyId={companyId}
+              countryId={countryId}
+              onCompanyChange={setCompanyId}
+              onCountryChange={setCountryId}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">

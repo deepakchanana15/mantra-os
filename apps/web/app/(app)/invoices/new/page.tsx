@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CompanyCountrySelect } from "@/components/domain/company-country-select";
+import { LineItemsEditor, type LineItemRow, type ProductOption } from "@/components/domain/line-items-editor";
 
 interface Customer {
   id: string;
@@ -44,10 +45,13 @@ export default function NewInvoicePage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [products, setProducts] = useState<ProductOption[]>([]);
   const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const [salesOrderId, setSalesOrderId] = useState<string | undefined>(undefined);
   const [invoiceNumber, setInvoiceNumber] = useState(defaultInvoiceNumber);
   const [status, setStatus] = useState("DRAFT");
+  const [itemize, setItemize] = useState(false);
+  const [lines, setLines] = useState<LineItemRow[]>([]);
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
@@ -57,15 +61,19 @@ export default function NewInvoicePage() {
   useEffect(() => {
     fetch("/api/v1/customers").then((res) => (res.ok ? res.json() : [])).then(setCustomers);
     fetch("/api/v1/sales-orders").then((res) => (res.ok ? res.json() : [])).then(setSalesOrders);
+    fetch("/api/v1/products").then((res) => (res.ok ? res.json() : [])).then(setProducts);
   }, []);
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const selectedSalesOrder = salesOrders.find((o) => o.id === salesOrderId);
   const selectedStatus = STATUSES.find((s) => s.value === status);
+  const validLines = lines.filter((l) => l.productId);
+  const computedTotal = validLines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!customerId) return;
+    if (itemize && validLines.length === 0) return;
     setLoading(true);
     try {
       const res = await fetch("/api/v1/invoices", {
@@ -76,7 +84,8 @@ export default function NewInvoicePage() {
           salesOrderId,
           invoiceNumber,
           status,
-          amount: Number(amount),
+          amount: itemize ? undefined : Number(amount),
+          lines: itemize ? validLines : undefined,
           dueDate: dueDate || undefined,
           companyId,
           countryId,
@@ -174,7 +183,31 @@ export default function NewInvoicePage() {
               </DropdownMenu>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <label className="flex items-center gap-1.5 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={itemize}
+                onChange={(e) => setItemize(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border accent-accent"
+              />
+              Itemize with line items (auto-totals the amount)
+            </label>
+
+            {itemize ? (
+              <div className="flex flex-col gap-2">
+                <LineItemsEditor
+                  products={products}
+                  priceLabel="Unit Price"
+                  priceSource="unitPrice"
+                  lines={lines}
+                  onChange={setLines}
+                />
+                <div className="flex justify-between border-t border-border pt-2 text-sm">
+                  <span className="font-semibold text-foreground">Total</span>
+                  <span className="tabular-nums font-semibold text-foreground">${computedTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            ) : (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="amount">Amount</Label>
                 <Input
@@ -182,15 +215,16 @@ export default function NewInvoicePage() {
                   type="number"
                   min="0"
                   step="0.01"
-                  required
+                  required={!itemize}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                 />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="dueDate">Due date</Label>
-                <Input id="dueDate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="dueDate">Due date</Label>
+              <Input id="dueDate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
 
             <CompanyCountrySelect
@@ -201,7 +235,7 @@ export default function NewInvoicePage() {
             />
 
             <div className="mt-2 flex gap-2">
-              <Button type="submit" disabled={loading || !customerId}>
+              <Button type="submit" disabled={loading || !customerId || (itemize && validLines.length === 0)}>
                 {loading ? "Creating…" : "Create invoice"}
               </Button>
               <Link href="/invoices">

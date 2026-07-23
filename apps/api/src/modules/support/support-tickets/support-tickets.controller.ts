@@ -20,6 +20,13 @@ export class SupportTicketsController {
     return this.tickets.findAll(query);
   }
 
+  /** Must stay before ":id" — otherwise Nest would match "assignable-members" as an :id param. */
+  @Get("assignable-members")
+  @RequirePermission(PERMISSIONS.SUPPORT_TICKETS_READ)
+  listAssignableMembers() {
+    return this.tickets.listAssignableMembers();
+  }
+
   @Get(":id")
   @RequirePermission(PERMISSIONS.SUPPORT_TICKETS_READ)
   findOne(@Param("id") id: string) {

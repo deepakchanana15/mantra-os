@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -48,7 +48,7 @@ export default async function OpportunitiesPage() {
               <TableHead>Customer</TableHead>
               <TableHead>Stage</TableHead>
               <TableHead>Estimated value</TableHead>
-              <TableHead className="w-24" />
+              <TableHead className="w-48" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -68,7 +68,15 @@ export default async function OpportunitiesPage() {
                     {opportunity.estimatedValue ? `$${opportunity.estimatedValue}` : "—"}
                   </TableCell>
                   <TableCell>
-                    <DeleteEntityButton apiPath={`/api/v1/opportunities/${opportunity.id}`} entityLabel="Opportunity" />
+                    <div className="flex items-center gap-1">
+                      <Link href={`/quotes/new?opportunityId=${opportunity.id}`}>
+                        <Button variant="outline" size="sm">
+                          <FileText className="h-3.5 w-3.5" />
+                          Create Quote
+                        </Button>
+                      </Link>
+                      <DeleteEntityButton apiPath={`/api/v1/opportunities/${opportunity.id}`} entityLabel="Opportunity" />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

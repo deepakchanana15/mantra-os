@@ -3,8 +3,9 @@ import { ArrowLeft } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
+import { formatProductPrice, type ProductCurrencySource } from "@/lib/product-currency";
 
-interface Product {
+interface Product extends ProductCurrencySource {
   id: string;
   sku: string;
   name: string;
@@ -16,7 +17,6 @@ interface Product {
 
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
   const product = await apiFetch<Product>(`/v1/products/${params.id}`);
-  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", currencyDisplay: "code" });
 
   return (
     <div className="flex flex-col gap-5 p-7">
@@ -40,12 +40,12 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Unit price</span>
-            <span className="tabular-nums text-foreground">{currency.format(Number(product.unitPrice))}</span>
+            <span className="tabular-nums text-foreground">{formatProductPrice(product.unitPrice, product)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Unit cost</span>
             <span className="tabular-nums text-foreground">
-              {product.unitCost ? currency.format(Number(product.unitCost)) : "—"}
+              {product.unitCost ? formatProductPrice(product.unitCost, product) : "—"}
             </span>
           </div>
           {product.description && (

@@ -1,6 +1,6 @@
 # Database
 
-Prisma schema: [`packages/db/prisma/schema.prisma`](packages/db/prisma/schema.prisma) — 43 models across 11 domains, validated with `npx prisma validate`.
+Prisma schema: [`packages/db/prisma/schema.prisma`](packages/db/prisma/schema.prisma) — 45 models across 11 domains, validated with `npx prisma validate`.
 RLS policies: [`packages/db/prisma/rls-policies.sql`](packages/db/prisma/rls-policies.sql) — applied after every `prisma migrate deploy`, not managed by Prisma directly.
 
 **Two gaps found and fixed while building the Phase 4 backend** (not caught during the original Phase 3 design pass): `Category` and `Warehouse` were missing `createdBy`/`updatedBy` despite being business entities like every other soft-deletable table, and `GoodsReceipt` had no line items at all — meaning it couldn't express receiving less than a full purchase order, unlike `Shipment`/`ShipmentLine`. Both fixed; see [DECISIONS.md](DECISIONS.md).
@@ -10,7 +10,7 @@ RLS policies: [`packages/db/prisma/rls-policies.sql`](packages/db/prisma/rls-pol
 - **UUID primary keys** everywhere (`@default(uuid())`).
 - **Soft deletes** (`deletedAt DateTime?`) on business entities a user creates and might remove — Customer, Product, SalesOrder, etc.
 - **Audit columns** (`createdAt`, `updatedAt`, `createdBy`, `updatedBy`) on the same business entities.
-- **`organizationId` on every tenant-scoped table** — including line-item tables (QuoteLine, SalesOrderLine, ShipmentLine, PurchaseOrderLine), which were deliberately denormalized to carry it directly rather than requiring a join through their parent. RLS policies work as a simple column comparison this way instead of a subquery — simpler and faster at the 10M-row scale target.
+- **`organizationId` on every tenant-scoped table** — including line-item tables (QuoteLine, SalesOrderLine, ShipmentLine, PurchaseOrderLine, InvoiceLine), which were deliberately denormalized to carry it directly rather than requiring a join through their parent. RLS policies work as a simple column comparison this way instead of a subquery — simpler and faster at the 10M-row scale target.
 - **No `@@map` to snake_case** — Postgres handles quoted camelCase columns fine, and staying camelCase end-to-end avoids a translation layer between Prisma models and raw SQL. Table names *are* mapped to snake_case (`@@map("sales_orders")`) purely for readability when reading raw SQL/psql output.
 
 ## Append-only ledger tables — not soft-deletable

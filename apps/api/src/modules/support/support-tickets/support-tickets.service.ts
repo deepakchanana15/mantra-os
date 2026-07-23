@@ -19,6 +19,10 @@ export class SupportTicketsService {
     return this.tickets.findOneOrThrow(id);
   }
 
+  listAssignableMembers() {
+    return this.tickets.listAssignableMembers();
+  }
+
   create(dto: CreateSupportTicketDto) {
     return this.tickets.create(dto);
   }
