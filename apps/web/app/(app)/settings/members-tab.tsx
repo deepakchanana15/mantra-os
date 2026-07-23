@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -202,8 +203,9 @@ export function MembersTab({ members: initialMembers }: { members: Member[] }) {
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="border border-border" disabled={busyId === member.id}>
+                      <Button variant="ghost" size="sm" className="gap-1.5 border border-border" disabled={busyId === member.id}>
                         <Badge variant="neutral">{member.role.name}</Badge>
+                        <ChevronDown className="h-3.5 w-3.5 text-faint" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
