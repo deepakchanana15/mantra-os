@@ -15,7 +15,7 @@ export class ReportsRepository extends BaseRepository {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const [activeCustomers, openSalesOrders, lowStockLevels, salesOrdersThisMonth] = await Promise.all([
+    const [activeCustomers, openSalesOrders, lowStockLevels, salesOrdersThisMonth, adMetricsThisMonth] = await Promise.all([
       this.db.customer.count({
         where: { organizationId: this.organizationId, deletedAt: null },
       }),
@@ -42,6 +42,9 @@ export class ReportsRepository extends BaseRepository {
         },
         include: { lines: true },
       }),
+      this.db.adCampaignMetric.findMany({
+        where: { organizationId: this.organizationId, date: { gte: startOfMonth } },
+      }),
     ]);
 
     const lowStockCount = lowStockLevels.filter(
@@ -63,12 +66,24 @@ export class ReportsRepository extends BaseRepository {
     }
     const salesByChannel = Array.from(byChannel.entries()).map(([channel, stats]) => ({ channel, ...stats }));
 
+    const byAdChannel = new Map<string, { spend: number; impressions: number; clicks: number }>();
+    for (const metric of adMetricsThisMonth) {
+      const existing = byAdChannel.get(metric.channel) ?? { spend: 0, impressions: 0, clicks: 0 };
+      byAdChannel.set(metric.channel, {
+        spend: existing.spend + Number(metric.spend),
+        impressions: existing.impressions + metric.impressions,
+        clicks: existing.clicks + metric.clicks,
+      });
+    }
+    const marketingPerformance = Array.from(byAdChannel.entries()).map(([channel, stats]) => ({ channel, ...stats }));
+
     return {
       activeCustomers,
       openSalesOrders,
       lowStockProducts: lowStockCount,
       revenueMonthToDate,
       salesByChannel,
+      marketingPerformance,
     };
   }
 }

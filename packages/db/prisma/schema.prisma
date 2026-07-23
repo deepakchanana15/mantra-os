@@ -39,35 +39,37 @@ model Organization {
   brands    Brand[]
   websites  Website[]
 
-  customers          Customer[]
-  contacts           Contact[]
-  categories         Category[]
-  products           Product[]
-  warehouses         Warehouse[]
-  stockLevels        StockLevel[]
-  inventoryTxns      InventoryTransaction[]
-  quotes             Quote[]
-  quoteLines         QuoteLine[]
-  salesOrders        SalesOrder[]
-  salesOrderLines    SalesOrderLine[]
-  shipments          Shipment[]
-  shipmentLines      ShipmentLine[]
-  suppliers          Supplier[]
-  purchaseOrders     PurchaseOrder[]
-  purchaseOrderLines PurchaseOrderLine[]
-  goodsReceipts      GoodsReceipt[]
-  goodsReceiptLines  GoodsReceiptLine[]
-  segments           Segment[]
-  emailTemplates     EmailTemplate[]
-  campaigns          Campaign[]
-  notifications      Notification[]
-  opportunities      Opportunity[]
-  invoices           Invoice[]
-  invoiceLines       InvoiceLine[]
-  supportTickets     SupportTicket[]
-  expenses           Expense[]
-  attachments        Attachment[]
-  supplierPhones     SupplierPhone[]
+  customers             Customer[]
+  contacts              Contact[]
+  categories            Category[]
+  products              Product[]
+  warehouses            Warehouse[]
+  stockLevels           StockLevel[]
+  inventoryTxns         InventoryTransaction[]
+  quotes                Quote[]
+  quoteLines            QuoteLine[]
+  salesOrders           SalesOrder[]
+  salesOrderLines       SalesOrderLine[]
+  shipments             Shipment[]
+  shipmentLines         ShipmentLine[]
+  suppliers             Supplier[]
+  purchaseOrders        PurchaseOrder[]
+  purchaseOrderLines    PurchaseOrderLine[]
+  goodsReceipts         GoodsReceipt[]
+  goodsReceiptLines     GoodsReceiptLine[]
+  segments              Segment[]
+  emailTemplates        EmailTemplate[]
+  campaigns             Campaign[]
+  marketingIntegrations MarketingIntegration[]
+  adCampaignMetrics     AdCampaignMetric[]
+  notifications         Notification[]
+  opportunities         Opportunity[]
+  invoices              Invoice[]
+  invoiceLines          InvoiceLine[]
+  supportTickets        SupportTicket[]
+  expenses              Expense[]
+  attachments           Attachment[]
+  supplierPhones        SupplierPhone[]
 
   @@map("organizations")
 }
@@ -1121,6 +1123,74 @@ model Campaign {
   @@index([organizationId])
   @@index([brandId])
   @@map("campaigns")
+}
+
+enum MarketingChannel {
+  META
+  GOOGLE
+  BING
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  ERROR
+  DISCONNECTED
+}
+
+/// Stores the credential MantraOS uses to pull ad-performance data from an
+/// external ad platform — see DECISIONS.md "Ad platform integrations,
+/// Phase 1: Meta". One row per organization+channel. `accessToken` is
+/// opaque to MantraOS (whatever the platform issues) and not field-level
+/// encrypted — Neon encrypts data at rest, and reads are Owner/Admin-only
+/// via RBAC, matching this project's "framework not overengineering"
+/// posture until a stricter requirement exists.
+model MarketingIntegration {
+  id             String            @id @default(uuid())
+  organizationId String
+  channel        MarketingChannel
+  accessToken    String
+  accountId      String
+  status         IntegrationStatus @default(CONNECTED)
+  lastSyncedAt   DateTime?
+  lastError      String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  createdBy      String
+  updatedBy      String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, channel])
+  @@index([organizationId])
+  @@map("marketing_integrations")
+}
+
+/// One row per external ad campaign per day — the shared shape every ad
+/// platform's sync job writes into, so Dashboard/Reports read one table
+/// regardless of which channels are connected. No createdBy/updatedBy —
+/// this is machine-written by a scheduled sync job, not a user action, same
+/// reasoning as StockLevel being a derived/system-maintained snapshot.
+/// Upserted on (organizationId, channel, externalCampaignId, date), so
+/// re-running a sync for the same day updates rather than duplicates.
+model AdCampaignMetric {
+  id                 String           @id @default(uuid())
+  organizationId     String
+  channel            MarketingChannel
+  externalCampaignId String
+  campaignName       String
+  date               DateTime         @db.Date
+  impressions        Int              @default(0)
+  clicks             Int              @default(0)
+  spend              Decimal          @default(0) @db.Decimal(12, 2)
+  leads              Int?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, channel, externalCampaignId, date])
+  @@index([organizationId, date])
+  @@map("ad_campaign_metrics")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

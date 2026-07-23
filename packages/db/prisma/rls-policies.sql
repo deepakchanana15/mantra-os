@@ -316,3 +316,17 @@ ALTER TABLE "organization_settings" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON "organization_settings"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+-- ── Marketing: ad platform integrations (Phase 1: Meta) ─────────────────
+
+ALTER TABLE "marketing_integrations" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "marketing_integrations" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "marketing_integrations"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+ALTER TABLE "ad_campaign_metrics" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ad_campaign_metrics" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "ad_campaign_metrics"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));

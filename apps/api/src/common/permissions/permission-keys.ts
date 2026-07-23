@@ -104,6 +104,13 @@ export const PERMISSIONS = {
   CAMPAIGNS_DELETE: "campaigns:delete",
   CAMPAIGNS_SEND: "campaigns:send",
 
+  MARKETING_INTEGRATIONS_CREATE: "marketing_integrations:create",
+  MARKETING_INTEGRATIONS_READ: "marketing_integrations:read",
+  MARKETING_INTEGRATIONS_DELETE: "marketing_integrations:delete",
+  MARKETING_INTEGRATIONS_SYNC: "marketing_integrations:sync",
+
+  AD_CAMPAIGN_METRICS_READ: "ad_campaign_metrics:read",
+
   OPPORTUNITIES_CREATE: "opportunities:create",
   OPPORTUNITIES_READ: "opportunities:read",
   OPPORTUNITIES_UPDATE: "opportunities:update",

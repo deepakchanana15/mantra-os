@@ -7,6 +7,7 @@ import { CompaniesTab } from "./companies-tab";
 import { CountriesTab } from "./countries-tab";
 import { BrandsTab } from "./brands-tab";
 import { WebsitesTab } from "./websites-tab";
+import { IntegrationsTab } from "./integrations-tab";
 
 interface Organization {
   name: string;
@@ -61,6 +62,15 @@ interface Website {
   enabled: boolean;
 }
 
+interface Integration {
+  id: string;
+  channel: string;
+  accountId: string;
+  status: string;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+}
+
 /** apiFetch throws on non-2xx — used here to gracefully hide Owner/Admin-only tabs for everyone else, rather than showing a broken page. */
 async function fetchOrNull<T>(path: string): Promise<T | null> {
   try {
@@ -72,7 +82,7 @@ async function fetchOrNull<T>(path: string): Promise<T | null> {
 }
 
 export default async function SettingsPage() {
-  const [org, members, grants, currencies, companies, countries, brands, websites] = await Promise.all([
+  const [org, members, grants, currencies, companies, countries, brands, websites, integrations] = await Promise.all([
     apiFetch<Organization>("/v1/organizations/me"),
     fetchOrNull<Member[]>("/v1/members"),
     fetchOrNull<Grant[]>("/v1/deletion-grants"),
@@ -81,6 +91,7 @@ export default async function SettingsPage() {
     fetchOrNull<Country[]>("/v1/countries"),
     fetchOrNull<Brand[]>("/v1/brands"),
     fetchOrNull<Website[]>("/v1/websites"),
+    fetchOrNull<Integration[]>("/v1/marketing-integrations"),
   ]);
   const globalDomainAvailable = currencies && companies && countries && brands && websites;
 
@@ -99,6 +110,7 @@ export default async function SettingsPage() {
           {globalDomainAvailable && <TabsTrigger value="countries">Countries</TabsTrigger>}
           {globalDomainAvailable && <TabsTrigger value="brands">Brands</TabsTrigger>}
           {globalDomainAvailable && <TabsTrigger value="websites">Websites</TabsTrigger>}
+          {integrations && <TabsTrigger value="integrations">Integrations</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="organization">
@@ -132,6 +144,12 @@ export default async function SettingsPage() {
               <WebsitesTab websites={websites} countries={countries} brands={brands} />
             </TabsContent>
           </>
+        )}
+
+        {integrations && (
+          <TabsContent value="integrations">
+            <IntegrationsTab integrations={integrations} />
+          </TabsContent>
         )}
       </Tabs>
     </div>

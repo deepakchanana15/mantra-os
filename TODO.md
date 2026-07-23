@@ -119,6 +119,19 @@ See DECISIONS.md "Switched email provider to Brevo" for full rationale (why Brev
 - [x] Live in prod: `BREVO_API_KEY`/`BREVO_FROM_EMAIL`/`BREVO_FROM_NAME`/`BREVO_WEBHOOK_SECRET` set in `mantra-os-api`'s Vercel Production env vars, deploy confirmed healthy (real request against the live URL, not just a successful build), webhook registered against `https://mantra-os-api.vercel.app/v1/webhooks/brevo` via `register-brevo-webhook.js` and confirmed via Brevo's own webhook list.
 - [ ] Still needed: verified sending domain (`mantrasports.com.au` subdomain, in progress) — `BREVO_FROM_EMAIL` is a placeholder until then; update it in both dev and prod together once verification lands.
 
+## 2026-07-24 — Ad platform integrations, Phase 1: Meta
+
+See DECISIONS.md "Ad platform integrations, Phase 1: Meta" for full rationale, including a real incident during this work (an accidental dev-database data wipe from a `prisma migrate diff --shadow-database-url` mistake, fully recovered, prod never touched).
+
+- [x] New `MarketingIntegration` (per-channel credential, Owner/Admin-only even for reads) and `AdCampaignMetric` (shared per-campaign-per-day metrics shape reusable by Google/Bing later) tables, migrated + RLS applied.
+- [x] `MetaAdsService` (thin Graph API wrapper) + `IntegrationsController` (`/v1/marketing-integrations` — connect/list/disconnect/sync-now) + `SyncCronController` (`/v1/internal/sync-ad-metrics`, daily Vercel Cron, iterates every org).
+- [x] New Settings → Integrations tab (connect Meta with a System User token + ad account ID, see connection status, Sync now / Disconnect); Dashboard and Reports both show a new "Marketing performance" widget (spend/impressions/clicks/CTR per channel, MTD).
+- [x] **Bug found and fixed**: a failed sync's error status/message was being recorded then immediately rolled back, because the recording write and the thrown exception shared the same request-scoped transaction. Fixed by writing the failure through its own independent transaction. Caught by a dedicated smoke test, not by chance.
+- [x] Full local verification: unit tests, full `verify-*.js` suite, a dedicated 10-check Meta-integration smoke test (connect/list/RBAC-gating/sync-failure-recording/disconnect), and a direct check of the cron endpoint's auth + org-iteration behavior.
+- [ ] Not yet deployed to prod — migration, RLS, RBAC re-seed, `CRON_SECRET` env var, and Vercel Cron registration still pending.
+- [ ] Waiting on a real Meta System User access token + ad account ID from the user to test an actual live sync (everything so far verified against a fake token, confirming failure-handling works, not real data flow).
+- [ ] Google/Bing are follow-on phases reusing this same schema/UI shape — not started.
+
 ## Later
 
 - [ ] Custom role builder (V2) — schema already supports it via Role/RolePermission, UI does not exist yet

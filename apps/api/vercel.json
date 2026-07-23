@@ -1,4 +1,5 @@
 {
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "crons": [{ "path": "/v1/internal/sync-ad-metrics", "schedule": "0 6 * * *" }]
 }

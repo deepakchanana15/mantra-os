@@ -8,6 +8,11 @@ describe("rolesFor", () => {
     expect(rolesFor("members", "read")).toEqual(["owner", "admin"]);
   });
 
+  it("restricts marketing_integrations to Owner/Admin even for reads (it stores a real access token), but opens ad_campaign_metrics reads to everyone", () => {
+    expect(rolesFor("marketing_integrations", "read")).toEqual(["owner", "admin"]);
+    expect(rolesFor("ad_campaign_metrics", "read")).toEqual(["owner", "admin", "manager", "member", "viewer"]);
+  });
+
   it("restricts deletion_grants:manage to Owner only — the delegation power itself", () => {
     expect(rolesFor("deletion_grants", "manage")).toEqual(["owner"]);
   });

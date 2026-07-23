@@ -14,10 +14,18 @@ const WRITE_ROLES: SystemRoleKey[] = ["owner", "admin", "manager", "member"];
  * key only keeps Viewer out of delete entirely.
  */
 export function rolesFor(resource: string, action: string): SystemRoleKey[] {
-  if (resource === "org_settings" || resource === "members") {
-    // Org-level settings and membership management — restricted to
-    // Owner/Admin even for reads.
+  if (resource === "org_settings" || resource === "members" || resource === "marketing_integrations") {
+    // Org-level settings, membership management, and ad-platform
+    // integration credentials — restricted to Owner/Admin even for reads,
+    // since marketing_integrations stores a real access token per channel.
     return ["owner", "admin"];
+  }
+  if (resource === "ad_campaign_metrics") {
+    // The pulled performance numbers themselves aren't sensitive the way
+    // the credential is — readable by everyone, same as reports/inventory.
+    // No write action exists here at all; only the internal sync job
+    // writes, via its own service call, not a user-facing endpoint.
+    return ALL_ROLES;
   }
   if (resource === "companies" || resource === "countries" || resource === "brands" || resource === "websites") {
     // Global master data (legal entities, countries/tax rates, brands,

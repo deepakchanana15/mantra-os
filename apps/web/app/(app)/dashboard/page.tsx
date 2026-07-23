@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { SalesByChannelWidget, type ChannelStat } from "@/components/domain/sales-by-channel-widget";
+import { MarketingPerformanceWidget, type MarketingChannelStat } from "@/components/domain/marketing-performance-widget";
 
 interface DashboardSummary {
   activeCustomers: number;
@@ -8,6 +9,7 @@ interface DashboardSummary {
   lowStockProducts: number;
   revenueMonthToDate: number;
   salesByChannel: ChannelStat[];
+  marketingPerformance: MarketingChannelStat[];
 }
 
 function Kpi({ label, value }: { label: string; value: string }) {
@@ -39,7 +41,10 @@ export default async function DashboardPage() {
         <Kpi label="Revenue (MTD)" value={currency.format(summary.revenueMonthToDate)} />
       </div>
 
-      <SalesByChannelWidget salesByChannel={summary.salesByChannel} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <SalesByChannelWidget salesByChannel={summary.salesByChannel} />
+        <MarketingPerformanceWidget marketingPerformance={summary.marketingPerformance} />
+      </div>
     </div>
   );
 }
