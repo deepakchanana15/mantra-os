@@ -116,7 +116,8 @@ See DECISIONS.md "Switched email provider to Brevo" for full rationale (why Brev
 - [x] New `packages/db/scripts/register-brevo-webhook.js` — one-off, registers/updates the webhook against a given deployed API URL (Brevo needs a real reachable URL, can't target localhost).
 - [x] Marketing page shows real Opened/Clicked counts and rates per campaign now, not just a bare Sent count; corrected its "sent via Resend" copy and ARCHITECTURE.md's stale "Campaign has no frontend UI at all" claim (a real one already existed).
 - [x] Full local verification: `apps/api` typecheck/tests/build clean, an 11-check smoke test covering the real create-segment/template/campaign/send flow against the actual Brevo API plus simulated webhook callbacks (including a bad-secret rejection), confirming `Campaign.stats` updates correctly end to end.
-- [ ] Not yet live in prod — dev only so far. Still needed: a verified sending domain (`mantrasports.com.au` subdomain, in progress), updating `BREVO_FROM_EMAIL` once that's done, setting `BREVO_API_KEY`/`BREVO_WEBHOOK_SECRET` in prod's Vercel env vars, and running `register-brevo-webhook.js` against the live `mantra-os-api.vercel.app` URL.
+- [x] Live in prod: `BREVO_API_KEY`/`BREVO_FROM_EMAIL`/`BREVO_FROM_NAME`/`BREVO_WEBHOOK_SECRET` set in `mantra-os-api`'s Vercel Production env vars, deploy confirmed healthy (real request against the live URL, not just a successful build), webhook registered against `https://mantra-os-api.vercel.app/v1/webhooks/brevo` via `register-brevo-webhook.js` and confirmed via Brevo's own webhook list.
+- [ ] Still needed: verified sending domain (`mantrasports.com.au` subdomain, in progress) — `BREVO_FROM_EMAIL` is a placeholder until then; update it in both dev and prod together once verification lands.
 
 ## Later
 
