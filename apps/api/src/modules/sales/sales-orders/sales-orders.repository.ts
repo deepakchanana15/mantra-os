@@ -1,16 +1,17 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { SalesOrderStatus } from "@mantra-os/db";
+import { SalesChannel, SalesOrderStatus } from "@mantra-os/db";
 import { BaseRepository } from "../../../common/repositories/base.repository";
 import { CreateSalesOrderDto } from "./dto/create-sales-order.dto";
 
 @Injectable()
 export class SalesOrdersRepository extends BaseRepository {
-  findAll(params: { skip?: number; take?: number; customerId?: string }) {
+  findAll(params: { skip?: number; take?: number; customerId?: string; salesChannel?: SalesChannel }) {
     return this.db.salesOrder.findMany({
       where: {
         organizationId: this.organizationId,
         deletedAt: null,
         ...(params.customerId ? { customerId: params.customerId } : {}),
+        ...(params.salesChannel ? { salesChannel: params.salesChannel } : {}),
       },
       include: { customer: true, lines: { include: { product: true } } },
       skip: params.skip ?? 0,
@@ -36,6 +37,10 @@ export class SalesOrdersRepository extends BaseRepository {
         organizationId: this.organizationId,
         customerId: dto.customerId,
         quoteId: dto.quoteId,
+        salesChannel: dto.salesChannel,
+        onlineChannelType: dto.onlineChannelType,
+        offlineChannelType: dto.offlineChannelType,
+        orderReference: dto.orderReference,
         companyId: dto.companyId,
         countryId: dto.countryId,
         createdBy: this.userId,

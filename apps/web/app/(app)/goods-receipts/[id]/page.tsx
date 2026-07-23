@@ -6,10 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 interface GoodsReceipt {
   id: string;
   receivedAt: string;
-  receiptFileUrl: string | null;
   warehouse: { name: string };
   purchaseOrder: { id: string; supplier: { name: string } };
   lines: { id: string; quantity: number; purchaseOrderLine: { product: { name: string; sku: string } } }[];
+  attachments: { id: string; fileUrl: string; fileName: string }[];
 }
 
 /** No delete button — goods receipts are append-only, see DATABASE.md "Append-only ledger tables". */
@@ -27,16 +27,22 @@ export default async function GoodsReceiptDetailPage({ params }: { params: { id:
         <p className="text-xs text-faint">
           Received {new Date(receipt.receivedAt).toLocaleString()} at {receipt.warehouse.name}
         </p>
-        {receipt.receiptFileUrl && (
-          <a
-            href={receipt.receiptFileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 flex w-fit items-center gap-1 text-xs text-accent hover:underline"
-          >
-            <Paperclip className="h-3 w-3" />
-            View attached receipt
-          </a>
+        {receipt.attachments.length > 0 && (
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {receipt.attachments.map((attachment) => (
+              <li key={attachment.id}>
+                <a
+                  href={attachment.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex w-fit items-center gap-1 text-xs text-accent hover:underline"
+                >
+                  <Paperclip className="h-3 w-3" />
+                  {attachment.fileName}
+                </a>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 

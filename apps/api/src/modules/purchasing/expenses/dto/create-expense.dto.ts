@@ -1,5 +1,7 @@
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, IsUrl, Min, MaxLength, MinLength } from "class-validator";
+import { Type } from "class-transformer";
+import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength, MinLength, ValidateNested } from "class-validator";
 import { ExpenseCategory } from "@mantra-os/db";
+import { AttachmentInputDto } from "../../../../common/dto/attachment-input.dto";
 
 export class CreateExpenseDto {
   @IsString()
@@ -18,9 +20,12 @@ export class CreateExpenseDto {
   @IsDateString()
   expenseDate?: string;
 
+  /** Optional — one or more receipts/invoices, uploaded direct to Vercel Blob by the client. */
   @IsOptional()
-  @IsUrl()
-  receiptFileUrl?: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AttachmentInputDto)
+  attachments?: AttachmentInputDto[];
 
   @IsOptional()
   @IsString()

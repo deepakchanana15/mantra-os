@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LineItemsEditor, type LineItemRow, type ProductOption } from "@/components/domain/line-items-editor";
 import { CompanyCountrySelect } from "@/components/domain/company-country-select";
+import { SalesChannelSelect, type SalesChannelValue } from "@/components/domain/sales-channel-select";
 
 interface Customer {
   id: string;
@@ -29,6 +30,7 @@ export default function NewSalesOrderPage() {
   const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
+  const [channel, setChannel] = useState<SalesChannelValue>({ salesChannel: undefined });
   const [lines, setLines] = useState<LineItemRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -42,13 +44,22 @@ export default function NewSalesOrderPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!customerId || validLines.length === 0) return;
+    if (!customerId || validLines.length === 0 || !channel.salesChannel) return;
     setLoading(true);
     try {
       const res = await fetch("/api/v1/sales-orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId, companyId, countryId, lines: validLines }),
+        body: JSON.stringify({
+          customerId,
+          companyId,
+          countryId,
+          salesChannel: channel.salesChannel,
+          onlineChannelType: channel.onlineChannelType,
+          offlineChannelType: channel.offlineChannelType,
+          orderReference: channel.orderReference || undefined,
+          lines: validLines,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -100,6 +111,8 @@ export default function NewSalesOrderPage() {
               onCountryChange={setCountryId}
             />
 
+            <SalesChannelSelect value={channel} onChange={setChannel} />
+
             <LineItemsEditor
               products={products}
               priceLabel="Unit Price"
@@ -109,7 +122,7 @@ export default function NewSalesOrderPage() {
             />
 
             <div className="mt-2 flex gap-2">
-              <Button type="submit" disabled={loading || !customerId || validLines.length === 0}>
+              <Button type="submit" disabled={loading || !customerId || validLines.length === 0 || !channel.salesChannel}>
                 {loading ? "Creating…" : "Create sales order"}
               </Button>
               <Link href="/sales-orders">

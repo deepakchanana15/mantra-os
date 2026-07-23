@@ -211,6 +211,12 @@ CREATE POLICY tenant_isolation ON "suppliers"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
 
+ALTER TABLE "supplier_phones" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "supplier_phones" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "supplier_phones"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
 ALTER TABLE "purchase_orders" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "purchase_orders" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON "purchase_orders"
@@ -238,6 +244,12 @@ CREATE POLICY tenant_isolation ON "goods_receipt_lines"
 ALTER TABLE "expenses" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "expenses" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON "expenses"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+ALTER TABLE "attachments" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "attachments" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "attachments"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
 

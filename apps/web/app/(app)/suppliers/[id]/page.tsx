@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,15 +13,29 @@ import { Separator } from "@/components/ui/separator";
 import { AddressFields } from "@/components/domain/address-fields";
 import { EMPTY_ADDRESS, isAddressEmpty, type AddressValue } from "@/lib/address";
 import { CompanyCountrySelect } from "@/components/domain/company-country-select";
+import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
 
 interface PhoneRow {
+  id?: string;
   label: string;
   number: string;
   isPrimary: boolean;
 }
 
-export default function NewSupplierPage() {
+interface Supplier {
+  id: string;
+  name: string;
+  email: string | null;
+  address: AddressValue | null;
+  companyId: string | null;
+  countryId: string | null;
+  phones: { id: string; label: string; number: string; isPrimary: boolean }[];
+}
+
+export default function SupplierDetailPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
+  const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState<AddressValue>(EMPTY_ADDRESS);
@@ -29,6 +43,21 @@ export default function NewSupplierPage() {
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/v1/suppliers/${params.id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: Supplier | null) => {
+        if (!data) return;
+        setSupplier(data);
+        setName(data.name);
+        setEmail(data.email ?? "");
+        setAddress({ ...EMPTY_ADDRESS, ...(data.address ?? {}) });
+        setPhones(data.phones.map((p) => ({ id: p.id, label: p.label, number: p.number, isPrimary: p.isPrimary })));
+        setCompanyId(data.companyId ?? undefined);
+        setCountryId(data.countryId ?? undefined);
+      });
+  }, [params.id]);
 
   function addPhone() {
     setPhones((prev) => [...prev, { label: "", number: "", isPrimary: prev.length === 0 }]);
@@ -47,38 +76,47 @@ export default function NewSupplierPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/suppliers", {
-        method: "POST",
+      const res = await fetch(`/api/v1/suppliers/${params.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
           email: email || undefined,
           address: isAddressEmpty(address) ? undefined : address,
-          phones: phones.filter((p) => p.label && p.number),
+          phones: phones
+            .filter((p) => p.label && p.number)
+            .map((p) => ({ label: p.label, number: p.number, isPrimary: p.isPrimary })),
           companyId,
           countryId,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error?.message ?? "Couldn't create the supplier.");
+        toast.error(data.error?.message ?? "Couldn't update the supplier.");
         return;
       }
-      toast.success("Supplier created");
-      router.push("/suppliers");
+      toast.success("Supplier updated");
+      router.refresh();
     } finally {
       setLoading(false);
     }
   }
 
+  if (!supplier) {
+    return <p className="p-7 text-sm text-faint">Loading supplier…</p>;
+  }
+
   return (
     <div className="flex flex-col gap-5 p-7">
-      <div>
-        <Link href="/suppliers" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Suppliers
-        </Link>
-        <h1 className="mt-1 text-xl font-bold text-foreground">New Supplier</h1>
+      <div className="flex items-start justify-between">
+        <div>
+          <Link href="/suppliers" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Suppliers
+          </Link>
+          <h1 className="mt-1 text-xl font-bold text-foreground">{supplier.name}</h1>
+        </div>
+        <DeleteEntityButton apiPath={`/api/v1/suppliers/${supplier.id}`} entityLabel="Supplier" redirectTo="/suppliers" />
       </div>
 
       <Card className="max-w-xl">
@@ -103,8 +141,9 @@ export default function NewSupplierPage() {
                   Add phone
                 </Button>
               </div>
+              {phones.length === 0 && <p className="text-xs text-faint">No phone numbers yet.</p>}
               {phones.map((phone, index) => (
-                <div key={index} className="flex items-center gap-2">
+                <div key={phone.id ?? index} className="flex items-center gap-2">
                   <Input
                     placeholder="Label (Mobile, Office, WhatsApp...)"
                     className="w-44 shrink-0"
@@ -149,13 +188,8 @@ export default function NewSupplierPage() {
 
             <div className="mt-2 flex gap-2">
               <Button type="submit" disabled={loading}>
-                {loading ? "Creating…" : "Create supplier"}
+                {loading ? "Saving…" : "Save changes"}
               </Button>
-              <Link href="/suppliers">
-                <Button type="button" variant="ghost">
-                  Cancel
-                </Button>
-              </Link>
             </div>
           </form>
         </CardContent>

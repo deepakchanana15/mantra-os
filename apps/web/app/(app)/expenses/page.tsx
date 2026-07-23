@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Paperclip } from "lucide-react";
+import { Paperclip, Plus } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
 
@@ -10,7 +11,7 @@ interface Expense {
   category: string;
   amount: string;
   expenseDate: string;
-  receiptFileUrl: string | null;
+  attachments: { id: string; fileUrl: string; fileName: string }[];
   goodsReceipt: { id: string } | null;
 }
 
@@ -32,9 +33,17 @@ export default async function ExpensesPage() {
 
   return (
     <div className="flex flex-col gap-5 p-7">
-      <div>
-        <h1 className="text-xl font-bold text-foreground">Expenses</h1>
-        <p className="text-sm text-muted-foreground">{expenses.length} expenses</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Expenses</h1>
+          <p className="text-sm text-muted-foreground">{expenses.length} expenses</p>
+        </div>
+        <Link href="/expenses/new">
+          <Button>
+            <Plus className="h-4 w-4" />
+            New Expense
+          </Button>
+        </Link>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -45,7 +54,7 @@ export default async function ExpensesPage() {
               <TableHead>Category</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead>Receipt</TableHead>
+              <TableHead>Documents</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -68,16 +77,21 @@ export default async function ExpensesPage() {
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{currency.format(Number(expense.amount))}</TableCell>
                   <TableCell>
-                    {expense.receiptFileUrl ? (
-                      <a
-                        href={expense.receiptFileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex w-fit items-center gap-1 text-accent hover:underline"
-                      >
-                        <Paperclip className="h-3.5 w-3.5" />
-                        View
-                      </a>
+                    {expense.attachments.length > 0 ? (
+                      <div className="flex flex-col gap-0.5">
+                        {expense.attachments.map((attachment) => (
+                          <a
+                            key={attachment.id}
+                            href={attachment.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex w-fit items-center gap-1 text-accent hover:underline"
+                          >
+                            <Paperclip className="h-3.5 w-3.5" />
+                            {attachment.fileName}
+                          </a>
+                        ))}
+                      </div>
                     ) : (
                       <span className="text-faint">—</span>
                     )}

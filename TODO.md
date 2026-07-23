@@ -75,8 +75,19 @@ See DECISIONS.md "Global multi-country, multi-company, multi-brand architecture"
 - [x] Sidebar nav now scrolls independently instead of clipping items when the browser is zoomed in
 - [x] Products list: missing category include fixed (list always showed "—" even when set), delete button added to match every other domain list
 - [x] Product price now shows the currency code (e.g. "USD 1,198.00") instead of a bare "$" — still hardcoded to USD everywhere; a real per-product/per-country currency needs a design decision (Product has no Company/Country link yet, only Brand)
-- [x] Goods Receipt upload + minimal `Expense` entity — see DECISIONS.md "Goods receipt upload + Expense". Vercel Blob (client-direct-upload) for the attached vendor receipt scan/photo, manual entry (no OCR), auto-calculated expense amount reviewed inline on the same form before submit. Live in prod.
+- [x] Goods Receipt upload + minimal `Expense` entity — see DECISIONS.md "Goods receipt upload + Expense". Vercel Blob (client-direct-upload), manual entry (no OCR), auto-calculated expense amount reviewed inline on the same form before submit. Live in prod. (Single-file upload superseded the next day by multi-document support below.)
 - [ ] Vercel Blob store not yet connected to `mantra-os-web-zoc9`'s Development environment — local `next start` can't exercise the actual upload (OIDC requires Vercel's runtime); everything else about the flow is verified locally
+
+## 2026-07-23 — Feature batch: multi-document attachments, Supplier phones, Sales Channel
+
+See DECISIONS.md "Feature batch: multi-document attachments, Supplier phones, Sales Channel" for full design rationale.
+
+- [x] Goods Receipt and Expense both support multiple attached documents (supplier invoice, delivery challan, packing slip, GRN copy, receipts — PDF/JPG/JPEG/PNG) via a shared polymorphic `Attachment` table, replacing the single `receiptFileUrl` field from the day before. Shared `MultiFileUpload` frontend component.
+- [x] Expense's Supplier field was already optional at the schema/DTO level — added the standalone "New Expense" page that didn't exist before (previously only created via the Goods Receipt flow), with Supplier defaulting to "No supplier" for petty cash/parking/courier-style expenses.
+- [x] Supplier full address exposed in the frontend (schema already supported it since Phase 5, just never had a form field) + new `SupplierPhone` model (multiple numbers, one marked primary, free-text label). Supplier's first-ever detail/edit page (`suppliers/[id]`) — previously create + list only.
+- [x] SalesOrder gained a required-going-forward `salesChannel` (Online/Offline) with conditional sub-fields (Online: Website/Store vs. Marketplace + free-text order reference; Offline: a 7-value categorical sub-type), filterable via `?salesChannel=` and a "Sales by channel" breakdown on Dashboard + Reports.
+- [x] Regression caught during verification: `verify-frontend-e2e.js`'s existing Sales Order creation step predated the new required field — fixed the test, not the requirement.
+- [x] Full local verification suite + a 16-check manual smoke test (attachments, optional-supplier expense, supplier phone replace, sales channel required-validation + filtering + dashboard breakdown) all pass. Live in prod.
 
 ## Later
 

@@ -186,7 +186,11 @@ async function main() {
     // Now sell 8 of them via Sales Order -> Shipment.
     const so = await fetchJson("/api/v1/sales-orders", {
       method: "POST",
-      body: JSON.stringify({ customerId: customer.body.id, lines: [{ productId: product.body.id, quantity: 8, unitPrice: 10 }] }),
+      body: JSON.stringify({
+        customerId: customer.body.id,
+        salesChannel: "OFFLINE",
+        lines: [{ productId: product.body.id, quantity: 8, unitPrice: 10 }],
+      }),
     });
     const shipment = await fetchJson("/api/v1/shipments", {
       method: "POST",

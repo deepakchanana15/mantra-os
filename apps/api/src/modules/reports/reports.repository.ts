@@ -54,11 +54,21 @@ export class ReportsRepository extends BaseRepository {
       0,
     );
 
+    const byChannel = new Map<string, { orders: number; revenue: number }>();
+    for (const order of salesOrdersThisMonth) {
+      const key = order.salesChannel ?? "UNSPECIFIED";
+      const orderRevenue = order.lines.reduce((sum, line) => sum + line.quantity * Number(line.unitPrice), 0);
+      const existing = byChannel.get(key) ?? { orders: 0, revenue: 0 };
+      byChannel.set(key, { orders: existing.orders + 1, revenue: existing.revenue + orderRevenue });
+    }
+    const salesByChannel = Array.from(byChannel.entries()).map(([channel, stats]) => ({ channel, ...stats }));
+
     return {
       activeCustomers,
       openSalesOrders,
       lowStockProducts: lowStockCount,
       revenueMonthToDate,
+      salesByChannel,
     };
   }
 }

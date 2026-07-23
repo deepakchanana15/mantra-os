@@ -1,5 +1,6 @@
 import { Type } from "class-transformer";
-import { ArrayMinSize, IsArray, IsInt, IsOptional, IsUUID, IsUrl, Min, ValidateNested } from "class-validator";
+import { ArrayMinSize, IsArray, IsInt, IsOptional, IsUUID, Min, ValidateNested } from "class-validator";
+import { AttachmentInputDto } from "../../../../common/dto/attachment-input.dto";
 
 class GoodsReceiptLineDto {
   @IsUUID()
@@ -17,10 +18,12 @@ export class CreateGoodsReceiptDto {
   @IsUUID()
   warehouseId!: string;
 
-  /** Optional — scan/photo of the vendor's hard-copy receipt, uploaded direct to Vercel Blob by the client. */
+  /** Optional — one or more supporting documents (supplier invoice, delivery challan, packing slip, GRN copy), uploaded direct to Vercel Blob by the client. */
   @IsOptional()
-  @IsUrl()
-  receiptFileUrl?: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AttachmentInputDto)
+  attachments?: AttachmentInputDto[];
 
   @IsArray()
   @ArrayMinSize(1)

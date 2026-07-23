@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
-import { IsOptional, IsUUID } from "class-validator";
+import { IsEnum, IsOptional, IsUUID } from "class-validator";
+import { SalesChannel } from "@mantra-os/db";
 import { RequirePermission } from "../../../common/decorators/require-permission.decorator";
 import { PaginationQueryDto } from "../../../common/dto/pagination-query.dto";
 import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard";
@@ -14,6 +15,10 @@ class ListSalesOrdersQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID()
   customerId?: string;
+
+  @IsOptional()
+  @IsEnum(SalesChannel)
+  salesChannel?: SalesChannel;
 }
 
 @Controller("v1/sales-orders")

@@ -55,7 +55,11 @@ export default async function SuppliersPage({ searchParams }: { searchParams: { 
             ) : (
               suppliers.map((supplier) => (
                 <TableRow key={supplier.id}>
-                  <TableCell className="font-medium text-foreground">{supplier.name}</TableCell>
+                  <TableCell>
+                    <Link href={`/suppliers/${supplier.id}`} className="font-medium text-foreground hover:text-accent">
+                      {supplier.name}
+                    </Link>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{supplier.email ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{supplier.phone ?? "—"}</TableCell>
                   <TableCell>

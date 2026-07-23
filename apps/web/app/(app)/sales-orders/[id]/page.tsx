@@ -5,11 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
+import { channelSubTypeLabel, salesChannelLabel } from "@/lib/sales-channel";
 
 interface SalesOrder {
   id: string;
   status: string;
   orderDate: string;
+  salesChannel: string | null;
+  onlineChannelType: string | null;
+  offlineChannelType: string | null;
+  orderReference: string | null;
   customer: { name: string };
   lines: { id: string; quantity: number; unitPrice: string; product: { name: string; sku: string } }[];
   shipments: { id: string; status: string; trackingNumber: string | null }[];
@@ -41,6 +46,14 @@ export default async function SalesOrderDetailPage({ params }: { params: { id: s
             <Badge variant={STATUS_VARIANT[order.status] ?? "neutral"}>{order.status}</Badge>
           </div>
           <p className="text-xs text-faint">Ordered {new Date(order.orderDate).toLocaleDateString()}</p>
+          {order.salesChannel && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {salesChannelLabel(order.salesChannel)}
+              {channelSubTypeLabel(order.onlineChannelType ?? order.offlineChannelType) &&
+                ` — ${channelSubTypeLabel(order.onlineChannelType ?? order.offlineChannelType)}`}
+              {order.orderReference && ` (Ref: ${order.orderReference})`}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <Link href={`/shipments/new?salesOrderId=${order.id}`}>

@@ -1,10 +1,9 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { upload } from "@vercel/blob/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Paperclip } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MultiFileUpload, type UploadedAttachment } from "@/components/domain/multi-file-upload";
 
 interface PurchaseOrderLine {
   id: string;
@@ -54,9 +54,7 @@ function NewGoodsReceiptForm() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
 
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptFileUrl, setReceiptFileUrl] = useState<string | undefined>(undefined);
-  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
 
   const [recordExpense, setRecordExpense] = useState(true);
   const [vendorName, setVendorName] = useState("");
@@ -96,25 +94,6 @@ function NewGoodsReceiptForm() {
     }
   }, [suggestedAmount, amountTouched]);
 
-  async function handleReceiptFileChange(file: File | null) {
-    setReceiptFile(file);
-    setReceiptFileUrl(undefined);
-    if (!file) return;
-    setUploadingReceipt(true);
-    try {
-      const blob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/uploads",
-      });
-      setReceiptFileUrl(blob.url);
-    } catch {
-      toast.error("Couldn't upload the receipt file.");
-      setReceiptFile(null);
-    } finally {
-      setUploadingReceipt(false);
-    }
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!order || !warehouseId) return;
@@ -122,17 +101,13 @@ function NewGoodsReceiptForm() {
       .filter((l) => quantities[l.id] > 0)
       .map((l) => ({ purchaseOrderLineId: l.id, quantity: quantities[l.id] }));
     if (lines.length === 0) return;
-    if (receiptFile && !receiptFileUrl) {
-      toast.error("Still uploading the receipt — wait a moment and try again.");
-      return;
-    }
 
     setLoading(true);
     try {
       const res = await fetch("/api/v1/goods-receipts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ purchaseOrderId: order.id, warehouseId, lines, receiptFileUrl }),
+        body: JSON.stringify({ purchaseOrderId: order.id, warehouseId, lines, attachments }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -149,7 +124,7 @@ function NewGoodsReceiptForm() {
             category: expenseCategory,
             amount: Number(expenseAmount),
             notes: expenseNotes || undefined,
-            receiptFileUrl,
+            attachments,
             supplierId: order.supplierId,
             goodsReceiptId: data.id,
             purchaseOrderId: order.id,
@@ -233,23 +208,11 @@ function NewGoodsReceiptForm() {
 
           <Separator />
 
-          <div className="flex flex-col gap-2">
-            <Label>Vendor's hard-copy receipt (optional)</Label>
-            <div className="flex items-center gap-2">
-              <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-surface-secondary">
-                <Paperclip className="h-3.5 w-3.5" />
-                {receiptFile ? receiptFile.name : "Attach photo or PDF"}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,application/pdf"
-                  className="hidden"
-                  onChange={(e) => handleReceiptFileChange(e.target.files?.[0] ?? null)}
-                />
-              </label>
-              {uploadingReceipt && <span className="text-xs text-faint">Uploading…</span>}
-              {receiptFileUrl && <span className="text-xs text-accent">Uploaded</span>}
-            </div>
-          </div>
+          <MultiFileUpload
+            label="Supporting documents (optional) — supplier invoice, delivery challan, packing slip, GRN copy"
+            attachments={attachments}
+            onChange={setAttachments}
+          />
 
           <Separator />
 
@@ -312,7 +275,7 @@ function NewGoodsReceiptForm() {
           </div>
 
           <div className="mt-2 flex gap-2">
-            <Button type="submit" disabled={loading || !warehouseId || uploadingReceipt}>
+            <Button type="submit" disabled={loading || !warehouseId}>
               {loading ? "Recording…" : "Record receipt"}
             </Button>
             <Link href={`/purchase-orders/${order.id}`}>

@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { SalesOrderStatus } from "@mantra-os/db";
+import { SalesChannel, SalesOrderStatus } from "@mantra-os/db";
 import { DeletionGuardService } from "../../../common/deletion/deletion-guard.service";
 import { CreateSalesOrderDto } from "./dto/create-sales-order.dto";
 import { SalesOrdersRepository } from "./sales-orders.repository";
@@ -11,7 +11,7 @@ export class SalesOrdersService {
     private readonly deletionGuard: DeletionGuardService,
   ) {}
 
-  findAll(params: { skip?: number; take?: number; customerId?: string }) {
+  findAll(params: { skip?: number; take?: number; customerId?: string; salesChannel?: SalesChannel }) {
     return this.salesOrders.findAll(params);
   }
 

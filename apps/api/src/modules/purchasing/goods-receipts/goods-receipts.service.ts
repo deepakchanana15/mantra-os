@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { InventoryTransactionType } from "@mantra-os/db";
+import { AttachmentEntityType, InventoryTransactionType } from "@mantra-os/db";
+import { AttachmentsRepository } from "../../../common/attachments/attachments.repository";
 import { InventoryService } from "../../inventory/stock/inventory.service";
 import { PurchaseOrdersRepository } from "../purchase-orders/purchase-orders.repository";
 import { CreateGoodsReceiptDto } from "./dto/create-goods-receipt.dto";
@@ -18,14 +19,17 @@ export class GoodsReceiptsService {
     private readonly goodsReceipts: GoodsReceiptsRepository,
     private readonly purchaseOrders: PurchaseOrdersRepository,
     private readonly inventory: InventoryService,
+    private readonly attachments: AttachmentsRepository,
   ) {}
 
   findAll(params: { skip?: number; take?: number; purchaseOrderId?: string }) {
     return this.goodsReceipts.findAll(params);
   }
 
-  findOne(id: string) {
-    return this.goodsReceipts.findOneOrThrow(id);
+  async findOne(id: string) {
+    const receipt = await this.goodsReceipts.findOneOrThrow(id);
+    const attachments = await this.attachments.findByEntity(AttachmentEntityType.GOODS_RECEIPT, id);
+    return { ...receipt, attachments };
   }
 
   async create(dto: CreateGoodsReceiptDto) {
@@ -34,6 +38,7 @@ export class GoodsReceiptsService {
     );
 
     const receipt = await this.goodsReceipts.create(dto);
+    await this.attachments.createMany(AttachmentEntityType.GOODS_RECEIPT, receipt.id, dto.attachments ?? []);
 
     for (const line of dto.lines) {
       const purchaseOrderLine = productsByLineId.get(line.purchaseOrderLineId)!;

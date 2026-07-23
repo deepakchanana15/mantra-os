@@ -1,5 +1,6 @@
 import { Global, Module } from "@nestjs/common";
 import { PrismaModule } from "../prisma/prisma.module";
+import { AttachmentsRepository } from "./attachments/attachments.repository";
 import { TenantContextService } from "./context/tenant-context.service";
 import { DeletionGuardService } from "./deletion/deletion-guard.service";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
@@ -25,6 +26,7 @@ import { TenantContextInterceptor } from "./interceptors/tenant-context.intercep
     TenantContextInterceptor,
     TenantContextService,
     DeletionGuardService,
+    AttachmentsRepository,
   ],
   exports: [
     PrismaModule,
@@ -34,6 +36,7 @@ import { TenantContextInterceptor } from "./interceptors/tenant-context.intercep
     TenantContextInterceptor,
     TenantContextService,
     DeletionGuardService,
+    AttachmentsRepository,
   ],
 })
 export class CommonModule {}

@@ -4,6 +4,24 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-23 — Feature batch: multi-document attachments, Supplier phones, Sales Channel
+
+**Context:** A single "please implement" request covering four areas: (1) multiple documents per Goods Receipt, (2) multiple receipts per Expense with an optional Supplier, (3) Supplier full address + multiple phone numbers with a primary flag, (4) a required Sales Channel field on SalesOrder with conditional sub-fields, filterable and reportable.
+
+**Multi-document attachments — one polymorphic `Attachment` table, not per-entity join tables:** Replaces the single `receiptFileUrl` string added a day earlier on `GoodsReceipt`/`Expense` (no real prod data depended on it yet, so replaced outright rather than migrated). `Attachment` has `entityType` (`GOODS_RECEIPT` | `EXPENSE`) + `entityId`, no foreign key — same pattern `AuditLog` already uses, since a real FK can't point at "whichever table entityType names." A shared `AttachmentsRepository` (registered in the `@Global()` CommonModule) gives every domain service `findByEntity`/`findByEntities`/`createMany` without re-deriving the same Prisma queries. Extensible to future attachment-bearing entities without a new table each time.
+
+**Supplier — address needed no schema change:** `Supplier.address` was already the shared `AddressDto` Json shape (line1/line2/city/state/postalCode/country) since Phase 5 — only the frontend never exposed it. The real new work was **multiple phone numbers**: a `SupplierPhone` model (label, number, isPrimary), free-text label (not an enum) since "mobile, office, WhatsApp, etc." is explicitly open-ended. The legacy `Supplier.phone` column stays and is kept in sync with whichever phone is marked primary (or the first one), so anything still reading the singular field — existing list displays, exports — keeps working unchanged. Supplier also gained its first real edit page (`suppliers/[id]`); before this, Suppliers had create + list only, no detail/edit view at all.
+
+**Sales Channel — required going forward, nullable at the DB level:** `SalesOrder.salesChannel` (`ONLINE`/`OFFLINE`) is enforced as required by `CreateSalesOrderDto` (no `@IsOptional()`), but the column itself is nullable — existing orders predate the field and aren't backfilled, same "required going forward, not retrofitted" pattern used throughout Sub-phase B. Sub-fields: `onlineChannelType` (Website/Store vs. Marketplace) + free-text `orderReference` for Online; a single `offlineChannelType` enum (Walk-in, Phone Order, WhatsApp, Email, Sales Representative, Distributor/Dealer, Exhibition/Tournament) for Offline — read as one categorical choice per channel, not independent fields, since the requirement listed them as a flat bullet list under "optionally capture." Filterable via `?salesChannel=` on the list endpoint; a `salesByChannel` breakdown (orders + revenue per channel, current month) was added to the existing dashboard-summary endpoint and surfaced on both Dashboard and Reports pages — no new report infrastructure, matching ARCHITECTURE.md's "Reports and Dashboard are not domains."
+
+**Regression caught and fixed:** making `salesChannel` required broke `verify-frontend-e2e.js`'s existing Sales Order creation step (it predates the field). Fixed by adding `salesChannel: "OFFLINE"` to that test's payload — the right fix per the instruction to keep existing functionality working, not loosening the new requirement.
+
+**File upload UX, unchanged from the prior entry:** still Vercel Blob, client-direct upload via `/api/uploads`, `public` access with random-suffixed URLs — see "Goods receipt upload + Expense" below. The Goods Receipt/Expense forms now use a shared `MultiFileUpload` component (multiple files, each uploads on selection, removable before submit) instead of the single-file control built a day earlier.
+
+**Reversibility:** High across the board. The polymorphic Attachment table can gain new `entityType` values without a migration. Supplier's legacy `phone` sync is a convenience, not a constraint — dropping it later just means displays relying on it would need to switch to `phones`. The Sales Channel nullable-at-DB-level choice means no data was fabricated for historical orders.
+
+---
+
 ## 2026-07-22 — Goods receipt upload + Expense (manual entry, not OCR)
 
 **Context:** Goods are received against hard-copy vendor receipts, and staff wanted the ability to attach the physical receipt and have it become an expense record. Options ranged from AI/vision extraction to plain manual entry with an attached scan. User chose manual entry (no OCR/AI), always-review-before-posting, and a minimal Expense entity built now rather than deferred — matching the "minimal version" precedent set by Sub-phase C.

@@ -65,6 +65,8 @@ model Organization {
   invoices           Invoice[]
   supportTickets     SupportTicket[]
   expenses           Expense[]
+  attachments        Attachment[]
+  supplierPhones     SupplierPhone[]
 
   @@map("organizations")
 }
@@ -676,21 +678,48 @@ enum SalesOrderStatus {
   CANCELLED
 }
 
+enum SalesChannel {
+  ONLINE
+  OFFLINE
+}
+
+enum OnlineChannelType {
+  WEBSITE_STORE
+  MARKETPLACE
+}
+
+enum OfflineChannelType {
+  WALK_IN
+  PHONE_ORDER
+  WHATSAPP
+  EMAIL
+  SALES_REPRESENTATIVE
+  DISTRIBUTOR_DEALER
+  EXHIBITION_TOURNAMENT
+}
+
 model SalesOrder {
-  id             String           @id @default(uuid())
-  organizationId String
+  id                 String              @id @default(uuid())
+  organizationId     String
   /// Nullable — see DECISIONS.md Sub-phase B.
-  companyId      String?
-  countryId      String?
-  customerId     String
-  quoteId        String?          @unique
-  status         SalesOrderStatus @default(PENDING)
-  orderDate      DateTime         @default(now())
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  createdBy      String
-  updatedBy      String
-  deletedAt      DateTime?
+  companyId          String?
+  countryId          String?
+  customerId         String
+  quoteId            String?             @unique
+  status             SalesOrderStatus    @default(PENDING)
+  orderDate          DateTime            @default(now())
+  /// Nullable at the DB level (existing rows predate this field, not
+  /// backfilled) but required by CreateSalesOrderDto going forward — see
+  /// DECISIONS.md "Sales channel tracking".
+  salesChannel       SalesChannel?
+  onlineChannelType  OnlineChannelType?
+  offlineChannelType OfflineChannelType?
+  orderReference     String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  createdBy          String
+  updatedBy          String
+  deletedAt          DateTime?
 
   organization Organization     @relation(fields: [organizationId], references: [id])
   company      Company?         @relation(fields: [companyId], references: [id])
@@ -705,6 +734,7 @@ model SalesOrder {
   @@index([customerId])
   @@index([companyId])
   @@index([countryId])
+  @@index([salesChannel])
   @@map("sales_orders")
 }
 
@@ -798,11 +828,32 @@ model Supplier {
   country        Country?        @relation(fields: [countryId], references: [id])
   purchaseOrders PurchaseOrder[]
   expenses       Expense[]
+  phones         SupplierPhone[]
 
   @@index([organizationId])
   @@index([companyId])
   @@index([countryId])
   @@map("suppliers")
+}
+
+/// Free-text label (not an enum) — "mobile, office, WhatsApp, etc." is
+/// explicitly open-ended, so a fixed enum would need a migration every
+/// time a new label shows up. organizationId denormalized here, matching
+/// this project's line-item-table convention (see Country's own comment).
+model SupplierPhone {
+  id             String  @id @default(uuid())
+  organizationId String
+  supplierId     String
+  label          String
+  number         String
+  isPrimary      Boolean @default(false)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  supplier     Supplier     @relation(fields: [supplierId], references: [id])
+
+  @@index([organizationId])
+  @@index([supplierId])
+  @@map("supplier_phones")
 }
 
 enum PurchaseOrderStatus {
@@ -868,9 +919,6 @@ model GoodsReceipt {
   purchaseOrderId String
   warehouseId     String
   receivedAt      DateTime @default(now())
-  /// Photo/scan of the vendor's hard-copy receipt, uploaded direct to Vercel
-  /// Blob from the browser — see DECISIONS.md "Goods receipt upload + Expense".
-  receiptFileUrl  String?
   createdBy       String
 
   organization  Organization       @relation(fields: [organizationId], references: [id])
@@ -930,9 +978,6 @@ model Expense {
   category        ExpenseCategory @default(OTHER)
   amount          Decimal         @db.Decimal(12, 2)
   expenseDate     DateTime        @default(now())
-  /// Same upload as GoodsReceipt.receiptFileUrl when created together;
-  /// present independently for expenses with no linked GoodsReceipt.
-  receiptFileUrl  String?
   notes           String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -954,6 +999,33 @@ model Expense {
   @@index([companyId])
   @@index([countryId])
   @@map("expenses")
+}
+
+enum AttachmentEntityType {
+  GOODS_RECEIPT
+  EXPENSE
+}
+
+/// Polymorphic — entityType + entityId, no foreign key (same pattern as
+/// AuditLog) since it references whichever table entityType names. One or
+/// more per record (supplier invoice, delivery challan, packing slip, GRN
+/// copy, ...) — see DECISIONS.md "Multi-document attachments".
+model Attachment {
+  id             String               @id @default(uuid())
+  organizationId String
+  entityType     AttachmentEntityType
+  entityId       String
+  fileUrl        String
+  fileName       String
+  contentType    String?
+  createdAt      DateTime             @default(now())
+  createdBy      String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([entityType, entityId])
+  @@map("attachments")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

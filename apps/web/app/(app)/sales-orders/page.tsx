@@ -4,11 +4,14 @@ import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SalesChannelFilter } from "@/components/domain/sales-channel-filter";
+import { salesChannelLabel } from "@/lib/sales-channel";
 
 interface SalesOrder {
   id: string;
   status: string;
   orderDate: string;
+  salesChannel: string | null;
   customer: { name: string };
   lines: { quantity: number; unitPrice: string }[];
 }
@@ -21,8 +24,10 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "ne
   CANCELLED: "destructive",
 };
 
-export default async function SalesOrdersPage() {
-  const orders = await apiFetch<SalesOrder[]>("/v1/sales-orders");
+export default async function SalesOrdersPage({ searchParams }: { searchParams: { salesChannel?: string } }) {
+  const params = new URLSearchParams();
+  if (searchParams.salesChannel) params.set("salesChannel", searchParams.salesChannel);
+  const orders = await apiFetch<SalesOrder[]>(`/v1/sales-orders?${params.toString()}`);
   const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
   return (
@@ -40,12 +45,15 @@ export default async function SalesOrdersPage() {
         </Link>
       </div>
 
+      <SalesChannelFilter />
+
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Channel</TableHead>
               <TableHead>Order Date</TableHead>
               <TableHead className="text-right">Total</TableHead>
             </TableRow>
@@ -53,7 +61,7 @@ export default async function SalesOrdersPage() {
           <TableBody>
             {orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-10 text-center text-sm text-faint">
+                <TableCell colSpan={5} className="py-10 text-center text-sm text-faint">
                   No sales orders yet.
                 </TableCell>
               </TableRow>
@@ -70,6 +78,7 @@ export default async function SalesOrdersPage() {
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[order.status] ?? "neutral"}>{order.status}</Badge>
                     </TableCell>
+                    <TableCell className="text-muted-foreground">{salesChannelLabel(order.salesChannel)}</TableCell>
                     <TableCell className="text-muted-foreground">{new Date(order.orderDate).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right tabular-nums">{currency.format(total)}</TableCell>
                   </TableRow>

@@ -1,11 +1,13 @@
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
+import { SalesByChannelWidget, type ChannelStat } from "@/components/domain/sales-by-channel-widget";
 
 interface DashboardSummary {
   activeCustomers: number;
   openSalesOrders: number;
   lowStockProducts: number;
   revenueMonthToDate: number;
+  salesByChannel: ChannelStat[];
 }
 
 function Kpi({ label, value }: { label: string; value: string }) {
@@ -36,6 +38,8 @@ export default async function DashboardPage() {
         <Kpi label="Low stock products" value={summary.lowStockProducts.toLocaleString()} />
         <Kpi label="Revenue (MTD)" value={currency.format(summary.revenueMonthToDate)} />
       </div>
+
+      <SalesByChannelWidget salesByChannel={summary.salesByChannel} />
     </div>
   );
 }
