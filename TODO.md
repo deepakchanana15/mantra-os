@@ -155,9 +155,19 @@ See DECISIONS.md "Leads are not Customers" and "Business ID codes for Customers 
 - [x] New human-readable business IDs on Customer and Opportunity (`MS-AU-20260726-01` — brand prefix + country + date + daily sequence), via new `BusinessCodeService` + `DailyBusinessCodeCounter` table. Per-company/country prefix, separate counters per entity type, atomic under concurrency.
 - [x] Full local verification: unit tests, both apps' typecheck + build, a 22-check dedicated smoke test (manual create codes, sequence increment, new-email intake stays lead-only, existing-Customer-email intake links directly, convert-to-customer, re-conversion rejected), full `verify-frontend-e2e.js` suite (19/19).
 - [x] Found and fixed during verification: `verify-frontend-e2e.js`'s test-org cleanup didn't delete `daily_business_code_counters` rows before deleting the org, blocking on the new table's FK — fixed, and two dangling test orgs left over from the broken run were cleaned out of dev.
-- [ ] Not yet deployed to prod.
-- [ ] AU WordPress form still needs a phone field added and its category dropdown options changed (per the user's ask) — separate from the schema/backend work above.
-- [ ] Test "Deepak Chanana" Customer/Opportunity from the AU live test still sitting in prod — deletion deferred pending confirmation.
+- [x] Deployed to prod — migration, RLS, `codePrefix=MS` set, new `convert-to-customer` route confirmed live.
+- [x] Test "Deepak Chanana" Customer/Opportunity from the AU live test deleted from prod (user confirmed).
+- [x] AU WordPress form redone by the user themselves — added a phone field plus "Select Customer Type" and "Product Interested In" dropdowns, dropped the category-only dropdown entirely. `Opportunity` gained matching `customerType`/`productInterest` free-text fields (see DECISIONS.md "AU form gains Customer Type + Product Interest"); updated PHP snippet handed off with the new CF7 field names (`customer-name`/`customer-email`/`customer-phone`/`customer-type`/`product-interest`/`enquiry-message`).
+
+## 2026-07-27 — Opportunities no longer require picking a Customer
+
+See DECISIONS.md "Opportunities no longer require picking a Customer" for full rationale — the customer dropdown on the manual "New Opportunity" form wasn't practical at real scale and didn't match how the business actually works.
+
+- [x] `CreateOpportunityDto.customerId` made optional; added `leadName`/`leadEmail`/`leadPhone`, matching `/v1/leads/intake`'s shape.
+- [x] `OpportunitiesRepository.create()` resolves an existing Customer by **email match only** (not phone — shared office lines made phone matching risky) before falling back to lead fields; rejects if neither a `customerId` nor a `leadEmail` is given.
+- [x] New Opportunity form: customer dropdown replaced with Contact Name/Email/Phone fields.
+- [x] Full local verification: typecheck + unit tests both apps, a 13-check dedicated smoke test (missing-identity rejected, new lead stays unlinked, matching email auto-links, explicit customerId still works), full `verify-frontend-e2e.js` suite (19/19).
+- [x] No schema change — purely DTO/repository/frontend, no migration needed. Deployed to prod via normal Vercel git push.
 
 ## Later
 
