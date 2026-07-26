@@ -17,6 +17,8 @@ interface Opportunity {
   leadName: string | null;
   leadEmail: string | null;
   leadPhone: string | null;
+  customerType: string | null;
+  productInterest: string | null;
   source: string;
 }
 
@@ -90,6 +92,11 @@ export default async function OpportunitiesPage() {
                           <span className="text-xs text-faint">
                             {[opportunity.leadEmail, opportunity.leadPhone].filter(Boolean).join(" · ")}
                           </span>
+                          {(opportunity.customerType || opportunity.productInterest) && (
+                            <span className="text-xs text-faint">
+                              {[opportunity.customerType, opportunity.productInterest].filter(Boolean).join(" · ")}
+                            </span>
+                          )}
                         </div>
                       )}
                     </TableCell>

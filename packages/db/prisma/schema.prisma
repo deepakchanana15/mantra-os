@@ -1268,6 +1268,12 @@ model Opportunity {
   leadName          String?
   leadEmail         String?
   leadPhone         String?
+  /// Free text, captured verbatim from the submitting site's own dropdown
+  /// (e.g. AU's "Select Customer Type" / "Product Interested In") — not
+  /// the `CustomerType` enum, since the wording and options are the
+  /// website's own and would otherwise need a lossy, fragile mapping.
+  customerType      String?
+  productInterest   String?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   createdBy         String

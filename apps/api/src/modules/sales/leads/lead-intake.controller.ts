@@ -96,6 +96,8 @@ export class LeadIntakeController {
               utmMedium: dto.utmMedium,
               utmCampaign: dto.utmCampaign,
               externalLeadId: dto.externalLeadId,
+              customerType: dto.customerType,
+              productInterest: dto.productInterest,
               notes: dto.message,
               createdBy: SYSTEM_ACTOR,
               updatedBy: SYSTEM_ACTOR,

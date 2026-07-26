@@ -4,6 +4,16 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-27 — AU form gains Customer Type + Product Interest, stored as free text
+
+**Context:** The user redesigned the AU WordPress form themselves (Contact Form 7), adding a phone field plus two new dropdowns — "Select Customer Type" (Individual Customer/Cricket Club/Cricket Academy/School-College/Retail Store/Distributor/Corporate/Other) and "Product Interested In" (a fixed product-category list) — and asked for both to show up in MantraOS as real, filterable fields rather than buried in the message text.
+
+**Free text on `Opportunity`, not the existing `CustomerType` enum:** the website's dropdown wording only loosely overlaps the internal `CustomerType` taxonomy (see "Customer type taxonomy" entry) — "Other" and the combined "School / College" option have no clean 1:1 mapping — so forcing it through that enum would mean lossy, fragile translation logic in the intake controller. `customerType`/`productInterest` are plain nullable strings instead, captured verbatim, consistent with how `leadName`/`leadEmail`/`leadPhone` already work.
+
+**Reversibility:** High. Two nullable columns, additive only.
+
+---
+
 ## 2026-07-26 — Business ID codes for Customers and Opportunities: `MS-AU-YYYYMMDD-01`
 
 **Context:** Following the Leads/Customers separation below, the user asked for every Customer and Opportunity to carry a human-readable business ID — a scannable reference for phone calls, invoices, and support conversations, not just an opaque UUID. Format requested: `MS-20260726-01` (brand prefix, date, daily sequence).

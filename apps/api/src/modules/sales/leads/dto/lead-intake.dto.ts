@@ -44,6 +44,16 @@ export class LeadIntakeDto {
   @MaxLength(200)
   externalLeadId?: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  customerType?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  productInterest?: string;
+
   /**
    * Honeypot — a hidden form field real visitors never see or fill in, but
    * simple bots often auto-fill every field they find. Any non-empty value
