@@ -111,6 +111,10 @@ export const PERMISSIONS = {
 
   AD_CAMPAIGN_METRICS_READ: "ad_campaign_metrics:read",
 
+  LEAD_INTAKE_KEYS_CREATE: "lead_intake_keys:create",
+  LEAD_INTAKE_KEYS_READ: "lead_intake_keys:read",
+  LEAD_INTAKE_KEYS_DELETE: "lead_intake_keys:delete",
+
   OPPORTUNITIES_CREATE: "opportunities:create",
   OPPORTUNITIES_READ: "opportunities:read",
   OPPORTUNITIES_UPDATE: "opportunities:update",

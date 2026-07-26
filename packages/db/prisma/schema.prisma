@@ -70,6 +70,7 @@ model Organization {
   expenses              Expense[]
   attachments           Attachment[]
   supplierPhones        SupplierPhone[]
+  leadIntakeKeys        LeadIntakeKey[]
 
   @@map("organizations")
 }
@@ -280,6 +281,7 @@ model Company {
   supportTickets SupportTicket[]
   expenses       Expense[]
   products       Product[]
+  leadIntakeKeys LeadIntakeKey[]
 
   @@index([organizationId])
   @@map("companies")
@@ -1207,20 +1209,39 @@ enum OpportunityStage {
   LOST
 }
 
+/// Where an Opportunity actually came from — MANUAL is the default for
+/// everything created through the normal in-app "New Opportunity" form.
+/// See DECISIONS.md "Public lead intake: website forms, Phase 5 (lead
+/// attribution)".
+enum OpportunitySource {
+  MANUAL
+  WEBSITE
+  META_LEAD_AD
+  WHATSAPP
+}
+
 /// Pre-Quote sales pipeline stage — see DECISIONS.md "Opportunity linked to Quote".
 model Opportunity {
-  id                String           @id @default(uuid())
+  id                String            @id @default(uuid())
   organizationId    String
   companyId         String?
   countryId         String?
   customerId        String
   name              String
-  stage             OpportunityStage @default(NEW)
-  estimatedValue    Decimal?         @db.Decimal(12, 2)
+  stage             OpportunityStage  @default(NEW)
+  estimatedValue    Decimal?          @db.Decimal(12, 2)
   expectedCloseDate DateTime?
   notes             String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  /// Set only by /v1/leads/intake — MANUAL (the default) covers every
+  /// Opportunity created through the normal in-app form.
+  source            OpportunitySource @default(MANUAL)
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  /// Meta/WhatsApp's own lead/click id, once those channels are wired up — unused by WEBSITE.
+  externalLeadId    String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
   createdBy         String
   updatedBy         String
   deletedAt         DateTime?
@@ -1236,6 +1257,32 @@ model Opportunity {
   @@index([companyId])
   @@index([countryId])
   @@map("opportunities")
+}
+
+/// A per-Company secret authenticating public lead-intake submissions from
+/// that Company's own website — see DECISIONS.md "Public lead intake:
+/// website forms, Phase 5 (lead attribution)". Deliberately carries NO RLS
+/// policy: /v1/leads/intake is a public, unauthenticated route with no
+/// session to derive an org from — the key itself IS the identifier, same
+/// reasoning DATABASE.md already documents for `currencies`/`roles`/
+/// `permissions`/`user_preferences`. Protected by being an unguessable
+/// random secret, looked up only by exact match, never listed publicly.
+model LeadIntakeKey {
+  id             String   @id @default(uuid())
+  organizationId String
+  companyId      String
+  key            String   @unique
+  label          String
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  createdBy      String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  company      Company      @relation(fields: [companyId], references: [id])
+
+  @@index([organizationId])
+  @@index([companyId])
+  @@map("lead_intake_keys")
 }
 
 enum InvoiceStatus {

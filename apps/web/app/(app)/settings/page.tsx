@@ -8,6 +8,7 @@ import { CountriesTab } from "./countries-tab";
 import { BrandsTab } from "./brands-tab";
 import { WebsitesTab } from "./websites-tab";
 import { IntegrationsTab } from "./integrations-tab";
+import { LeadIntakeTab } from "./lead-intake-tab";
 
 interface Organization {
   name: string;
@@ -71,6 +72,15 @@ interface Integration {
   lastError: string | null;
 }
 
+interface LeadIntakeKey {
+  id: string;
+  key: string;
+  label: string;
+  enabled: boolean;
+  company: { name: string };
+  createdAt: string;
+}
+
 /** apiFetch throws on non-2xx — used here to gracefully hide Owner/Admin-only tabs for everyone else, rather than showing a broken page. */
 async function fetchOrNull<T>(path: string): Promise<T | null> {
   try {
@@ -82,17 +92,19 @@ async function fetchOrNull<T>(path: string): Promise<T | null> {
 }
 
 export default async function SettingsPage() {
-  const [org, members, grants, currencies, companies, countries, brands, websites, integrations] = await Promise.all([
-    apiFetch<Organization>("/v1/organizations/me"),
-    fetchOrNull<Member[]>("/v1/members"),
-    fetchOrNull<Grant[]>("/v1/deletion-grants"),
-    fetchOrNull<Currency[]>("/v1/currencies"),
-    fetchOrNull<Company[]>("/v1/companies"),
-    fetchOrNull<Country[]>("/v1/countries"),
-    fetchOrNull<Brand[]>("/v1/brands"),
-    fetchOrNull<Website[]>("/v1/websites"),
-    fetchOrNull<Integration[]>("/v1/marketing-integrations"),
-  ]);
+  const [org, members, grants, currencies, companies, countries, brands, websites, integrations, leadIntakeKeys] =
+    await Promise.all([
+      apiFetch<Organization>("/v1/organizations/me"),
+      fetchOrNull<Member[]>("/v1/members"),
+      fetchOrNull<Grant[]>("/v1/deletion-grants"),
+      fetchOrNull<Currency[]>("/v1/currencies"),
+      fetchOrNull<Company[]>("/v1/companies"),
+      fetchOrNull<Country[]>("/v1/countries"),
+      fetchOrNull<Brand[]>("/v1/brands"),
+      fetchOrNull<Website[]>("/v1/websites"),
+      fetchOrNull<Integration[]>("/v1/marketing-integrations"),
+      fetchOrNull<LeadIntakeKey[]>("/v1/lead-intake-keys"),
+    ]);
   const globalDomainAvailable = currencies && companies && countries && brands && websites;
 
   return (
@@ -111,6 +123,7 @@ export default async function SettingsPage() {
           {globalDomainAvailable && <TabsTrigger value="brands">Brands</TabsTrigger>}
           {globalDomainAvailable && <TabsTrigger value="websites">Websites</TabsTrigger>}
           {integrations && <TabsTrigger value="integrations">Integrations</TabsTrigger>}
+          {leadIntakeKeys && companies && <TabsTrigger value="lead-intake">Lead Intake</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="organization">
@@ -149,6 +162,12 @@ export default async function SettingsPage() {
         {integrations && (
           <TabsContent value="integrations">
             <IntegrationsTab integrations={integrations} />
+          </TabsContent>
+        )}
+
+        {leadIntakeKeys && companies && (
+          <TabsContent value="lead-intake">
+            <LeadIntakeTab keys={leadIntakeKeys} companies={companies} />
           </TabsContent>
         )}
       </Tabs>

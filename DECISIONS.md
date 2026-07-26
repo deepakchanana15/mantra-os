@@ -4,6 +4,24 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-26 — Public lead intake: website forms, Phase 5 (lead attribution)
+
+**Context:** First piece of the "lead attribution" phase from the marketing-analytics plan (Meta → Email → Google → Bing → lead attribution). The user runs five country websites on three different platforms (Shopify for the US, WordPress for AU, custom Next.js for DE/NL/CA) and wants a form submission on any of them to become an Opportunity in MantraOS automatically, tagged with which ad/campaign drove it. Scoped to website forms only for this entry — Meta Lead Ads and WhatsApp both need their own additional Meta review/infrastructure (a `leads_retrieval` permission, and a full WhatsApp Business API account respectively) and are follow-on phases, not blocked on anything built here.
+
+**No new "Lead" entity — extended `Opportunity` instead:** every form submission's end goal is already an Opportunity, so a separate intermediate object would just be redundant lifecycle to manage. Added `source` (`MANUAL`/`WEBSITE`/`META_LEAD_AD`/`WHATSAPP`, default `MANUAL` so every existing and in-app-created Opportunity is unaffected), `utmSource`/`utmMedium`/`utmCampaign`, and `externalLeadId` (unused today, reserved for Meta/WhatsApp's own click/lead ids later).
+
+**One shared public endpoint, not five platform-specific integrations:** `POST /v1/leads/intake` is the same regardless of whether the caller is Shopify, WordPress, or a custom Next.js site — each site just needs a small snippet that POSTs form data (plus captured UTM parameters) to this one endpoint. Authenticated by a per-Company `LeadIntakeKey` rather than a MantraOS session, since a website visitor obviously isn't a logged-in user. On submission: find-or-create the Customer by email (scoped to that key's Company, so a US visitor and a matching-email AU visitor don't collide), then create an Opportunity tagged with the source/UTM/company.
+
+**`LeadIntakeKey` deliberately carries no RLS policy** — the public endpoint has no session to derive an org from before it even knows which organization a submission belongs to; the key itself is the only signal available. Same reasoning DATABASE.md already documents for `currencies`/`roles`/`permissions`/`user_preferences`: protected by being an unguessable random secret, looked up only by exact match, and by the admin-facing repository (`LeadIntakeKeysRepository`) explicitly filtering every query by `organizationId` itself rather than relying on the database to do it. `lead_intake_keys` (the permission resource, gating who can create/view/delete keys in Settings) is Owner/Admin-only even for reads, matching `marketing_integrations`' sensitivity — it's a real credential, just one meant to be pasted into external site code rather than kept fully secret from your own team.
+
+**Spam protection is deliberately minimal for V1:** a honeypot field (a hidden form input real visitors never fill; bots often auto-fill every field they find — trips it silently, responds like success, creates nothing) plus a per-Company rate limit (30 website-sourced Opportunities/hour) computed from existing Opportunity rows rather than a new counter table. No CAPTCHA, no external anti-spam service — revisit only if real abuse shows up, not speculatively now.
+
+**Migration generated via `--from-url`, not `--from-migrations`/`--shadow-database-url`:** the previous batch's incident (see "Ad platform integrations, Phase 1: Meta") happened specifically because `--shadow-database-url` was pointed at the live dev database. `--from-url` introspects a database's actual current state read-only — no shadow database, no replay, no reset risk — and was used for this migration's diff instead. Confirmed dev data was untouched before and after.
+
+**Reversibility:** High. The schema fields are all optional/defaulted, so nothing about the manual in-app Opportunity flow changed. The intake endpoint and key model are a self-contained addition — removing them later means dropping one table and four columns, not touching anything else.
+
+---
+
 ## 2026-07-24 — Ad platform integrations, Phase 1: Meta
 
 **Context:** Following the phased marketing-analytics plan (Meta → Email → Google → Bing), Email/Brevo shipped first since it needed no external approval. This entry covers Phase 1: connecting Meta (Facebook/Instagram) Ads so campaign spend/performance shows up on the Dashboard, using a shared foundation meant to be reused by Google/Bing later without rework.

@@ -13,6 +13,11 @@ describe("rolesFor", () => {
     expect(rolesFor("ad_campaign_metrics", "read")).toEqual(["owner", "admin", "manager", "member", "viewer"]);
   });
 
+  it("restricts lead_intake_keys to Owner/Admin even for reads (it's a public-facing secret per website)", () => {
+    expect(rolesFor("lead_intake_keys", "read")).toEqual(["owner", "admin"]);
+    expect(rolesFor("lead_intake_keys", "create")).toEqual(["owner", "admin"]);
+  });
+
   it("restricts deletion_grants:manage to Owner only — the delegation power itself", () => {
     expect(rolesFor("deletion_grants", "manage")).toEqual(["owner"]);
   });

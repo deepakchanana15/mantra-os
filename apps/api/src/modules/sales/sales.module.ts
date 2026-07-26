@@ -3,6 +3,10 @@ import { InventoryModule } from "../inventory/inventory.module";
 import { InvoicesController } from "./invoices/invoices.controller";
 import { InvoicesRepository } from "./invoices/invoices.repository";
 import { InvoicesService } from "./invoices/invoices.service";
+import { LeadIntakeController } from "./leads/lead-intake.controller";
+import { LeadIntakeKeysController } from "./leads/lead-intake-keys.controller";
+import { LeadIntakeKeysRepository } from "./leads/lead-intake-keys.repository";
+import { LeadIntakeKeysService } from "./leads/lead-intake-keys.service";
 import { OpportunitiesController } from "./opportunities/opportunities.controller";
 import { OpportunitiesRepository } from "./opportunities/opportunities.repository";
 import { OpportunitiesService } from "./opportunities/opportunities.service";
@@ -24,6 +28,8 @@ import { ShipmentsService } from "./shipments/shipments.service";
     ShipmentsController,
     OpportunitiesController,
     InvoicesController,
+    LeadIntakeKeysController,
+    LeadIntakeController,
   ],
   providers: [
     QuotesRepository,
@@ -36,6 +42,8 @@ import { ShipmentsService } from "./shipments/shipments.service";
     OpportunitiesService,
     InvoicesRepository,
     InvoicesService,
+    LeadIntakeKeysRepository,
+    LeadIntakeKeysService,
   ],
 })
 export class SalesModule {}

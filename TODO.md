@@ -128,9 +128,21 @@ See DECISIONS.md "Ad platform integrations, Phase 1: Meta" for full rationale, i
 - [x] New Settings → Integrations tab (connect Meta with a System User token + ad account ID, see connection status, Sync now / Disconnect); Dashboard and Reports both show a new "Marketing performance" widget (spend/impressions/clicks/CTR per channel, MTD).
 - [x] **Bug found and fixed**: a failed sync's error status/message was being recorded then immediately rolled back, because the recording write and the thrown exception shared the same request-scoped transaction. Fixed by writing the failure through its own independent transaction. Caught by a dedicated smoke test, not by chance.
 - [x] Full local verification: unit tests, full `verify-*.js` suite, a dedicated 10-check Meta-integration smoke test (connect/list/RBAC-gating/sync-failure-recording/disconnect), and a direct check of the cron endpoint's auth + org-iteration behavior.
-- [ ] Not yet deployed to prod — migration, RLS, RBAC re-seed, `CRON_SECRET` env var, and Vercel Cron registration still pending.
-- [ ] Waiting on a real Meta System User access token + ad account ID from the user to test an actual live sync (everything so far verified against a fake token, confirming failure-handling works, not real data flow).
+- [x] Deployed to prod — migration, RLS, RBAC re-seed, `CRON_SECRET` env var all set, deploy confirmed healthy (a real request, not just a successful build), cron endpoint verified live (200 with correct secret, 401 without).
+- [ ] Still waiting on the user's Meta Business Portfolio verification to clear before a real System User token can be generated — blocked on Meta's own review, not on anything in MantraOS. Everything built so far verified against a fake token, confirming failure-handling works, not real data flow yet.
 - [ ] Google/Bing are follow-on phases reusing this same schema/UI shape — not started.
+
+## 2026-07-26 — Public lead intake: website forms, Phase 5 (lead attribution)
+
+See DECISIONS.md "Public lead intake: website forms, Phase 5 (lead attribution)" for full rationale, including why `--from-url` was used for this migration instead of the `--shadow-database-url` approach that caused the earlier Meta-batch incident.
+
+- [x] `Opportunity` gained `source` (MANUAL/WEBSITE/META_LEAD_AD/WHATSAPP, defaults to MANUAL — no existing rows affected)/UTM/`externalLeadId` attribution fields; no separate "Lead" entity — every submission's end goal is already an Opportunity.
+- [x] New `LeadIntakeKey` (per-Company secret, Owner/Admin-only, deliberately no RLS — see DATABASE.md) and public `POST /v1/leads/intake` — find-or-creates a Customer by email, creates an Opportunity tagged with source/UTM/company. Honeypot field + a 30/hour per-Company rate limit for spam protection.
+- [x] New Settings → Lead Intake tab — create/list/delete keys per Company, key value shown with a copy button (unlike Marketing Integrations' tokens, these need to be pasted into external site code repeatedly, not just set once).
+- [x] Full local verification: unit tests, full `verify-*.js` suite, an 11-check dedicated smoke test (create/list/RBAC-gating key management, wrong-key rejection, honeypot no-op, real submission creating Customer+Opportunity with correct attribution, duplicate-email reuse, key deletion).
+- [ ] Not yet deployed to prod.
+- [ ] Per-site integration snippets not written yet — Next.js (DE/NL/CA) first since it's zero-dependency, then Shopify (USA), then WordPress (AU) once we know which forms plugin it uses.
+- [ ] Meta Lead Ads and WhatsApp lead capture are explicitly out of scope for this entry — both need their own additional Meta setup (a `leads_retrieval` permission review, and a full WhatsApp Business API account respectively), follow-on phases once website intake is proven out.
 
 ## Later
 
