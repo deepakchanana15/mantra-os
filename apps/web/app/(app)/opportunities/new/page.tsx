@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -17,11 +17,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CompanyCountrySelect } from "@/components/domain/company-country-select";
 
-interface Customer {
-  id: string;
-  name: string;
-}
-
 const STAGES = [
   { value: "NEW", label: "New" },
   { value: "QUALIFIED", label: "Qualified" },
@@ -33,8 +28,9 @@ const STAGES = [
 
 export default function NewOpportunityPage() {
   const router = useRouter();
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [customerId, setCustomerId] = useState<string | undefined>(undefined);
+  const [leadName, setLeadName] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
   const [name, setName] = useState("");
   const [stage, setStage] = useState("NEW");
   const [estimatedValue, setEstimatedValue] = useState("");
@@ -44,23 +40,20 @@ export default function NewOpportunityPage() {
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/v1/customers").then((res) => (res.ok ? res.json() : [])).then(setCustomers);
-  }, []);
-
-  const selectedCustomer = customers.find((c) => c.id === customerId);
   const selectedStage = STAGES.find((s) => s.value === stage);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!customerId) return;
+    if (!leadName || !leadEmail) return;
     setLoading(true);
     try {
       const res = await fetch("/api/v1/opportunities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerId,
+          leadName,
+          leadEmail,
+          leadPhone: leadPhone || undefined,
           name,
           stage,
           estimatedValue: estimatedValue ? Number(estimatedValue) : undefined,
@@ -75,7 +68,11 @@ export default function NewOpportunityPage() {
         toast.error(data.error?.message ?? "Couldn't create the opportunity.");
         return;
       }
-      toast.success("Opportunity created");
+      toast.success(
+        data.customerId
+          ? "Opportunity created and linked to the matching existing customer"
+          : "Opportunity created",
+      );
       router.push("/opportunities");
     } finally {
       setLoading(false);
@@ -95,26 +92,35 @@ export default function NewOpportunityPage() {
       <Card className="max-w-xl">
         <CardContent className="p-5">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label>Customer</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" type="button" className="w-full justify-start">
-                    {selectedCustomer?.name ?? "Select a customer"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-64 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
-                  {customers.map((c) => (
-                    <DropdownMenuItem key={c.id} onSelect={() => setCustomerId(c.id)}>
-                      {c.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
+              <p className="text-xs text-faint">
+                Who this opportunity is with. If the email matches an existing customer, it links automatically —
+                otherwise it&apos;s saved as a lead until you convert it.
+              </p>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="leadName">Contact name</Label>
+                <Input id="leadName" required value={leadName} onChange={(e) => setLeadName(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="leadEmail">Email</Label>
+                  <Input
+                    id="leadEmail"
+                    type="email"
+                    required
+                    value={leadEmail}
+                    onChange={(e) => setLeadEmail(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="leadPhone">Phone</Label>
+                  <Input id="leadPhone" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} />
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Opportunity name</Label>
               <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
 
@@ -172,7 +178,7 @@ export default function NewOpportunityPage() {
             />
 
             <div className="mt-2 flex gap-2">
-              <Button type="submit" disabled={loading || !customerId}>
+              <Button type="submit" disabled={loading || !leadName || !leadEmail}>
                 {loading ? "Creating…" : "Create opportunity"}
               </Button>
               <Link href="/opportunities">

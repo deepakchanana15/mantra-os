@@ -40,12 +40,36 @@ export class OpportunitiesRepository extends BaseRepository {
     return opportunity;
   }
 
+  /**
+   * No customer dropdown here — see DECISIONS.md "Opportunities no longer
+   * require picking a Customer". A caller supplies either a known
+   * `customerId` directly, or a lead's own `leadName`/`leadEmail`/
+   * `leadPhone`; when only the latter is given, an existing Customer with
+   * a matching email is linked automatically (same rule `/v1/leads/intake`
+   * already uses) — otherwise the Opportunity stays unlinked, exactly like
+   * a website-sourced lead.
+   */
   async create(dto: CreateOpportunityDto) {
+    if (!dto.customerId && !dto.leadEmail) {
+      throw new BadRequestException("Provide either a customerId or a leadName/leadEmail to identify who this opportunity is with");
+    }
+
+    let customerId = dto.customerId;
+    if (!customerId && dto.leadEmail) {
+      const existingCustomer = await this.db.customer.findFirst({
+        where: { organizationId: this.organizationId, email: dto.leadEmail, deletedAt: null },
+      });
+      customerId = existingCustomer?.id;
+    }
+
     const code = await this.businessCode.next("opportunity", { companyId: dto.companyId, countryId: dto.countryId });
     return this.db.opportunity.create({
       data: {
         code,
-        customerId: dto.customerId,
+        customerId,
+        leadName: customerId ? undefined : dto.leadName,
+        leadEmail: customerId ? undefined : dto.leadEmail,
+        leadPhone: customerId ? undefined : dto.leadPhone,
         name: dto.name,
         stage: dto.stage,
         estimatedValue: dto.estimatedValue,

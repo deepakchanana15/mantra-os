@@ -4,6 +4,18 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-27 — Opportunities no longer require picking a Customer
+
+**Context:** The manual in-app "New Opportunity" form was explicitly left untouched during the Leads/Customers separation work — it still required selecting an existing Customer from a dropdown. The user pushed back on this directly: at real scale that dropdown is a long, unusable list, and it doesn't reflect how the business actually works — "a new person who has never been a customer[...] hence for creating an opportunity selecting customer from the long list of customers is not viable." A returning customer starting a new season's order is also just a new Opportunity, not automatically re-linked by the person creating it.
+
+**Customer dropdown removed; replaced with Contact Name/Email/Phone, same shape `/v1/leads/intake` already uses:** `CreateOpportunityDto.customerId` is now optional. The form instead asks for the opportunity's own contact details, and the server resolves an existing Customer **by email match only** (not phone — see below) before falling back to `leadName`/`leadEmail`/`leadPhone`, exactly the same resolution `OpportunitiesRepository.create()` and `/v1/leads/intake` now share. `customerId` can still be supplied directly (e.g. by a future "link to this exact customer" affordance) — this isn't removed, just no longer the only path, and no longer surfaced as a long dropdown.
+
+**Email-only matching, not email-or-phone:** the user offered both as options; email was chosen because it's a much more reliable unique identifier here — this business's customers include clubs/academies/schools that often share one office phone line across many different contacts, so phone-based matching risked silently merging unrelated people onto one Customer record. A `BadRequestException` is thrown if neither a `customerId` nor a `leadEmail` is provided — an Opportunity always needs to be **someone**.
+
+**Reversibility:** Medium. The API accepts both shapes (explicit `customerId` or lead fields), so nothing that already integrates against `POST /v1/opportunities` breaks. Reintroducing a customer picker later (e.g. autocomplete-search instead of a full dropdown) is a frontend-only change.
+
+---
+
 ## 2026-07-27 — AU form gains Customer Type + Product Interest, stored as free text
 
 **Context:** The user redesigned the AU WordPress form themselves (Contact Form 7), adding a phone field plus two new dropdowns — "Select Customer Type" (Individual Customer/Cricket Club/Cricket Academy/School-College/Retail Store/Distributor/Corporate/Other) and "Product Interested In" (a fixed product-category list) — and asked for both to show up in MantraOS as real, filterable fields rather than buried in the message text.
