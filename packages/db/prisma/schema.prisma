@@ -71,6 +71,7 @@ model Organization {
   attachments           Attachment[]
   supplierPhones        SupplierPhone[]
   leadIntakeKeys        LeadIntakeKey[]
+  businessCodeCounters  DailyBusinessCodeCounter[]
 
   @@map("organizations")
 }
@@ -425,6 +426,11 @@ model Customer {
   /// scoping and aren't backfilled, set going forward.
   companyId       String?
   countryId       String?
+  /// Human-readable business ID, e.g. "MS-AU-20260726-01" — see
+  /// DECISIONS.md "Business ID codes for Customers and Opportunities".
+  /// Nullable: existing records predate this and aren't backfilled, set
+  /// going forward on every create.
+  code            String?
   name            String
   type            CustomerType @default(USER)
   email           String?
@@ -447,6 +453,7 @@ model Customer {
   invoices       Invoice[]
   supportTickets SupportTicket[]
 
+  @@unique([organizationId, code])
   @@index([organizationId])
   @@index([organizationId, deletedAt])
   @@index([companyId])
@@ -1220,13 +1227,28 @@ enum OpportunitySource {
   WHATSAPP
 }
 
-/// Pre-Quote sales pipeline stage — see DECISIONS.md "Opportunity linked to Quote".
+/// Pre-Quote sales pipeline stage — see DECISIONS.md "Opportunity linked to
+/// Quote" and "Leads are not Customers" (Phase 5 follow-up). `customerId` is
+/// nullable: a lead that just reached out isn't a Customer yet — that's
+/// exactly the distinction the business wants preserved, since a paying
+/// Customer and someone who "just said hello" must never mix in the same
+/// pool. `leadName`/`leadEmail`/`leadPhone` carry the prospect's own
+/// contact details for as long as no Customer is linked; POST
+/// /v1/opportunities/:id/convert-to-customer is what promotes one into a
+/// real Customer (find-or-create by email), always a deliberate action —
+/// see DECISIONS.md for why this is manual, not automatic on stage change.
 model Opportunity {
   id                String            @id @default(uuid())
   organizationId    String
   companyId         String?
   countryId         String?
-  customerId        String
+  /// Human-readable business ID, e.g. "MS-AU-20260726-01" — see
+  /// DECISIONS.md "Business ID codes for Customers and Opportunities".
+  /// Nullable: existing records predate this and aren't backfilled, set
+  /// going forward on every create (manual and intake alike).
+  code              String?
+  /// Null until converted — see the model-level comment.
+  customerId        String?
   name              String
   stage             OpportunityStage  @default(NEW)
   estimatedValue    Decimal?          @db.Decimal(12, 2)
@@ -1240,6 +1262,12 @@ model Opportunity {
   utmCampaign       String?
   /// Meta/WhatsApp's own lead/click id, once those channels are wired up — unused by WEBSITE.
   externalLeadId    String?
+  /// The prospect's own name/email/phone, captured directly — populated
+  /// when there's no Customer yet (every intake-created Opportunity), kept
+  /// even after conversion as a record of what was originally submitted.
+  leadName          String?
+  leadEmail         String?
+  leadPhone         String?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   createdBy         String
@@ -1249,9 +1277,10 @@ model Opportunity {
   organization Organization @relation(fields: [organizationId], references: [id])
   company      Company?     @relation(fields: [companyId], references: [id])
   country      Country?     @relation(fields: [countryId], references: [id])
-  customer     Customer     @relation(fields: [customerId], references: [id])
+  customer     Customer?    @relation(fields: [customerId], references: [id])
   quotes       Quote[]
 
+  @@unique([organizationId, code])
   @@index([organizationId])
   @@index([customerId])
   @@index([companyId])
@@ -1438,12 +1467,36 @@ model OrganizationSettings {
   timezone       String   @default("UTC")
   currency       String   @default("USD")
   dateFormat     String   @default("YYYY-MM-DD")
+  /// Short brand code used as the prefix of every Customer/Opportunity
+  /// business ID, e.g. "MS" -> "MS-AU-20260726-01" — see DECISIONS.md
+  /// "Business ID codes for Customers and Opportunities".
+  codePrefix     String   @default("ORG")
   updatedAt      DateTime @updatedAt
   updatedBy      String
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
   @@map("organization_settings")
+}
+
+/// Backs BusinessCodeService's atomic daily sequence per (organization,
+/// record type, country) — e.g. scope "opportunity:AU" on dateKey
+/// "20260726" — see DECISIONS.md "Business ID codes for Customers and
+/// Opportunities". Written via a single `INSERT ... ON CONFLICT DO UPDATE
+/// ... RETURNING`, which is atomic under Postgres regardless of the
+/// surrounding transaction's isolation level, so concurrent creates never
+/// collide on the same number.
+model DailyBusinessCodeCounter {
+  id             String @id @default(uuid())
+  organizationId String
+  scope          String
+  dateKey        String
+  count          Int    @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, scope, dateKey])
+  @@map("daily_business_code_counters")
 }
 
 model UserPreferences {

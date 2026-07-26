@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Headers, HttpCode, Post, UnauthorizedException } from "@nestjs/common";
-import { CustomerType, OpportunitySource } from "@mantra-os/db";
+import { OpportunitySource } from "@mantra-os/db";
+import { BusinessCodeService } from "../../../common/business-code/business-code.service";
 import { SkipTenantContext } from "../../../common/decorators/skip-tenant-context.decorator";
 import { TenantContextService } from "../../../common/context/tenant-context.service";
 import { PrismaService } from "../../../prisma/prisma.service";
@@ -15,6 +16,14 @@ const RATE_LIMIT_PER_HOUR = 30;
  * `LeadIntakeKey` (see that model's schema comment for why it carries no
  * RLS). See DECISIONS.md "Public lead intake: website forms, Phase 5 (lead
  * attribution)".
+ *
+ * Deliberately does NOT create a Customer — a person who just submitted a
+ * form isn't a paying Customer yet, and mixing the two pools was exactly
+ * the problem this was built to avoid (see DECISIONS.md "Leads are not
+ * Customers"). If the email already matches an existing real Customer
+ * (someone who's bought before, reaching out again), the new Opportunity
+ * links to them directly; otherwise it stays unlinked, carrying the
+ * prospect's own name/email/phone until a human explicitly converts it.
  */
 @Controller("v1/leads")
 @SkipTenantContext()
@@ -22,6 +31,7 @@ export class LeadIntakeController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tenantContext: TenantContextService,
+    private readonly businessCode: BusinessCodeService,
   ) {}
 
   @Post("intake")
@@ -61,29 +71,25 @@ export class LeadIntakeController {
             throw new BadRequestException("Too many submissions from this site right now — try again later");
           }
 
-          let customer = await tx.customer.findFirst({
+          // Only link to an existing Customer if this email already belongs
+          // to one — a past buyer reaching out again. A brand-new inquiry
+          // never creates a Customer; it stays a bare lead until someone
+          // converts it (POST /v1/opportunities/:id/convert-to-customer).
+          const existingCustomer = await tx.customer.findFirst({
             where: { organizationId, email: dto.email, deletedAt: null },
           });
-          if (!customer) {
-            customer = await tx.customer.create({
-              data: {
-                organizationId,
-                companyId,
-                name: dto.name,
-                email: dto.email,
-                phone: dto.phone,
-                type: CustomerType.USER,
-                createdBy: SYSTEM_ACTOR,
-                updatedBy: SYSTEM_ACTOR,
-              },
-            });
-          }
+
+          const code = await this.businessCode.next("opportunity", { companyId });
 
           await tx.opportunity.create({
             data: {
               organizationId,
               companyId,
-              customerId: customer.id,
+              code,
+              customerId: existingCustomer?.id,
+              leadName: existingCustomer ? undefined : dto.name,
+              leadEmail: existingCustomer ? undefined : dto.email,
+              leadPhone: existingCustomer ? undefined : dto.phone,
               name: `Website lead — ${dto.name}`,
               source: OpportunitySource.WEBSITE,
               utmSource: dto.utmSource,

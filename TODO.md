@@ -137,12 +137,27 @@ See DECISIONS.md "Ad platform integrations, Phase 1: Meta" for full rationale, i
 See DECISIONS.md "Public lead intake: website forms, Phase 5 (lead attribution)" for full rationale, including why `--from-url` was used for this migration instead of the `--shadow-database-url` approach that caused the earlier Meta-batch incident.
 
 - [x] `Opportunity` gained `source` (MANUAL/WEBSITE/META_LEAD_AD/WHATSAPP, defaults to MANUAL — no existing rows affected)/UTM/`externalLeadId` attribution fields; no separate "Lead" entity — every submission's end goal is already an Opportunity.
-- [x] New `LeadIntakeKey` (per-Company secret, Owner/Admin-only, deliberately no RLS — see DATABASE.md) and public `POST /v1/leads/intake` — find-or-creates a Customer by email, creates an Opportunity tagged with source/UTM/company. Honeypot field + a 30/hour per-Company rate limit for spam protection.
+- [x] New `LeadIntakeKey` (per-Company secret, Owner/Admin-only, deliberately no RLS — see DATABASE.md) and public `POST /v1/leads/intake`. Original version find-or-created a Customer by email — **superseded same day, see next section**.
 - [x] New Settings → Lead Intake tab — create/list/delete keys per Company, key value shown with a copy button (unlike Marketing Integrations' tokens, these need to be pasted into external site code repeatedly, not just set once).
 - [x] Full local verification: unit tests, full `verify-*.js` suite, an 11-check dedicated smoke test (create/list/RBAC-gating key management, wrong-key rejection, honeypot no-op, real submission creating Customer+Opportunity with correct attribution, duplicate-email reuse, key deletion).
-- [ ] Not yet deployed to prod.
-- [ ] Per-site integration snippets not written yet — Next.js (DE/NL/CA) first since it's zero-dependency, then Shopify (USA), then WordPress (AU) once we know which forms plugin it uses.
+- [x] Deployed to prod; live-tested against the real AU WordPress site (Contact Form 7 `wpcf7_mail_sent` hook posting to `/v1/leads/intake`) — confirmed a real submission created both a Customer and an Opportunity in prod.
+- [ ] Per-site integration snippets not written yet for USA (Shopify) or DE/NL/CA (custom Next.js) — AU (WordPress) is the only one live so far.
 - [ ] Meta Lead Ads and WhatsApp lead capture are explicitly out of scope for this entry — both need their own additional Meta setup (a `leads_retrieval` permission review, and a full WhatsApp Business API account respectively), follow-on phases once website intake is proven out.
+
+## 2026-07-26 — Leads are not Customers + Business ID codes
+
+See DECISIONS.md "Leads are not Customers" and "Business ID codes for Customers and Opportunities" for full rationale. Triggered by testing the AU integration above: lead-intake was find-or-creating a Customer per submission, mixing not-yet-paying prospects into the same pool as real Customers.
+
+- [x] `Opportunity.customerId` made nullable; added `leadName`/`leadEmail`/`leadPhone` for the prospect's own contact details while unconverted.
+- [x] `/v1/leads/intake` no longer creates a Customer for a new inquiry — only links to an existing Customer if the email already matches one; otherwise stays a bare lead.
+- [x] New `POST /v1/opportunities/:id/convert-to-customer` — manual, deliberate action (never automatic on stage change), creates a Customer from the lead's own details and links it.
+- [x] Opportunities list/frontend: shows lead name/email/phone and source badge when there's no linked Customer; "Convert to Customer" action in place of "Create Quote" until conversion happens.
+- [x] New human-readable business IDs on Customer and Opportunity (`MS-AU-20260726-01` — brand prefix + country + date + daily sequence), via new `BusinessCodeService` + `DailyBusinessCodeCounter` table. Per-company/country prefix, separate counters per entity type, atomic under concurrency.
+- [x] Full local verification: unit tests, both apps' typecheck + build, a 22-check dedicated smoke test (manual create codes, sequence increment, new-email intake stays lead-only, existing-Customer-email intake links directly, convert-to-customer, re-conversion rejected), full `verify-frontend-e2e.js` suite (19/19).
+- [x] Found and fixed during verification: `verify-frontend-e2e.js`'s test-org cleanup didn't delete `daily_business_code_counters` rows before deleting the org, blocking on the new table's FK — fixed, and two dangling test orgs left over from the broken run were cleaned out of dev.
+- [ ] Not yet deployed to prod.
+- [ ] AU WordPress form still needs a phone field added and its category dropdown options changed (per the user's ask) — separate from the schema/backend work above.
+- [ ] Test "Deepak Chanana" Customer/Opportunity from the AU live test still sitting in prod — deletion deferred pending confirmation.
 
 ## Later
 

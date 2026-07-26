@@ -2,15 +2,22 @@ import Link from "next/link";
 import { FileText, Plus } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
+import { ConvertToCustomerButton } from "@/components/domain/convert-to-customer-button";
 
 interface Opportunity {
   id: string;
+  code: string | null;
   name: string;
   stage: string;
   estimatedValue: string | null;
-  customer: { name: string };
+  customer: { name: string } | null;
+  leadName: string | null;
+  leadEmail: string | null;
+  leadPhone: string | null;
+  source: string;
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -20,6 +27,13 @@ const STAGE_LABELS: Record<string, string> = {
   NEGOTIATION: "Negotiation",
   WON: "Won",
   LOST: "Lost",
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  MANUAL: "Manual",
+  WEBSITE: "Website",
+  META_LEAD_AD: "Meta lead ad",
+  WHATSAPP: "WhatsApp",
 };
 
 export default async function OpportunitiesPage() {
@@ -44,42 +58,66 @@ export default async function OpportunitiesPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>ID</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Customer</TableHead>
+              <TableHead>Customer / Lead</TableHead>
+              <TableHead>Source</TableHead>
               <TableHead>Stage</TableHead>
               <TableHead>Estimated value</TableHead>
-              <TableHead className="w-48" />
+              <TableHead className="w-64" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {opportunities.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-sm text-faint">
+                <TableCell colSpan={7} className="py-10 text-center text-sm text-faint">
                   No opportunities yet.
                 </TableCell>
               </TableRow>
             ) : (
-              opportunities.map((opportunity) => (
-                <TableRow key={opportunity.id}>
-                  <TableCell className="font-medium text-foreground">{opportunity.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{opportunity.customer.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{STAGE_LABELS[opportunity.stage] ?? opportunity.stage}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {opportunity.estimatedValue ? `$${opportunity.estimatedValue}` : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Link href={`/quotes/new?opportunityId=${opportunity.id}`}>
-                        <Button variant="outline" size="sm">
-                          <FileText className="h-3.5 w-3.5" />
-                          Create Quote
-                        </Button>
-                      </Link>
-                      <DeleteEntityButton apiPath={`/api/v1/opportunities/${opportunity.id}`} entityLabel="Opportunity" />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              opportunities.map((opportunity) => {
+                const leadName = opportunity.customer?.name ?? opportunity.leadName ?? "Unknown";
+                return (
+                  <TableRow key={opportunity.id}>
+                    <TableCell className="font-mono text-xs text-faint">{opportunity.code ?? "—"}</TableCell>
+                    <TableCell className="font-medium text-foreground">{opportunity.name}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {opportunity.customer ? (
+                        opportunity.customer.name
+                      ) : (
+                        <div className="flex flex-col">
+                          <span>{opportunity.leadName ?? "—"}</span>
+                          <span className="text-xs text-faint">
+                            {[opportunity.leadEmail, opportunity.leadPhone].filter(Boolean).join(" · ")}
+                          </span>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="neutral">{SOURCE_LABELS[opportunity.source] ?? opportunity.source}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{STAGE_LABELS[opportunity.stage] ?? opportunity.stage}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {opportunity.estimatedValue ? `$${opportunity.estimatedValue}` : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {opportunity.customer ? (
+                          <Link href={`/quotes/new?opportunityId=${opportunity.id}`}>
+                            <Button variant="outline" size="sm">
+                              <FileText className="h-3.5 w-3.5" />
+                              Create Quote
+                            </Button>
+                          </Link>
+                        ) : (
+                          <ConvertToCustomerButton opportunityId={opportunity.id} leadName={leadName} />
+                        )}
+                        <DeleteEntityButton apiPath={`/api/v1/opportunities/${opportunity.id}`} entityLabel="Opportunity" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

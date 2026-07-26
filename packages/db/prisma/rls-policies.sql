@@ -330,3 +330,11 @@ ALTER TABLE "ad_campaign_metrics" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON "ad_campaign_metrics"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+-- ── Business ID codes for Customers and Opportunities ───────────────────
+
+ALTER TABLE "daily_business_code_counters" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "daily_business_code_counters" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "daily_business_code_counters"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));

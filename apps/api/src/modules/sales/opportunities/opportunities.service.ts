@@ -36,4 +36,8 @@ export class OpportunitiesService {
       softDelete: () => this.opportunities.softDelete(id),
     });
   }
+
+  convertToCustomer(id: string) {
+    return this.opportunities.convertToCustomer(id);
+  }
 }

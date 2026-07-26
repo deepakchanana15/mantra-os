@@ -4,6 +4,40 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-26 — Business ID codes for Customers and Opportunities: `MS-AU-YYYYMMDD-01`
+
+**Context:** Following the Leads/Customers separation below, the user asked for every Customer and Opportunity to carry a human-readable business ID — a scannable reference for phone calls, invoices, and support conversations, not just an opaque UUID. Format requested: `MS-20260726-01` (brand prefix, date, daily sequence).
+
+**Per-company prefix, not one fixed brand code:** the user has six Company entities (US, Canada, Australia, New Zealand, Netherlands, Germany), and chose a per-company prefix (`MS-AU-…`, `MS-USA-…`) over one flat `MS-…` for everyone — this lets a code alone tell you which country/entity a record belongs to. In practice each Company here maps 1:1 to a Country, so the prefix is built from `Country.isoCode` (already on the schema) rather than adding a new per-company code field: `{org's codePrefix}-{country isoCode}-{YYYYMMDD}-{sequence}`. A record with neither `companyId` nor `countryId` set falls back to `XX`.
+
+**`codePrefix` lives on `OrganizationSettings`, not hardcoded "MS":** MantraOS is a multi-org platform even though only one real org exists today, so the brand prefix is a per-org setting (`OrganizationSettings.codePrefix`, defaults to `"ORG"`) rather than a literal string in application code. Set to `"MS"` for the real Mantra Sports org via a one-off data update alongside the migration; any future org gets a sane default until someone configures its own.
+
+**Separate daily counters per (organization, entity type, country), not one shared sequence:** the user confirmed a Customer and an Opportunity created the same day should each start their own count at 01, and different countries shouldn't share a counter either — otherwise "customer #3 today" would be a meaningless number once multiple record types and countries are all writing into the same day. Backed by a new `DailyBusinessCodeCounter` table, keyed on `(organizationId, scope, dateKey)` where `scope` is e.g. `"customer:AU"` or `"opportunity:USA"`.
+
+**Counter increment is a single `INSERT ... ON CONFLICT DO UPDATE ... RETURNING`, not read-then-write:** this is atomic under Postgres regardless of the surrounding request transaction's isolation level, so two concurrent creates for the same org/entity/country/day can never be handed the same sequence number — a plain "read count, add one, write it back" would race under load.
+
+**`code` is nullable on both `Customer` and `Opportunity`:** existing pre-migration records aren't backfilled (same precedent as every other "add scoping to an existing table" change in this project — see the Sub-phase B entry) — only new records get a code, going forward.
+
+**Reversibility:** High. Everything here is additive (two nullable columns, one new counter table, one new settings column with a default). Removing it later means dropping a column and a table, not touching the entities' core behavior.
+
+---
+
+## 2026-07-26 — Leads are not Customers: `Opportunity.customerId` goes nullable, conversion is manual
+
+**Context:** Testing the AU WordPress lead-intake integration (see "Public lead intake" below) surfaced a modeling problem: every website form submission was find-or-creating a `Customer` record, which meant a person who "just said hello" ended up in the exact same pool as someone who actually paid — the user's words: *"a customer who has paid cannot be in the same pool as the opportunity or someone who just said hello... it will help us segregate marketing campaigns as well directly."*
+
+**`Opportunity.customerId` made nullable, not a new `Lead` entity:** the user confirmed keeping Opportunity as the one pipeline concept rather than adding a parallel `Lead` model — a lead is simply an Opportunity with no Customer attached yet. `Opportunity` gained `leadName`/`leadEmail`/`leadPhone` (the prospect's own submitted contact details, populated only while `customerId` is null) alongside the existing `source`/UTM fields from the prior entry. This corrects that entry's line 13 above ("find-or-create the Customer by email") — `/v1/leads/intake` no longer creates a Customer for a brand-new inquiry at all.
+
+**Except when the email already belongs to a real Customer:** if a lead-intake submission's email matches an existing Customer (someone who's bought before, reaching out again), the new Opportunity links to them directly instead of leaving it as an orphaned lead — there's no ambiguity to preserve in that case, and forcing a manual conversion for a known customer would just be busywork.
+
+**Conversion is a deliberate, manual action — never automatic on stage change:** `POST /v1/opportunities/:id/convert-to-customer` creates a Customer from the lead's own name/email/phone and links it, but nothing in the system calls this automatically. The user's reasoning: *"some opportunities would turn into real paying customers after an offline attempt from the company employee — like a phone call"* — the sale can close in a way the data model has no signal for, so a human decides when to convert, the same way the existing deletion-governance rule keeps destructive/high-consequence actions as explicit human calls rather than inferred ones.
+
+**Frontend consequence:** the Opportunities list shows lead contact details (name/email/phone) in place of a Customer name whenever `customerId` is null, plus a "Convert to Customer" action instead of "Create Quote" — a Quote requires a real Customer, so that action stays hidden until conversion happens. The manual in-app "New Opportunity" creation form itself is untouched: it always requires picking an existing Customer, so `CreateOpportunityDto`/`OpportunitiesRepository.create()` needed no changes — only the intake path and the new convert endpoint work with the nullable/lead-field shape.
+
+**Reversibility:** Medium. The schema change (`customerId` nullable) is safe and additive, but any code elsewhere that assumed `opportunity.customer` is always present needed auditing (the Opportunities list page's customer-name rendering was the one place that did) — the same category of risk any nullable-ification of a previously-required FK carries.
+
+---
+
 ## 2026-07-26 — Public lead intake: website forms, Phase 5 (lead attribution)
 
 **Context:** First piece of the "lead attribution" phase from the marketing-analytics plan (Meta → Email → Google → Bing → lead attribution). The user runs five country websites on three different platforms (Shopify for the US, WordPress for AU, custom Next.js for DE/NL/CA) and wants a form submission on any of them to become an Opportunity in MantraOS automatically, tagged with which ad/campaign drove it. Scoped to website forms only for this entry — Meta Lead Ads and WhatsApp both need their own additional Meta review/infrastructure (a `leads_retrieval` permission, and a full WhatsApp Business API account respectively) and are follow-on phases, not blocked on anything built here.

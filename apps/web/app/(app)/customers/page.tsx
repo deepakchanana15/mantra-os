@@ -11,6 +11,7 @@ import { ExportCustomersButton } from "./export-customers-button";
 
 interface Customer {
   id: string;
+  code: string | null;
   name: string;
   type: string;
   email: string | null;
@@ -54,6 +55,7 @@ export default async function CustomersPage({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Email</TableHead>
@@ -63,13 +65,14 @@ export default async function CustomersPage({
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-10 text-center text-sm text-faint">
+                <TableCell colSpan={5} className="py-10 text-center text-sm text-faint">
                   No customers yet.
                 </TableCell>
               </TableRow>
             ) : (
               filtered.map((customer) => (
                 <TableRow key={customer.id}>
+                  <TableCell className="font-mono text-xs text-faint">{customer.code ?? "—"}</TableCell>
                   <TableCell>
                     <Link href={`/customers/${customer.id}`} className="font-medium text-foreground hover:text-accent">
                       {customer.name}

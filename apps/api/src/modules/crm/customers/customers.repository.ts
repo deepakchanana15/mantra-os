@@ -1,12 +1,21 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@mantra-os/db";
+import { BusinessCodeService } from "../../../common/business-code/business-code.service";
 import { addressToJson } from "../../../common/dto/address.dto";
 import { BaseRepository } from "../../../common/repositories/base.repository";
+import { TenantContextService } from "../../../common/context/tenant-context.service";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
 
 @Injectable()
 export class CustomersRepository extends BaseRepository {
+  constructor(
+    tenantContext: TenantContextService,
+    private readonly businessCode: BusinessCodeService,
+  ) {
+    super(tenantContext);
+  }
+
   findAll(params: { skip?: number; take?: number; search?: string }) {
     const where: Prisma.CustomerWhereInput = {
       organizationId: this.organizationId,
@@ -32,9 +41,11 @@ export class CustomersRepository extends BaseRepository {
     return customer;
   }
 
-  create(dto: CreateCustomerDto) {
+  async create(dto: CreateCustomerDto) {
+    const code = await this.businessCode.next("customer", { companyId: dto.companyId, countryId: dto.countryId });
     return this.db.customer.create({
       data: {
+        code,
         name: dto.name,
         type: dto.type,
         companyId: dto.companyId,

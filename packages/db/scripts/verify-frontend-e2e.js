@@ -243,6 +243,10 @@ async function main() {
     await prisma.notification.deleteMany({ where: { organizationId: org.id } });
     await prisma.auditLog.deleteMany({ where: { organizationId: org.id } });
     await prisma.membership.deleteMany({ where: { organizationId: org.id } });
+    // Customer/Opportunity creation above (BusinessCodeService) writes a
+    // daily counter row per org+scope+day — also RESTRICT, same reasoning
+    // as everything else in this list.
+    await prisma.dailyBusinessCodeCounter.deleteMany({ where: { organizationId: org.id } });
     await prisma.user.delete({ where: { id: user.id } });
     await prisma.organization.delete({ where: { id: org.id } });
     await prisma.$disconnect();

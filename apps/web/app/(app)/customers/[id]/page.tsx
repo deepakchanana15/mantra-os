@@ -18,6 +18,7 @@ interface Contact {
 
 interface Customer {
   id: string;
+  code: string | null;
   name: string;
   type: string;
   email: string | null;
@@ -42,6 +43,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           <div className="mt-1 flex items-center gap-2.5">
             <h1 className="text-xl font-bold text-foreground">{customer.name}</h1>
             <Badge variant="neutral">{customerTypeLabel(customer.type)}</Badge>
+            {customer.code && <span className="font-mono text-xs text-faint">{customer.code}</span>}
           </div>
         </div>
         <DeleteCustomerButton customerId={customer.id} />

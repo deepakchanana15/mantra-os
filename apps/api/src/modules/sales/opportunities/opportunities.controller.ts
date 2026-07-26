@@ -43,4 +43,10 @@ export class OpportunitiesController {
   remove(@Param("id") id: string) {
     return this.opportunities.remove(id);
   }
+
+  @Post(":id/convert-to-customer")
+  @RequirePermission(PERMISSIONS.OPPORTUNITIES_UPDATE)
+  convertToCustomer(@Param("id") id: string) {
+    return this.opportunities.convertToCustomer(id);
+  }
 }
