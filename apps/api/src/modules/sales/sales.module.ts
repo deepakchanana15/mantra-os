@@ -19,6 +19,10 @@ import { SalesOrdersService } from "./sales-orders/sales-orders.service";
 import { ShipmentsController } from "./shipments/shipments.controller";
 import { ShipmentsRepository } from "./shipments/shipments.repository";
 import { ShipmentsService } from "./shipments/shipments.service";
+import { WhatsAppPhoneNumbersController } from "./whatsapp/whatsapp-phone-numbers.controller";
+import { WhatsAppPhoneNumbersRepository } from "./whatsapp/whatsapp-phone-numbers.repository";
+import { WhatsAppPhoneNumbersService } from "./whatsapp/whatsapp-phone-numbers.service";
+import { WhatsAppWebhookController } from "./whatsapp/whatsapp-webhook.controller";
 
 @Module({
   imports: [InventoryModule],
@@ -30,6 +34,8 @@ import { ShipmentsService } from "./shipments/shipments.service";
     InvoicesController,
     LeadIntakeKeysController,
     LeadIntakeController,
+    WhatsAppPhoneNumbersController,
+    WhatsAppWebhookController,
   ],
   providers: [
     QuotesRepository,
@@ -44,6 +50,8 @@ import { ShipmentsService } from "./shipments/shipments.service";
     InvoicesService,
     LeadIntakeKeysRepository,
     LeadIntakeKeysService,
+    WhatsAppPhoneNumbersRepository,
+    WhatsAppPhoneNumbersService,
   ],
 })
 export class SalesModule {}

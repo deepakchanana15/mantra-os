@@ -18,6 +18,11 @@ describe("rolesFor", () => {
     expect(rolesFor("lead_intake_keys", "create")).toEqual(["owner", "admin"]);
   });
 
+  it("restricts whatsapp_phone_numbers to Owner/Admin even for reads (identifies which number feeds this org's leads)", () => {
+    expect(rolesFor("whatsapp_phone_numbers", "read")).toEqual(["owner", "admin"]);
+    expect(rolesFor("whatsapp_phone_numbers", "create")).toEqual(["owner", "admin"]);
+  });
+
   it("restricts deletion_grants:manage to Owner only — the delegation power itself", () => {
     expect(rolesFor("deletion_grants", "manage")).toEqual(["owner"]);
   });

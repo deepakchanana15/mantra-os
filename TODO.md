@@ -192,6 +192,21 @@ See DECISIONS.md "Per-campaign ad performance, not channel-consolidated" for ful
 - [x] Bug found the same day: every spend figure was hardcoded to a "$" (USD) formatter. User's real AU account bills in INR (confirmed against a live Ads Manager screenshot: ₹1,271.19 spent). First fix attempt (a separate `/act_<id>?fields=currency` call) silently returned no currency, confirmed via a real prod sync — no error anywhere, just an empty field. Second, working fix: request `account_currency` as a field directly on the already-working Insights calls instead. Frontend falls back to a plain unlabeled number (not USD) if a campaign's currency still isn't known — see DECISIONS.md addendum.
 - [ ] Not yet re-verified against a live Meta sync since the `account_currency`-field fix — will confirm once the next daily cron or a manual "Sync now" runs in prod.
 
+## 2026-07-27 — WhatsApp lead capture
+
+See DECISIONS.md "WhatsApp lead capture" for full rationale. Final piece of the lead-attribution plan (Meta → Website → WhatsApp). The user already had a WhatsApp Business Account ("Mantra Sports", +61 466 242 222, AU) in Meta Business Manager — this connects it to MantraOS.
+
+- [x] New `WhatsAppPhoneNumber` (no RLS, maps Meta's `phone_number_id` to an org/company) and `WhatsAppMessage` (RLS, idempotent inbound message ledger) tables.
+- [x] Public `GET/POST /v1/whatsapp/webhook` — verification handshake + HMAC-signature-verified message receiver (`X-Hub-Signature-256`, needs `rawBody: true` added to both `main.ts` and `api/index.ts`).
+- [x] Messages group into one Opportunity per phone number until it reaches Won/Lost (user's own explicit rule), then the next message starts a fresh one — re-checking the phone against existing Customers each time.
+- [x] Matched by phone (not email, unlike the website/manual-form flow) — WhatsApp never provides an email, and the user confirmed this tradeoff directly.
+- [x] New Settings → WhatsApp tab — connect a phone number (paste its Meta `phone_number_id`), shows the webhook callback URL to paste into Meta's app config.
+- [x] RBAC: `whatsapp_phone_numbers:create/read/delete`, Owner/Admin-only (same restricted-resource bucket as `lead_intake_keys`/`marketing_integrations`).
+- [x] Full local verification: typecheck + unit tests both apps, a 23-check dedicated smoke test (verification handshake, invalid-signature rejection, new-lead creation, message grouping, idempotent webhook redelivery, Won closes the thread and the next message starts a new one, existing-Customer phone match auto-links), full `verify-frontend-e2e.js` suite (19/19), both apps built.
+- [ ] Not yet deployed to prod (migration, RLS, RBAC re-seed, `WHATSAPP_VERIFY_TOKEN`/`WHATSAPP_APP_SECRET` env vars all pending).
+- [ ] `WHATSAPP_APP_SECRET` is a placeholder in dev — the real value comes from the Meta Developer App once WhatsApp is added as a product there. Full flow verified with a smoke test computing its own valid signature against the placeholder, not against a real Meta webhook delivery.
+- [ ] Meta-side setup (add WhatsApp product to the app, link the existing WABA/number, configure the webhook subscription with the callback URL + verify token) not yet done — in progress with the user.
+
 ## Later
 
 - [ ] Custom role builder (V2) — schema already supports it via Role/RolePermission, UI does not exist yet

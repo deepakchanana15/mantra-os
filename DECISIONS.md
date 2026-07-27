@@ -4,6 +4,30 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-27 — WhatsApp lead capture
+
+**Context:** Final piece of the "lead attribution" plan (Meta → Website → WhatsApp), following the same pattern as `/v1/leads/intake` but for incoming WhatsApp messages instead of form submissions. The user already had a WhatsApp Business Account ("Mantra Sports", +61 466 242 222, AU) connected in Meta Business Manager — just not yet linked to the Cloud API/webhook that makes messages reach MantraOS.
+
+**Matched by phone, not email — the user's own explicit call:** unlike the website/manual-opportunity forms (which deliberately match by email only, since phone numbers can be shared office lines — see "Opportunities no longer require picking a Customer"), WhatsApp never provides an email at all, so phone is the only signal available. The user confirmed this tradeoff directly rather than it being assumed.
+
+**Messages group into one Opportunity until Won or Lost, in the user's own words:** *"an opportunity is created the first time automatically and then all following messages falls under the same opportunity until the sale is final... post that any text should become a new opportunity."* This is state-based, not a time window — `stage NOT IN (WON, LOST)` defines "open." Every new message re-checks the phone against existing Customers, so a repeat customer's next inquiry (after their previous one closed) still auto-links correctly rather than starting as an anonymous lead again.
+
+**New `WhatsAppPhoneNumber` (no RLS, same reasoning as `LeadIntakeKey`) maps Meta's `phone_number_id` to an org/company** — the webhook payload only ever carries Meta's own identifier, never anything MantraOS assigned, so this is the lookup that resolves "which org does this belong to" before any tenant context exists.
+
+**New `WhatsAppMessage` ledger, idempotent on `externalMessageId`:** Meta redelivers webhooks if the endpoint doesn't acknowledge fast enough; a `@@unique([organizationId, externalMessageId])` constraint plus a pre-write existence check means a redelivered message is silently skipped rather than duplicated. It also backs a running transcript appended to the grouped Opportunity's `notes` — no dedicated conversation-thread UI built yet, matching the same "framework not yet fully surfaced" precedent as UTM fields.
+
+**Phone matching does its own light normalization (digits-only, then a suffix match), not exact string comparison:** a Customer's phone on file ("+61 466 242 222") and WhatsApp's own sender format ("61466242222") differ in punctuation and sometimes in whether a country code is present — comparing raw strings would silently fail to match. Done in application code (fetch candidates, compare in JS) rather than a SQL-level pattern match, which is simple and fast enough at this business's real scale; revisit only if it becomes a bottleneck.
+
+**Signature verification requires the raw request body, not the JSON-parsed one** — `NestFactory.create(..., { rawBody: true })` was added to both `main.ts` and the Vercel entry point (`api/index.ts`) so `req.rawBody` is available for computing the `X-Hub-Signature-256` HMAC against exactly the bytes Meta signed. An invalid or missing signature is rejected outright.
+
+**No rate limiting, unlike the website intake's 30/hour cap:** sending a WhatsApp message requires a real phone number and Meta's own delivery infrastructure — a categorically higher-friction abuse vector than an anonymous web form — so this wasn't built speculatively. Revisit if real abuse shows up.
+
+**Untested against a live Meta webhook** — this environment has no real WhatsApp Business access token or app secret, so `WHATSAPP_APP_SECRET` is a placeholder in dev. The full flow (verification handshake, HMAC-signed delivery, grouping, idempotency, phone matching) was verified with a 23-check smoke test that computes its own valid signature using the same placeholder secret the server checks against — proving the code path works, not proving Meta's real payloads match the assumed shape exactly.
+
+**Reversibility:** High. Additive schema only (two new tables, no changes to existing ones beyond new relation fields). The `rawBody: true` bootstrap change is additive too — existing JSON body parsing is unaffected.
+
+---
+
 ## 2026-07-27 — Per-campaign ad performance, not channel-consolidated
 
 **Context:** With Meta actually connected and live, the user reported the Dashboard's "Marketing performance" widget was showing one consolidated row per *channel* ("Meta (Facebook/Instagram)") rather than a breakdown per *campaign* — indistinguishable from a single-campaign account today, but meaningless once more campaigns exist. They asked for a real Campaigns view: name, live-since date, spend, and "the more details the better." They also flagged a concern about old/closed campaigns cluttering the view.

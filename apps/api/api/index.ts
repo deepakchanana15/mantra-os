@@ -28,7 +28,11 @@ let bootstrapFailure: Error | undefined;
 
 async function bootstrap(): Promise<Express> {
   const expressApp = express();
-  const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
+  // rawBody: true — needed by the WhatsApp webhook to verify Meta's
+  // X-Hub-Signature-256 HMAC, which must be computed over the exact raw
+  // request bytes, not the JSON-parsed body. See DECISIONS.md "WhatsApp
+  // lead capture".
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), { rawBody: true });
   app.enableCors();
   await app.init();
   return expressApp;

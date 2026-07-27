@@ -9,6 +9,7 @@ import { BrandsTab } from "./brands-tab";
 import { WebsitesTab } from "./websites-tab";
 import { IntegrationsTab } from "./integrations-tab";
 import { LeadIntakeTab } from "./lead-intake-tab";
+import { WhatsAppTab } from "./whatsapp-tab";
 
 interface Organization {
   name: string;
@@ -81,6 +82,18 @@ interface LeadIntakeKey {
   createdAt: string;
 }
 
+interface WhatsAppPhoneNumber {
+  id: string;
+  phoneNumberId: string;
+  displayPhoneNumber: string | null;
+  label: string;
+  enabled: boolean;
+  company: { name: string } | null;
+  createdAt: string;
+}
+
+const WHATSAPP_WEBHOOK_URL = "https://mantra-os-api.vercel.app/v1/whatsapp/webhook";
+
 /** apiFetch throws on non-2xx — used here to gracefully hide Owner/Admin-only tabs for everyone else, rather than showing a broken page. */
 async function fetchOrNull<T>(path: string): Promise<T | null> {
   try {
@@ -92,19 +105,31 @@ async function fetchOrNull<T>(path: string): Promise<T | null> {
 }
 
 export default async function SettingsPage() {
-  const [org, members, grants, currencies, companies, countries, brands, websites, integrations, leadIntakeKeys] =
-    await Promise.all([
-      apiFetch<Organization>("/v1/organizations/me"),
-      fetchOrNull<Member[]>("/v1/members"),
-      fetchOrNull<Grant[]>("/v1/deletion-grants"),
-      fetchOrNull<Currency[]>("/v1/currencies"),
-      fetchOrNull<Company[]>("/v1/companies"),
-      fetchOrNull<Country[]>("/v1/countries"),
-      fetchOrNull<Brand[]>("/v1/brands"),
-      fetchOrNull<Website[]>("/v1/websites"),
-      fetchOrNull<Integration[]>("/v1/marketing-integrations"),
-      fetchOrNull<LeadIntakeKey[]>("/v1/lead-intake-keys"),
-    ]);
+  const [
+    org,
+    members,
+    grants,
+    currencies,
+    companies,
+    countries,
+    brands,
+    websites,
+    integrations,
+    leadIntakeKeys,
+    whatsappPhoneNumbers,
+  ] = await Promise.all([
+    apiFetch<Organization>("/v1/organizations/me"),
+    fetchOrNull<Member[]>("/v1/members"),
+    fetchOrNull<Grant[]>("/v1/deletion-grants"),
+    fetchOrNull<Currency[]>("/v1/currencies"),
+    fetchOrNull<Company[]>("/v1/companies"),
+    fetchOrNull<Country[]>("/v1/countries"),
+    fetchOrNull<Brand[]>("/v1/brands"),
+    fetchOrNull<Website[]>("/v1/websites"),
+    fetchOrNull<Integration[]>("/v1/marketing-integrations"),
+    fetchOrNull<LeadIntakeKey[]>("/v1/lead-intake-keys"),
+    fetchOrNull<WhatsAppPhoneNumber[]>("/v1/whatsapp-phone-numbers"),
+  ]);
   const globalDomainAvailable = currencies && companies && countries && brands && websites;
 
   return (
@@ -124,6 +149,7 @@ export default async function SettingsPage() {
           {globalDomainAvailable && <TabsTrigger value="websites">Websites</TabsTrigger>}
           {integrations && <TabsTrigger value="integrations">Integrations</TabsTrigger>}
           {leadIntakeKeys && companies && <TabsTrigger value="lead-intake">Lead Intake</TabsTrigger>}
+          {whatsappPhoneNumbers && companies && <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="organization">
@@ -168,6 +194,12 @@ export default async function SettingsPage() {
         {leadIntakeKeys && companies && (
           <TabsContent value="lead-intake">
             <LeadIntakeTab keys={leadIntakeKeys} companies={companies} />
+          </TabsContent>
+        )}
+
+        {whatsappPhoneNumbers && companies && (
+          <TabsContent value="whatsapp">
+            <WhatsAppTab phoneNumbers={whatsappPhoneNumbers} companies={companies} webhookUrl={WHATSAPP_WEBHOOK_URL} />
           </TabsContent>
         )}
       </Tabs>

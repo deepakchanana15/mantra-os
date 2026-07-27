@@ -18,12 +18,14 @@ export function rolesFor(resource: string, action: string): SystemRoleKey[] {
     resource === "org_settings" ||
     resource === "members" ||
     resource === "marketing_integrations" ||
-    resource === "lead_intake_keys"
+    resource === "lead_intake_keys" ||
+    resource === "whatsapp_phone_numbers"
   ) {
-    // Org-level settings, membership management, and ad-platform/lead-intake
-    // credentials — restricted to Owner/Admin even for reads, since these
-    // resources each store a real secret (an access token, or a website's
-    // public-intake key) that shouldn't be broadly readable.
+    // Org-level settings, membership management, and ad-platform/lead-intake/
+    // WhatsApp connection records — restricted to Owner/Admin even for
+    // reads, since these resources each identify a real external channel
+    // (an access token, a website's public-intake key, or which phone
+    // number feeds this org's leads) that shouldn't be broadly readable.
     return ["owner", "admin"];
   }
   if (resource === "ad_campaign_metrics") {

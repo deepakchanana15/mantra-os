@@ -115,6 +115,10 @@ export const PERMISSIONS = {
   LEAD_INTAKE_KEYS_READ: "lead_intake_keys:read",
   LEAD_INTAKE_KEYS_DELETE: "lead_intake_keys:delete",
 
+  WHATSAPP_PHONE_NUMBERS_CREATE: "whatsapp_phone_numbers:create",
+  WHATSAPP_PHONE_NUMBERS_READ: "whatsapp_phone_numbers:read",
+  WHATSAPP_PHONE_NUMBERS_DELETE: "whatsapp_phone_numbers:delete",
+
   OPPORTUNITIES_CREATE: "opportunities:create",
   OPPORTUNITIES_READ: "opportunities:read",
   OPPORTUNITIES_UPDATE: "opportunities:update",

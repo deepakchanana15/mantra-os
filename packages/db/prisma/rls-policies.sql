@@ -354,3 +354,13 @@ ALTER TABLE "ad_campaigns" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON "ad_campaigns"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+-- ── WhatsApp lead capture ─────────────────────────────────────────────────
+-- whatsapp_phone_numbers deliberately carries NO RLS policy — see
+-- DATABASE.md's no-RLS list (same reasoning as lead_intake_keys).
+
+ALTER TABLE "whatsapp_messages" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "whatsapp_messages" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "whatsapp_messages"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));

@@ -74,6 +74,8 @@ model Organization {
   leadIntakeKeys          LeadIntakeKey[]
   businessCodeCounters    DailyBusinessCodeCounter[]
   opportunityStageHistory OpportunityStageHistory[]
+  whatsappPhoneNumbers    WhatsAppPhoneNumber[]
+  whatsappMessages        WhatsAppMessage[]
 
   @@map("organizations")
 }
@@ -271,20 +273,21 @@ model Company {
   updatedBy          String
   deletedAt          DateTime?
 
-  organization   Organization    @relation(fields: [organizationId], references: [id])
-  baseCurrency   Currency?       @relation(fields: [baseCurrencyId], references: [id])
-  countries      Country[]
-  customers      Customer[]
-  quotes         Quote[]
-  salesOrders    SalesOrder[]
-  suppliers      Supplier[]
-  purchaseOrders PurchaseOrder[]
-  opportunities  Opportunity[]
-  invoices       Invoice[]
-  supportTickets SupportTicket[]
-  expenses       Expense[]
-  products       Product[]
-  leadIntakeKeys LeadIntakeKey[]
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  baseCurrency         Currency?             @relation(fields: [baseCurrencyId], references: [id])
+  countries            Country[]
+  customers            Customer[]
+  quotes               Quote[]
+  salesOrders          SalesOrder[]
+  suppliers            Supplier[]
+  purchaseOrders       PurchaseOrder[]
+  opportunities        Opportunity[]
+  invoices             Invoice[]
+  supportTickets       SupportTicket[]
+  expenses             Expense[]
+  products             Product[]
+  leadIntakeKeys       LeadIntakeKey[]
+  whatsappPhoneNumbers WhatsAppPhoneNumber[]
 
   @@index([organizationId])
   @@map("companies")
@@ -1336,12 +1339,13 @@ model Opportunity {
   updatedBy         String
   deletedAt         DateTime?
 
-  organization Organization              @relation(fields: [organizationId], references: [id])
-  company      Company?                  @relation(fields: [companyId], references: [id])
-  country      Country?                  @relation(fields: [countryId], references: [id])
-  customer     Customer?                 @relation(fields: [customerId], references: [id])
-  quotes       Quote[]
-  stageHistory OpportunityStageHistory[]
+  organization     Organization              @relation(fields: [organizationId], references: [id])
+  company          Company?                  @relation(fields: [companyId], references: [id])
+  country          Country?                  @relation(fields: [countryId], references: [id])
+  customer         Customer?                 @relation(fields: [customerId], references: [id])
+  quotes           Quote[]
+  stageHistory     OpportunityStageHistory[]
+  whatsappMessages WhatsAppMessage[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -1398,6 +1402,62 @@ model LeadIntakeKey {
   @@index([organizationId])
   @@index([companyId])
   @@map("lead_intake_keys")
+}
+
+/// Maps a WhatsApp Business phone number to the organization/company it
+/// belongs to — looked up by incoming webhook payloads before any org
+/// context exists (the same problem `LeadIntakeKey` solves for website
+/// forms), except here Meta assigns the identifier and pushes to us,
+/// rather than us generating a secret the site owner pastes in.
+/// Deliberately no RLS policy, same reasoning as `LeadIntakeKey`. See
+/// DECISIONS.md "WhatsApp lead capture".
+model WhatsAppPhoneNumber {
+  id                 String   @id @default(uuid())
+  organizationId     String
+  companyId          String?
+  /// Meta's own identifier for this number — what every webhook payload
+  /// carries in its metadata, and the only thing available before we know
+  /// which org this belongs to.
+  phoneNumberId      String   @unique
+  displayPhoneNumber String?
+  label              String
+  enabled            Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  createdBy          String
+  updatedBy          String
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  company      Company?          @relation(fields: [companyId], references: [id])
+  messages     WhatsAppMessage[]
+
+  @@index([organizationId])
+  @@map("whatsapp_phone_numbers")
+}
+
+/// Append-only inbound message log, one row per WhatsApp message —
+/// backs the notes-field transcript on the Opportunity it's grouped
+/// under. Idempotent on `externalMessageId` since Meta may redeliver the
+/// same webhook if our endpoint doesn't acknowledge fast enough. See
+/// DECISIONS.md "WhatsApp lead capture".
+model WhatsAppMessage {
+  id                    String   @id @default(uuid())
+  organizationId        String
+  whatsappPhoneNumberId String
+  opportunityId         String
+  fromPhone             String
+  body                  String
+  externalMessageId     String
+  receivedAt            DateTime @default(now())
+
+  organization  Organization        @relation(fields: [organizationId], references: [id])
+  whatsappPhone WhatsAppPhoneNumber @relation(fields: [whatsappPhoneNumberId], references: [id])
+  opportunity   Opportunity         @relation(fields: [opportunityId], references: [id])
+
+  @@unique([organizationId, externalMessageId])
+  @@index([organizationId])
+  @@index([opportunityId])
+  @@map("whatsapp_messages")
 }
 
 enum InvoiceStatus {
