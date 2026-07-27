@@ -133,7 +133,7 @@ export class IntegrationsService {
     channel: MarketingChannel,
     integration: { accessToken: string; accountId: string },
   ): Promise<void> {
-    const [campaigns, lifetime, last30d, currency] = await Promise.all([
+    const [campaigns, lifetime, last30d] = await Promise.all([
       this.metaAds.fetchAllCampaigns({ accessToken: integration.accessToken, accountId: integration.accountId }),
       this.metaAds.fetchCampaignInsightsByPreset({
         accessToken: integration.accessToken,
@@ -145,8 +145,14 @@ export class IntegrationsService {
         accountId: integration.accountId,
         datePreset: "last_30d",
       }),
-      this.metaAds.fetchAdAccountCurrency({ accessToken: integration.accessToken, accountId: integration.accountId }),
     ]);
+
+    // Same value on every row for a given account — read off whichever
+    // insights call actually returned rows. See DECISIONS.md "Per-campaign
+    // ad performance, not channel-consolidated" for why this isn't a
+    // separate `/act_<id>` object fetch (that returned no error but also
+    // no currency, found via a real prod sync).
+    const currency = lifetime[0]?.account_currency ?? last30d[0]?.account_currency;
 
     const lifetimeById = new Map(lifetime.map((row) => [row.campaign_id, row]));
     const last30dById = new Map(last30d.map((row) => [row.campaign_id, row]));

@@ -7,6 +7,13 @@ interface MetaInsightRow {
   clicks?: string;
   spend?: string;
   reach?: string;
+  /** The ad account's own ISO 4217 currency (e.g. "INR") — same value on
+   * every row for a given account, requested here rather than via a
+   * separate `/act_<id>` object fetch: that call returned no error but
+   * also no currency in practice (found via a real prod sync — see
+   * DECISIONS.md), while this field on the already-working Insights edge
+   * is documented and reliable. */
+  account_currency?: string;
 }
 
 interface MetaInsightsResponse {
@@ -30,11 +37,6 @@ export interface MetaCampaignRow {
 interface MetaCampaignsResponse {
   data?: MetaCampaignRow[];
   paging?: { next?: string };
-  error?: { message?: string };
-}
-
-interface MetaAdAccountResponse {
-  currency?: string;
   error?: { message?: string };
 }
 
@@ -112,7 +114,7 @@ export class MetaAdsService {
   }): Promise<MetaInsightRow[]> {
     const url = new URL(`https://graph.facebook.com/${this.apiVersion}/act_${params.accountId}/insights`);
     url.searchParams.set("level", "campaign");
-    url.searchParams.set("fields", "campaign_id,campaign_name,impressions,clicks,spend,reach");
+    url.searchParams.set("fields", "campaign_id,campaign_name,impressions,clicks,spend,reach,account_currency");
     url.searchParams.set("date_preset", params.datePreset);
     url.searchParams.set("limit", "500");
     url.searchParams.set("access_token", params.accessToken);
@@ -123,27 +125,5 @@ export class MetaAdsService {
       throw new Error(body.error?.message ?? `Meta API request failed (${response.status})`);
     }
     return body.data ?? [];
-  }
-
-  /**
-   * The ad account's own ISO 4217 currency (e.g. "INR") — spend/budget
-   * figures from every other call on this service are already denominated
-   * in this currency, never USD-converted, so this is what any spend
-   * amount must be formatted with. See DECISIONS.md "Per-campaign ad
-   * performance, not channel-consolidated" for the bug this fixes: every
-   * spend figure was displayed with a hardcoded "$" regardless of the
-   * account's real currency.
-   */
-  async fetchAdAccountCurrency(params: { accessToken: string; accountId: string }): Promise<string | undefined> {
-    const url = new URL(`https://graph.facebook.com/${this.apiVersion}/act_${params.accountId}`);
-    url.searchParams.set("fields", "currency");
-    url.searchParams.set("access_token", params.accessToken);
-
-    const response = await fetch(url.toString());
-    const body = (await response.json()) as MetaAdAccountResponse;
-    if (!response.ok) {
-      throw new Error(body.error?.message ?? `Meta API request failed (${response.status})`);
-    }
-    return body.currency;
   }
 }
