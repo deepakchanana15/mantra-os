@@ -1,6 +1,6 @@
 # Database
 
-Prisma schema: [`packages/db/prisma/schema.prisma`](packages/db/prisma/schema.prisma) — 49 models across 11 domains, validated with `npx prisma validate`.
+Prisma schema: [`packages/db/prisma/schema.prisma`](packages/db/prisma/schema.prisma) — 50 models across 11 domains, validated with `npx prisma validate`.
 RLS policies: [`packages/db/prisma/rls-policies.sql`](packages/db/prisma/rls-policies.sql) — applied after every `prisma migrate deploy`, not managed by Prisma directly.
 
 **Two gaps found and fixed while building the Phase 4 backend** (not caught during the original Phase 3 design pass): `Category` and `Warehouse` were missing `createdBy`/`updatedBy` despite being business entities like every other soft-deletable table, and `GoodsReceipt` had no line items at all — meaning it couldn't express receiving less than a full purchase order, unlike `Shipment`/`ShipmentLine`. Both fixed; see [DECISIONS.md](DECISIONS.md).
@@ -42,6 +42,10 @@ Added during Phase 4 backend work alongside `Shipment`/`ShipmentLine`'s pattern 
 ## DailyBusinessCodeCounter — atomic per-day sequence, not read-then-write
 
 Backs `BusinessCodeService`'s human-readable Customer/Opportunity IDs (`MS-AU-20260726-01`) — see [DECISIONS.md](DECISIONS.md) "Business ID codes for Customers and Opportunities". Keyed on `(organizationId, scope, dateKey)` where `scope` is `"<entity>:<countryIsoCode>"` (e.g. `"opportunity:AU"`), incremented via a single `INSERT ... ON CONFLICT DO UPDATE SET count = count + 1 RETURNING count` — atomic under Postgres regardless of the surrounding transaction's isolation level, so two concurrent creates for the same org/entity/country/day never collide on a number. Standard RLS policy like every other tenant-scoped table (not part of the no-RLS list below — it always has a real `organizationId` from an authenticated or already-tenant-scoped request, unlike `lead_intake_keys`).
+
+## OpportunityStageHistory — another ledger + derived-snapshot pair
+
+Same shape as `DailyBusinessCodeCounter`'s relationship to `Opportunity.code`, and as `InventoryTransaction`/`StockLevel`: `OpportunityStageHistory` is an append-only log of every `stage` transition (`fromStage`/`toStage`/`changedAt`/`changedBy`), and `Opportunity.stageChangedAt` is the cheap-to-read denormalized snapshot kept in sync alongside it. See DECISIONS.md "Opportunity stage-duration tracking". Standard RLS policy, unlike `daily_business_code_counters`' no-join reasoning — this table isn't in the no-RLS list below.
 
 ## Row-Level Security
 

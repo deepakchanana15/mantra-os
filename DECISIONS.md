@@ -4,6 +4,18 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-27 — Opportunity stage-duration tracking
+
+**Context:** The user asked whether MantraOS already tracks how long a lead/opportunity has been pending, and how long someone's been a customer. `createdAt`/`updatedAt` already exist on every business entity (a standing convention — see DATABASE.md "Conventions"), so total age and "customer since" needed no new work. But *time spent in each pipeline stage* specifically (New → Qualified → Proposal → …) wasn't tracked — only the current stage was stored, with no trail of when it changed.
+
+**Ledger + derived snapshot, same split as InventoryTransaction/StockLevel:** new append-only `OpportunityStageHistory` (one row per transition: `fromStage`/`toStage`/`changedAt`/`changedBy`) is the source of truth, while `Opportunity.stageChangedAt` is a denormalized snapshot updated alongside it — cheap to read on the list view without a join, exactly the pattern DATABASE.md already documents for stock levels. `OpportunitiesRepository.create()` writes the initial row (`fromStage: null`) so every opportunity has a starting point to measure from; `update()` writes a new row (and bumps `stageChangedAt`) only when `dto.stage` actually differs from the stored value — a same-stage update is a no-op here, verified by a dedicated smoke test.
+
+**No new API surface for the raw history yet:** the ask was to show "how long has this been pending" and "how long in this stage," which `createdAt` and `stageChangedAt` answer directly on the Opportunities list (an "Age" column, plus a caption under Stage). The full transition ledger exists for future reporting (e.g. average time-to-qualify across the pipeline) but isn't surfaced anywhere yet — not built speculatively ahead of a concrete need, consistent with this project's general approach.
+
+**Reversibility:** High. Additive schema only — one new nullable-`fromStage` ledger table, one new column with a default.
+
+---
+
 ## 2026-07-27 — Opportunities no longer require picking a Customer
 
 **Context:** The manual in-app "New Opportunity" form was explicitly left untouched during the Leads/Customers separation work — it still required selecting an existing Customer from a dropdown. The user pushed back on this directly: at real scale that dropdown is a long, unusable list, and it doesn't reflect how the business actually works — "a new person who has never been a customer[...] hence for creating an opportunity selecting customer from the long list of customers is not viable." A returning customer starting a new season's order is also just a new Opportunity, not automatically re-linked by the person creating it.

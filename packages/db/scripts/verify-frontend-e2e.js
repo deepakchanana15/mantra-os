@@ -247,6 +247,10 @@ async function main() {
     // daily counter row per org+scope+day — also RESTRICT, same reasoning
     // as everything else in this list.
     await prisma.dailyBusinessCodeCounter.deleteMany({ where: { organizationId: org.id } });
+    // No-op today (this script never creates an Opportunity), kept for when
+    // it does — same RESTRICT reasoning as the counter table above.
+    await prisma.opportunityStageHistory.deleteMany({ where: { organizationId: org.id } });
+    await prisma.opportunity.deleteMany({ where: { organizationId: org.id } });
     await prisma.user.delete({ where: { id: user.id } });
     await prisma.organization.delete({ where: { id: org.id } });
     await prisma.$disconnect();

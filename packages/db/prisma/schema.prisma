@@ -39,39 +39,40 @@ model Organization {
   brands    Brand[]
   websites  Website[]
 
-  customers             Customer[]
-  contacts              Contact[]
-  categories            Category[]
-  products              Product[]
-  warehouses            Warehouse[]
-  stockLevels           StockLevel[]
-  inventoryTxns         InventoryTransaction[]
-  quotes                Quote[]
-  quoteLines            QuoteLine[]
-  salesOrders           SalesOrder[]
-  salesOrderLines       SalesOrderLine[]
-  shipments             Shipment[]
-  shipmentLines         ShipmentLine[]
-  suppliers             Supplier[]
-  purchaseOrders        PurchaseOrder[]
-  purchaseOrderLines    PurchaseOrderLine[]
-  goodsReceipts         GoodsReceipt[]
-  goodsReceiptLines     GoodsReceiptLine[]
-  segments              Segment[]
-  emailTemplates        EmailTemplate[]
-  campaigns             Campaign[]
-  marketingIntegrations MarketingIntegration[]
-  adCampaignMetrics     AdCampaignMetric[]
-  notifications         Notification[]
-  opportunities         Opportunity[]
-  invoices              Invoice[]
-  invoiceLines          InvoiceLine[]
-  supportTickets        SupportTicket[]
-  expenses              Expense[]
-  attachments           Attachment[]
-  supplierPhones        SupplierPhone[]
-  leadIntakeKeys        LeadIntakeKey[]
-  businessCodeCounters  DailyBusinessCodeCounter[]
+  customers               Customer[]
+  contacts                Contact[]
+  categories              Category[]
+  products                Product[]
+  warehouses              Warehouse[]
+  stockLevels             StockLevel[]
+  inventoryTxns           InventoryTransaction[]
+  quotes                  Quote[]
+  quoteLines              QuoteLine[]
+  salesOrders             SalesOrder[]
+  salesOrderLines         SalesOrderLine[]
+  shipments               Shipment[]
+  shipmentLines           ShipmentLine[]
+  suppliers               Supplier[]
+  purchaseOrders          PurchaseOrder[]
+  purchaseOrderLines      PurchaseOrderLine[]
+  goodsReceipts           GoodsReceipt[]
+  goodsReceiptLines       GoodsReceiptLine[]
+  segments                Segment[]
+  emailTemplates          EmailTemplate[]
+  campaigns               Campaign[]
+  marketingIntegrations   MarketingIntegration[]
+  adCampaignMetrics       AdCampaignMetric[]
+  notifications           Notification[]
+  opportunities           Opportunity[]
+  invoices                Invoice[]
+  invoiceLines            InvoiceLine[]
+  supportTickets          SupportTicket[]
+  expenses                Expense[]
+  attachments             Attachment[]
+  supplierPhones          SupplierPhone[]
+  leadIntakeKeys          LeadIntakeKey[]
+  businessCodeCounters    DailyBusinessCodeCounter[]
+  opportunityStageHistory OpportunityStageHistory[]
 
   @@map("organizations")
 }
@@ -1251,6 +1252,12 @@ model Opportunity {
   customerId        String?
   name              String
   stage             OpportunityStage  @default(NEW)
+  /// Denormalized snapshot of when `stage` last changed — cheap to read
+  /// for "days in current stage" without a join. `OpportunityStageHistory`
+  /// is the source of truth (same derived-snapshot-vs-ledger split as
+  /// StockLevel/InventoryTransaction — see DATABASE.md). See DECISIONS.md
+  /// "Opportunity stage-duration tracking".
+  stageChangedAt    DateTime          @default(now())
   estimatedValue    Decimal?          @db.Decimal(12, 2)
   expectedCloseDate DateTime?
   notes             String?
@@ -1280,11 +1287,12 @@ model Opportunity {
   updatedBy         String
   deletedAt         DateTime?
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  company      Company?     @relation(fields: [companyId], references: [id])
-  country      Country?     @relation(fields: [countryId], references: [id])
-  customer     Customer?    @relation(fields: [customerId], references: [id])
+  organization Organization              @relation(fields: [organizationId], references: [id])
+  company      Company?                  @relation(fields: [companyId], references: [id])
+  country      Country?                  @relation(fields: [countryId], references: [id])
+  customer     Customer?                 @relation(fields: [customerId], references: [id])
   quotes       Quote[]
+  stageHistory OpportunityStageHistory[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -1292,6 +1300,29 @@ model Opportunity {
   @@index([companyId])
   @@index([countryId])
   @@map("opportunities")
+}
+
+/// Append-only ledger of every `Opportunity.stage` transition — same
+/// role as InventoryTransaction relative to StockLevel (see DATABASE.md):
+/// this is the source of truth, `Opportunity.stageChangedAt` is the
+/// cheap-to-read derived snapshot. Never updated or deleted once written.
+/// See DECISIONS.md "Opportunity stage-duration tracking".
+model OpportunityStageHistory {
+  id             String            @id @default(uuid())
+  organizationId String
+  opportunityId  String
+  /// Null on the very first row (the Opportunity's initial stage at creation).
+  fromStage      OpportunityStage?
+  toStage        OpportunityStage
+  changedAt      DateTime          @default(now())
+  changedBy      String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  opportunity  Opportunity  @relation(fields: [opportunityId], references: [id])
+
+  @@index([organizationId])
+  @@index([opportunityId])
+  @@map("opportunity_stage_history")
 }
 
 /// A per-Company secret authenticating public lead-intake submissions from

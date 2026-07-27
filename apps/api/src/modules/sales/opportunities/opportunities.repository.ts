@@ -63,7 +63,7 @@ export class OpportunitiesRepository extends BaseRepository {
     }
 
     const code = await this.businessCode.next("opportunity", { companyId: dto.companyId, countryId: dto.countryId });
-    return this.db.opportunity.create({
+    const opportunity = await this.db.opportunity.create({
       data: {
         code,
         customerId,
@@ -82,15 +82,45 @@ export class OpportunitiesRepository extends BaseRepository {
         updatedBy: this.userId,
       },
     });
+
+    // See DECISIONS.md "Opportunity stage-duration tracking" — the initial
+    // row (fromStage: null) establishes the starting point every later
+    // "days in stage" calculation measures from.
+    await this.db.opportunityStageHistory.create({
+      data: {
+        organizationId: this.organizationId,
+        opportunityId: opportunity.id,
+        fromStage: null,
+        toStage: opportunity.stage,
+        changedBy: this.userId,
+      },
+    });
+
+    return opportunity;
   }
 
   async update(id: string, dto: UpdateOpportunityDto) {
-    await this.findOneOrThrow(id);
+    const existing = await this.findOneOrThrow(id);
+    const stageChanged = dto.stage !== undefined && dto.stage !== existing.stage;
+
+    if (stageChanged) {
+      await this.db.opportunityStageHistory.create({
+        data: {
+          organizationId: this.organizationId,
+          opportunityId: id,
+          fromStage: existing.stage,
+          toStage: dto.stage!,
+          changedBy: this.userId,
+        },
+      });
+    }
+
     return this.db.opportunity.update({
       where: { id },
       data: {
         name: dto.name,
         stage: dto.stage,
+        stageChangedAt: stageChanged ? new Date() : undefined,
         estimatedValue: dto.estimatedValue,
         expectedCloseDate: dto.expectedCloseDate ? new Date(dto.expectedCloseDate) : undefined,
         notes: dto.notes,

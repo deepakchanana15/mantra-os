@@ -20,6 +20,8 @@ interface Opportunity {
   customerType: string | null;
   productInterest: string | null;
   source: string;
+  createdAt: string;
+  stageChangedAt: string;
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -37,6 +39,13 @@ const SOURCE_LABELS: Record<string, string> = {
   META_LEAD_AD: "Meta lead ad",
   WHATSAPP: "WhatsApp",
 };
+
+const CLOSED_STAGES = new Set(["WON", "LOST"]);
+
+function daysSince(isoDate: string): number {
+  const ms = Date.now() - new Date(isoDate).getTime();
+  return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+}
 
 export default async function OpportunitiesPage() {
   const opportunities = await apiFetch<Opportunity[]>("/v1/opportunities");
@@ -65,6 +74,7 @@ export default async function OpportunitiesPage() {
               <TableHead>Customer / Lead</TableHead>
               <TableHead>Source</TableHead>
               <TableHead>Stage</TableHead>
+              <TableHead>Age</TableHead>
               <TableHead>Estimated value</TableHead>
               <TableHead className="w-64" />
             </TableRow>
@@ -72,13 +82,16 @@ export default async function OpportunitiesPage() {
           <TableBody>
             {opportunities.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-sm text-faint">
+                <TableCell colSpan={8} className="py-10 text-center text-sm text-faint">
                   No opportunities yet.
                 </TableCell>
               </TableRow>
             ) : (
               opportunities.map((opportunity) => {
                 const leadName = opportunity.customer?.name ?? opportunity.leadName ?? "Unknown";
+                const isClosed = CLOSED_STAGES.has(opportunity.stage);
+                const stageDays = daysSince(opportunity.stageChangedAt);
+                const ageDays = daysSince(opportunity.createdAt);
                 return (
                   <TableRow key={opportunity.id}>
                     <TableCell className="font-mono text-xs text-faint">{opportunity.code ?? "—"}</TableCell>
@@ -103,7 +116,17 @@ export default async function OpportunitiesPage() {
                     <TableCell>
                       <Badge variant="neutral">{SOURCE_LABELS[opportunity.source] ?? opportunity.source}</Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{STAGE_LABELS[opportunity.stage] ?? opportunity.stage}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <div className="flex flex-col">
+                        <span>{STAGE_LABELS[opportunity.stage] ?? opportunity.stage}</span>
+                        <span className="text-xs text-faint">
+                          {stageDays === 0 ? "changed today" : `${stageDays}d in this stage`}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {isClosed ? `Closed in ${ageDays}d` : `${ageDays}d pending`}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {opportunity.estimatedValue ? `$${opportunity.estimatedValue}` : "—"}
                     </TableCell>

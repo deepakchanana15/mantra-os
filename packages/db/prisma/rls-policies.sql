@@ -338,3 +338,11 @@ ALTER TABLE "daily_business_code_counters" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON "daily_business_code_counters"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+-- ── Opportunity stage-duration tracking ──────────────────────────────────
+
+ALTER TABLE "opportunity_stage_history" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "opportunity_stage_history" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "opportunity_stage_history"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));

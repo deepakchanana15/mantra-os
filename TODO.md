@@ -169,6 +169,16 @@ See DECISIONS.md "Opportunities no longer require picking a Customer" for full r
 - [x] Full local verification: typecheck + unit tests both apps, a 13-check dedicated smoke test (missing-identity rejected, new lead stays unlinked, matching email auto-links, explicit customerId still works), full `verify-frontend-e2e.js` suite (19/19).
 - [x] No schema change — purely DTO/repository/frontend, no migration needed. Deployed to prod via normal Vercel git push.
 
+## 2026-07-27 — Opportunity stage-duration tracking
+
+See DECISIONS.md "Opportunity stage-duration tracking" for full rationale. `createdAt`/`updatedAt` already existed on every entity (total age, "customer since" needed no new work) — this adds tracking of time spent in each pipeline *stage* specifically.
+
+- [x] New `OpportunityStageHistory` ledger (fromStage/toStage/changedAt/changedBy) + `Opportunity.stageChangedAt` denormalized snapshot, same pattern as InventoryTransaction/StockLevel.
+- [x] `OpportunitiesRepository.create()` writes the initial history row; `update()` writes a new one (and bumps `stageChangedAt`) only when the stage actually changes.
+- [x] Opportunities list: new "Age" column ("Xd pending" / "Closed in Xd"), plus "Xd in this stage" caption under the Stage cell.
+- [x] Full local verification: typecheck + unit tests both apps, an 8-check dedicated smoke test (initial history row on create, transition row + stageChangedAt bump on stage change, no-op on same-stage update — confirmed directly against the ledger table), full `verify-frontend-e2e.js` suite (19/19), both apps built.
+- [ ] No API/UI exposes the full transition ledger yet (average time-to-qualify, funnel reporting) — not built speculatively ahead of a concrete need.
+
 ## Later
 
 - [ ] Custom role builder (V2) — schema already supports it via Role/RolePermission, UI does not exist yet
