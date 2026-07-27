@@ -1,7 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { SalesByChannelWidget, type ChannelStat } from "@/components/domain/sales-by-channel-widget";
-import { MarketingPerformanceWidget, type MarketingChannelStat } from "@/components/domain/marketing-performance-widget";
+import { MarketingPerformanceWidget, type MarketingCampaignStat } from "@/components/domain/marketing-performance-widget";
 
 interface DashboardSummary {
   activeCustomers: number;
@@ -9,7 +9,7 @@ interface DashboardSummary {
   lowStockProducts: number;
   revenueMonthToDate: number;
   salesByChannel: ChannelStat[];
-  marketingPerformance: MarketingChannelStat[];
+  marketingPerformance: MarketingCampaignStat[];
 }
 
 function Kpi({ label, value }: { label: string; value: string }) {

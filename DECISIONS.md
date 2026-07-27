@@ -4,6 +4,22 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-07-27 — Per-campaign ad performance, not channel-consolidated
+
+**Context:** With Meta actually connected and live, the user reported the Dashboard's "Marketing performance" widget was showing one consolidated row per *channel* ("Meta (Facebook/Instagram)") rather than a breakdown per *campaign* — indistinguishable from a single-campaign account today, but meaningless once more campaigns exist. They asked for a real Campaigns view: name, live-since date, spend, and "the more details the better." They also flagged a concern about old/closed campaigns cluttering the view.
+
+**Two different scopes for two different surfaces, clarified directly with the user rather than assumed:** a dedicated "Ad Campaigns" tab (on the existing Marketing page, next to the unrelated email "Campaigns" tab — named distinctly to avoid confusion between the two) shows **every campaign the ad account has ever had, permanently, with no filtering by status or age** — a full archive. The Dashboard/Reports widget instead shows **only campaigns with activity in the last 30 days** — the user's own words: "all campaigns ever built to be in history and recent 30 days to show up in the dashboard."
+
+**New `AdCampaign` table, not a repurposed `AdCampaignMetric`:** `AdCampaignMetric` (day-granular, existing) only accumulates from whenever MantraOS itself started syncing — a campaign running for a year would show an artificially short history and an incomplete last-30-days figure until 30 days of our own syncing had elapsed. `AdCampaign` instead is a denormalized snapshot per campaign, refreshed on every sync from Meta's *own* `date_preset=maximum` (lifetime) and `date_preset=last_30d` insights queries plus the full `/campaigns` list (paginated, no status filter) — accurate from day one, not dependent on our own accumulation. Never deletes a row, even for a campaign Meta later reports as archived — that permanence is the whole point of the archive.
+
+**Campaign-archive refresh isolated from the existing daily metrics sync:** `IntegrationsService.sync()` already worked correctly against a real Meta token in prod before this change. The new archive refresh calls three Meta endpoints that hadn't been exercised against a live account yet, so its failure is caught separately and surfaced as a warning on the integration's `lastError`, without marking the whole sync as failed or blocking the metrics that already succeeded — a bug in the new code must not regress the old code.
+
+**Meta's campaign-level `daily_budget`/`lifetime_budget` fields are in the currency's minor unit (cents), unlike `spend` from insights which is already a major-unit decimal** — a real, easy-to-miss Meta API inconsistency, called out explicitly in code (`centsToMajorUnit`) since it's exactly the kind of thing that silently shows $5.00 as $500 if missed.
+
+**Reversibility:** High. Additive schema only. The isolated try/catch around the archive refresh means this can be disabled or reworked without touching the metrics-sync path that already works.
+
+---
+
 ## 2026-07-27 — Opportunity stage-duration tracking
 
 **Context:** The user asked whether MantraOS already tracks how long a lead/opportunity has been pending, and how long someone's been a customer. `createdAt`/`updatedAt` already exist on every business entity (a standing convention — see DATABASE.md "Conventions"), so total age and "customer since" needed no new work. But *time spent in each pipeline stage* specifically (New → Qualified → Proposal → …) wasn't tracked — only the current stage was stored, with no trail of when it changed.

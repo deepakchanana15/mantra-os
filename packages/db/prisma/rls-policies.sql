@@ -346,3 +346,11 @@ ALTER TABLE "opportunity_stage_history" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON "opportunity_stage_history"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+-- ── Per-campaign ad performance (permanent campaign archive) ─────────────
+
+ALTER TABLE "ad_campaigns" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ad_campaigns" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "ad_campaigns"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));

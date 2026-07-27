@@ -62,6 +62,7 @@ model Organization {
   campaigns               Campaign[]
   marketingIntegrations   MarketingIntegration[]
   adCampaignMetrics       AdCampaignMetric[]
+  adCampaigns             AdCampaign[]
   notifications           Notification[]
   opportunities           Opportunity[]
   invoices                Invoice[]
@@ -1201,6 +1202,50 @@ model AdCampaignMetric {
   @@unique([organizationId, channel, externalCampaignId, date])
   @@index([organizationId, date])
   @@map("ad_campaign_metrics")
+}
+
+/// Denormalized current-snapshot view of every campaign the connected ad
+/// account has ever had — refreshed (never deleted) on every sync, so this
+/// is a permanent archive even for campaigns later paused/archived on the
+/// platform's own side. Complements `AdCampaignMetric` (day-granular,
+/// accumulates only from when MantraOS started syncing) with metadata and
+/// aggregates `AdCampaignMetric` can't retroactively provide — lifetime and
+/// last-30-day totals sourced directly from the platform's own reporting.
+/// See DECISIONS.md "Per-campaign ad performance, not channel-consolidated".
+model AdCampaign {
+  id                  String           @id @default(uuid())
+  organizationId      String
+  channel             MarketingChannel
+  externalCampaignId  String
+  name                String
+  /// Raw status string from the platform (e.g. Meta's `effective_status`:
+  /// ACTIVE/PAUSED/ARCHIVED/...) — not an enum, since the vendor's own
+  /// vocabulary may grow and forcing it through a fixed set is fragile.
+  status              String?
+  objective           String?
+  dailyBudget         Decimal?         @db.Decimal(12, 2)
+  lifetimeBudget      Decimal?         @db.Decimal(12, 2)
+  /// The campaign's own delivery start — "went live" — falling back to
+  /// when the campaign object was created if the platform has no separate
+  /// start date.
+  startDate           DateTime?
+  stopDate            DateTime?
+  lifetimeSpend       Decimal          @default(0) @db.Decimal(12, 2)
+  lifetimeImpressions Int              @default(0)
+  lifetimeClicks      Int              @default(0)
+  lifetimeReach       Int?
+  last30dSpend        Decimal          @default(0) @db.Decimal(12, 2)
+  last30dImpressions  Int              @default(0)
+  last30dClicks       Int              @default(0)
+  lastSyncedAt        DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, channel, externalCampaignId])
+  @@index([organizationId])
+  @@map("ad_campaigns")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

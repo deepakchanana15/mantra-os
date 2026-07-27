@@ -179,6 +179,18 @@ See DECISIONS.md "Opportunity stage-duration tracking" for full rationale. `crea
 - [x] Full local verification: typecheck + unit tests both apps, an 8-check dedicated smoke test (initial history row on create, transition row + stageChangedAt bump on stage change, no-op on same-stage update — confirmed directly against the ledger table), full `verify-frontend-e2e.js` suite (19/19), both apps built.
 - [ ] No API/UI exposes the full transition ledger yet (average time-to-qualify, funnel reporting) — not built speculatively ahead of a concrete need.
 
+## 2026-07-27 — Per-campaign ad performance, not channel-consolidated
+
+See DECISIONS.md "Per-campaign ad performance, not channel-consolidated" for full rationale. Triggered by the user checking the live Meta connection and finding the Dashboard's "Marketing performance" widget consolidated to one row per channel instead of breaking out per campaign, plus a request for a full Campaigns view.
+
+- [x] New `AdCampaign` table — permanent per-campaign snapshot (name, status, objective, budget, live-since date, lifetime + rolling last-30-day totals), refreshed on every sync from Meta's own `date_preset=maximum`/`last_30d` insights and full `/campaigns` list. Never deletes a row.
+- [x] New `GET /v1/marketing-integrations/campaigns` (gated by the existing but previously-unused `ad_campaign_metrics:read` permission, all roles).
+- [x] New "Ad Campaigns" tab on the Marketing page — full archive, every campaign ever run, no status/age filtering.
+- [x] Dashboard/Reports "Marketing performance" widget reworked to be campaign-wise (name + channel per row) and scoped to campaigns with last-30-day activity only, sourced from `AdCampaign` instead of aggregating `AdCampaignMetric` by channel.
+- [x] Campaign-archive refresh wrapped in its own try/catch inside `sync()`, isolated from the daily metrics sync that already worked in prod — a problem in the new Meta calls surfaces as a warning, not a full sync failure.
+- [x] Full local verification: typecheck + unit tests both apps, an 11-check dedicated smoke test (full archive includes an old/dormant campaign with no filtering, Dashboard excludes it, Dashboard is genuinely campaign-wise not channel-consolidated — verified by inserting real rows directly since a live Meta token isn't available in this environment), full `verify-frontend-e2e.js` suite (19/19), both apps built.
+- [ ] Not yet verified against a live Meta sync (`fetchAllCampaigns`/`fetchCampaignInsightsByPreset` calls three new Meta endpoints untested against the real API) — will confirm once the next daily cron or a manual "Sync now" runs in prod.
+
 ## Later
 
 - [ ] Custom role builder (V2) — schema already supports it via Role/RolePermission, UI does not exist yet

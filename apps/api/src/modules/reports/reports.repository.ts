@@ -15,7 +15,7 @@ export class ReportsRepository extends BaseRepository {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const [activeCustomers, openSalesOrders, lowStockLevels, salesOrdersThisMonth, adMetricsThisMonth] = await Promise.all([
+    const [activeCustomers, openSalesOrders, lowStockLevels, salesOrdersThisMonth, campaignsLast30d] = await Promise.all([
       this.db.customer.count({
         where: { organizationId: this.organizationId, deletedAt: null },
       }),
@@ -42,8 +42,20 @@ export class ReportsRepository extends BaseRepository {
         },
         include: { lines: true },
       }),
-      this.db.adCampaignMetric.findMany({
-        where: { organizationId: this.organizationId, date: { gte: startOfMonth } },
+      // Per-campaign, not per-channel — see DECISIONS.md "Per-campaign ad
+      // performance, not channel-consolidated". Sourced from AdCampaign's
+      // own rolling last-30-day totals (from the ad platform's own date
+      // preset), not our day-by-day AdCampaignMetric accumulation — that
+      // way this is accurate from day one, not dependent on how long
+      // MantraOS itself has been syncing. Only campaigns with actual
+      // recent activity show up here; the full archive lives on the
+      // Campaigns page regardless of activity.
+      this.db.adCampaign.findMany({
+        where: {
+          organizationId: this.organizationId,
+          OR: [{ last30dSpend: { gt: 0 } }, { last30dImpressions: { gt: 0 } }, { last30dClicks: { gt: 0 } }],
+        },
+        orderBy: { last30dSpend: "desc" },
       }),
     ]);
 
@@ -66,16 +78,14 @@ export class ReportsRepository extends BaseRepository {
     }
     const salesByChannel = Array.from(byChannel.entries()).map(([channel, stats]) => ({ channel, ...stats }));
 
-    const byAdChannel = new Map<string, { spend: number; impressions: number; clicks: number }>();
-    for (const metric of adMetricsThisMonth) {
-      const existing = byAdChannel.get(metric.channel) ?? { spend: 0, impressions: 0, clicks: 0 };
-      byAdChannel.set(metric.channel, {
-        spend: existing.spend + Number(metric.spend),
-        impressions: existing.impressions + metric.impressions,
-        clicks: existing.clicks + metric.clicks,
-      });
-    }
-    const marketingPerformance = Array.from(byAdChannel.entries()).map(([channel, stats]) => ({ channel, ...stats }));
+    const marketingPerformance = campaignsLast30d.map((campaign) => ({
+      channel: campaign.channel,
+      campaignName: campaign.name,
+      status: campaign.status,
+      spend: Number(campaign.last30dSpend),
+      impressions: campaign.last30dImpressions,
+      clicks: campaign.last30dClicks,
+    }));
 
     return {
       activeCustomers,

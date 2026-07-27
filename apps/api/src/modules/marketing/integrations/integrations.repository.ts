@@ -12,6 +12,24 @@ export interface AdMetricRow {
   spend: number;
 }
 
+export interface AdCampaignSnapshotRow {
+  externalCampaignId: string;
+  name: string;
+  status?: string;
+  objective?: string;
+  dailyBudget?: number;
+  lifetimeBudget?: number;
+  startDate?: Date;
+  stopDate?: Date;
+  lifetimeSpend: number;
+  lifetimeImpressions: number;
+  lifetimeClicks: number;
+  lifetimeReach?: number;
+  last30dSpend: number;
+  last30dImpressions: number;
+  last30dClicks: number;
+}
+
 const INTEGRATION_SELECT = {
   id: true,
   channel: true,
@@ -105,5 +123,35 @@ export class IntegrationsRepository extends BaseRepository {
         }),
       ),
     );
+  }
+
+  /**
+   * Never removes a row, even for a campaign the platform now reports as
+   * archived/deleted — see the `AdCampaign` model comment: this is meant to
+   * be a permanent archive of every campaign ever seen.
+   */
+  upsertCampaignSnapshots(channel: MarketingChannel, rows: AdCampaignSnapshotRow[]) {
+    return Promise.all(
+      rows.map((row) =>
+        this.db.adCampaign.upsert({
+          where: {
+            organizationId_channel_externalCampaignId: {
+              organizationId: this.organizationId,
+              channel,
+              externalCampaignId: row.externalCampaignId,
+            },
+          },
+          create: { organizationId: this.organizationId, channel, ...row, lastSyncedAt: new Date() },
+          update: { ...row, lastSyncedAt: new Date() },
+        }),
+      ),
+    );
+  }
+
+  findAllCampaigns() {
+    return this.db.adCampaign.findMany({
+      where: { organizationId: this.organizationId },
+      orderBy: { lifetimeSpend: "desc" },
+    });
   }
 }

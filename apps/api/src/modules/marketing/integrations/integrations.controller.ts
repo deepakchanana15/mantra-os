@@ -19,6 +19,12 @@ export class IntegrationsController {
     return this.integrations.findAll();
   }
 
+  @Get("campaigns")
+  @RequirePermission(PERMISSIONS.AD_CAMPAIGN_METRICS_READ)
+  findAllCampaigns() {
+    return this.integrations.findAllCampaigns();
+  }
+
   @Post()
   @RequirePermission(PERMISSIONS.MARKETING_INTEGRATIONS_CREATE)
   connect(@Body() dto: ConnectIntegrationDto) {
