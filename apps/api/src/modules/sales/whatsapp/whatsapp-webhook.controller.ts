@@ -104,7 +104,19 @@ export class WhatsAppWebhookController {
     if (mode === "subscribe" && token === this.verifyToken && challenge) {
       return challenge;
     }
-    throw new UnauthorizedException();
+    // TEMPORARY diagnostic — reveals only lengths/booleans, never the
+    // actual secret value, to debug a prod-only verify-token mismatch.
+    // Remove once resolved.
+    throw new UnauthorizedException({
+      diagnostic: {
+        modeReceived: mode,
+        modeMatches: mode === "subscribe",
+        tokenReceivedLength: token?.length ?? 0,
+        configuredTokenLength: this.verifyToken.length,
+        tokenMatches: token === this.verifyToken,
+        challengePresent: !!challenge,
+      },
+    });
   }
 
   @Post("webhook")
