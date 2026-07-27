@@ -18,6 +18,8 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 **Reversibility:** High. Additive schema only. The isolated try/catch around the archive refresh means this can be disabled or reworked without touching the metrics-sync path that already works.
 
+**Bug found the same day, before this had even synced against a real account:** every spend figure across the Dashboard widget and the Ad Campaigns tab was formatted with a hardcoded `Intl.NumberFormat(..., { currency: "USD" })`. The user's real AU ad account bills in INR — confirmed against a live Ads Manager screenshot showing ₹1,271.19 spent — so the number itself was always right, only the currency symbol was wrong (and would be wrong for any non-USD account). Fixed by fetching the ad account's real ISO 4217 currency (`MetaAdsService.fetchAdAccountCurrency`, `/act_<id>?fields=currency`) and storing it on `AdCampaign.currency`, denormalized per row like everything else on that table. The frontend's `formatMoney()` helper now falls back to a **plain, unlabeled number** (not USD) when a campaign's currency hasn't synced yet — silently defaulting to USD a second time would repeat the exact bug for the next non-USD account, so "no symbol" is the safer failure mode than "wrong symbol."
+
 ---
 
 ## 2026-07-27 — Opportunity stage-duration tracking

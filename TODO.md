@@ -189,7 +189,8 @@ See DECISIONS.md "Per-campaign ad performance, not channel-consolidated" for ful
 - [x] Dashboard/Reports "Marketing performance" widget reworked to be campaign-wise (name + channel per row) and scoped to campaigns with last-30-day activity only, sourced from `AdCampaign` instead of aggregating `AdCampaignMetric` by channel.
 - [x] Campaign-archive refresh wrapped in its own try/catch inside `sync()`, isolated from the daily metrics sync that already worked in prod — a problem in the new Meta calls surfaces as a warning, not a full sync failure.
 - [x] Full local verification: typecheck + unit tests both apps, an 11-check dedicated smoke test (full archive includes an old/dormant campaign with no filtering, Dashboard excludes it, Dashboard is genuinely campaign-wise not channel-consolidated — verified by inserting real rows directly since a live Meta token isn't available in this environment), full `verify-frontend-e2e.js` suite (19/19), both apps built.
-- [ ] Not yet verified against a live Meta sync (`fetchAllCampaigns`/`fetchCampaignInsightsByPreset` calls three new Meta endpoints untested against the real API) — will confirm once the next daily cron or a manual "Sync now" runs in prod.
+- [x] Bug found the same day: every spend figure was hardcoded to a "$" (USD) formatter. User's real AU account bills in INR (confirmed against a live Ads Manager screenshot: ₹1,271.19 spent). Fixed by fetching the ad account's real currency from Meta (`fetchAdAccountCurrency`) and storing it on `AdCampaign.currency`; frontend falls back to a plain unlabeled number (not USD) if a campaign's currency hasn't synced yet — see DECISIONS.md addendum.
+- [ ] Not yet verified against a live Meta sync (`fetchAllCampaigns`/`fetchCampaignInsightsByPreset`/`fetchAdAccountCurrency` call four new Meta endpoints untested against the real API) — will confirm once the next daily cron or a manual "Sync now" runs in prod.
 
 ## Later
 

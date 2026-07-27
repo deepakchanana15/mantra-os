@@ -33,6 +33,11 @@ interface MetaCampaignsResponse {
   error?: { message?: string };
 }
 
+interface MetaAdAccountResponse {
+  currency?: string;
+  error?: { message?: string };
+}
+
 /**
  * Thin wrapper around Meta's Marketing API (Graph API), same "plain fetch,
  * not the vendor SDK" shape as BrevoService — see DECISIONS.md "Ad platform
@@ -118,5 +123,27 @@ export class MetaAdsService {
       throw new Error(body.error?.message ?? `Meta API request failed (${response.status})`);
     }
     return body.data ?? [];
+  }
+
+  /**
+   * The ad account's own ISO 4217 currency (e.g. "INR") — spend/budget
+   * figures from every other call on this service are already denominated
+   * in this currency, never USD-converted, so this is what any spend
+   * amount must be formatted with. See DECISIONS.md "Per-campaign ad
+   * performance, not channel-consolidated" for the bug this fixes: every
+   * spend figure was displayed with a hardcoded "$" regardless of the
+   * account's real currency.
+   */
+  async fetchAdAccountCurrency(params: { accessToken: string; accountId: string }): Promise<string | undefined> {
+    const url = new URL(`https://graph.facebook.com/${this.apiVersion}/act_${params.accountId}`);
+    url.searchParams.set("fields", "currency");
+    url.searchParams.set("access_token", params.accessToken);
+
+    const response = await fetch(url.toString());
+    const body = (await response.json()) as MetaAdAccountResponse;
+    if (!response.ok) {
+      throw new Error(body.error?.message ?? `Meta API request failed (${response.status})`);
+    }
+    return body.currency;
   }
 }

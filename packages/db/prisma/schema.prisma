@@ -1223,6 +1223,10 @@ model AdCampaign {
   /// vocabulary may grow and forcing it through a fixed set is fragile.
   status              String?
   objective           String?
+  /// ISO 4217 code the platform's own spend/budget figures are already
+  /// denominated in (e.g. "INR") — never assume USD. See DECISIONS.md
+  /// "Per-campaign ad performance, not channel-consolidated".
+  currency            String?
   dailyBudget         Decimal?         @db.Decimal(12, 2)
   lifetimeBudget      Decimal?         @db.Decimal(12, 2)
   /// The campaign's own delivery start — "went live" — falling back to

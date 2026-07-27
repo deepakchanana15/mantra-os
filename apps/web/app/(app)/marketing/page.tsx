@@ -35,6 +35,7 @@ interface AdCampaign {
   name: string;
   status: string | null;
   objective: string | null;
+  currency: string | null;
   dailyBudget: string | null;
   lifetimeBudget: string | null;
   startDate: string | null;
@@ -56,6 +57,19 @@ function rate(count: number | undefined, of: number | undefined): string {
 
 function ctr(clicks: number, impressions: number): string {
   return impressions > 0 ? `${((clicks / impressions) * 100).toFixed(2)}%` : "—";
+}
+
+/**
+ * Never assume USD — the platform's own spend figures are already in the
+ * ad account's real currency (e.g. INR). A campaign whose currency hasn't
+ * synced yet shows a plain number rather than a wrong currency symbol. See
+ * DECISIONS.md "Per-campaign ad performance, not channel-consolidated".
+ */
+function formatMoney(amount: number, currency: string | null): string {
+  if (!currency) {
+    return amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 2 }).format(amount);
 }
 
 const AD_CHANNEL_LABELS: Record<string, string> = {
@@ -89,7 +103,6 @@ export default async function MarketingPage() {
     apiFetch<Campaign[]>("/v1/campaigns"),
     apiFetch<AdCampaign[]>("/v1/marketing-integrations/campaigns"),
   ]);
-  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 
   return (
     <div className="flex flex-col gap-5 p-7">
@@ -205,7 +218,9 @@ export default async function MarketingPage() {
                       <TableCell className="text-muted-foreground">
                         {campaign.startDate ? new Date(campaign.startDate).toLocaleDateString() : "—"}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{currency.format(Number(campaign.lifetimeSpend))}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMoney(Number(campaign.lifetimeSpend), campaign.currency)}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">{campaign.lifetimeImpressions.toLocaleString()}</TableCell>
                       <TableCell className="text-right tabular-nums">{campaign.lifetimeClicks.toLocaleString()}</TableCell>
                       <TableCell className="text-right tabular-nums">
@@ -214,7 +229,9 @@ export default async function MarketingPage() {
                       <TableCell className="text-right tabular-nums">
                         {campaign.lifetimeReach !== null ? campaign.lifetimeReach.toLocaleString() : "—"}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{currency.format(Number(campaign.last30dSpend))}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMoney(Number(campaign.last30dSpend), campaign.currency)}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

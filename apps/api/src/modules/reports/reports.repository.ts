@@ -82,6 +82,7 @@ export class ReportsRepository extends BaseRepository {
       channel: campaign.channel,
       campaignName: campaign.name,
       status: campaign.status,
+      currency: campaign.currency,
       spend: Number(campaign.last30dSpend),
       impressions: campaign.last30dImpressions,
       clicks: campaign.last30dClicks,

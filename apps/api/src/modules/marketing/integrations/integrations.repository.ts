@@ -17,6 +17,7 @@ export interface AdCampaignSnapshotRow {
   name: string;
   status?: string;
   objective?: string;
+  currency?: string;
   dailyBudget?: number;
   lifetimeBudget?: number;
   startDate?: Date;

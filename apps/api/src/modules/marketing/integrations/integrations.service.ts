@@ -133,7 +133,7 @@ export class IntegrationsService {
     channel: MarketingChannel,
     integration: { accessToken: string; accountId: string },
   ): Promise<void> {
-    const [campaigns, lifetime, last30d] = await Promise.all([
+    const [campaigns, lifetime, last30d, currency] = await Promise.all([
       this.metaAds.fetchAllCampaigns({ accessToken: integration.accessToken, accountId: integration.accountId }),
       this.metaAds.fetchCampaignInsightsByPreset({
         accessToken: integration.accessToken,
@@ -145,6 +145,7 @@ export class IntegrationsService {
         accountId: integration.accountId,
         datePreset: "last_30d",
       }),
+      this.metaAds.fetchAdAccountCurrency({ accessToken: integration.accessToken, accountId: integration.accountId }),
     ]);
 
     const lifetimeById = new Map(lifetime.map((row) => [row.campaign_id, row]));
@@ -158,6 +159,7 @@ export class IntegrationsService {
         name: campaign.name,
         status: campaign.effective_status ?? campaign.status,
         objective: campaign.objective,
+        currency,
         dailyBudget: centsToMajorUnit(campaign.daily_budget),
         lifetimeBudget: centsToMajorUnit(campaign.lifetime_budget),
         startDate: campaign.start_time ? new Date(campaign.start_time) : campaign.created_time ? new Date(campaign.created_time) : undefined,
