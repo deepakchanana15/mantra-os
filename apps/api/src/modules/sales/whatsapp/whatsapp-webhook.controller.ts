@@ -82,8 +82,16 @@ export class WhatsAppWebhookController {
     private readonly tenantContext: TenantContextService,
     private readonly businessCode: BusinessCodeService,
   ) {
-    this.verifyToken = config.getOrThrow<string>("WHATSAPP_VERIFY_TOKEN");
-    this.appSecret = config.getOrThrow<string>("WHATSAPP_APP_SECRET");
+    // Deliberately not getOrThrow: this controller is instantiated at
+    // app bootstrap along with every other controller, so a missing env
+    // var here would crash the ENTIRE API, not just WhatsApp routes —
+    // exactly what happened the first time this deployed before the
+    // Vercel env vars existed. Falling back to an empty string instead
+    // means every WhatsApp request just fails signature/token
+    // verification (401) until the real values are configured, which is
+    // the correct failure mode for one still-unconfigured feature.
+    this.verifyToken = config.get<string>("WHATSAPP_VERIFY_TOKEN") ?? "";
+    this.appSecret = config.get<string>("WHATSAPP_APP_SECRET") ?? "";
   }
 
   /** Meta's one-time handshake when the webhook URL is configured/re-verified. */
