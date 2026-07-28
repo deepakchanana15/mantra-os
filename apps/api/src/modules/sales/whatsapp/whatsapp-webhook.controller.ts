@@ -114,6 +114,15 @@ export class WhatsAppWebhookController {
     @Headers("x-hub-signature-256") signature: string | undefined,
   ): Promise<{ ok: true }> {
     if (!this.isValidSignature(req.rawBody, signature)) {
+      // TEMP DIAGNOSTIC — no secrets logged, remove after root-causing the
+      // signature mismatch. See DECISIONS.md "WhatsApp deploy incident".
+      console.error("[whatsapp-webhook-diagnostic]", {
+        hasRawBody: !!req.rawBody,
+        rawBodyLength: req.rawBody?.length ?? 0,
+        hasSignatureHeader: !!signature,
+        signatureHeaderLength: signature?.length ?? 0,
+        appSecretConfiguredLength: this.appSecret.length,
+      });
       throw new UnauthorizedException();
     }
 
