@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
 import { ConvertToCustomerButton } from "@/components/domain/convert-to-customer-button";
 import { EditOpportunityButton } from "@/components/domain/edit-opportunity-button";
+import { ExportCsvButton } from "@/components/domain/export-csv-button";
 
 interface Opportunity {
   id: string;
@@ -50,6 +51,17 @@ function daysSince(isoDate: string): number {
 
 export default async function OpportunitiesPage() {
   const opportunities = await apiFetch<Opportunity[]>("/v1/opportunities");
+  const exportRows = opportunities.map((o) => ({
+    ID: o.code ?? "",
+    Name: o.name,
+    "Customer / Lead": o.customer?.name ?? o.leadName ?? "",
+    Email: o.customer ? "" : (o.leadEmail ?? ""),
+    Phone: o.customer ? "" : (o.leadPhone ?? ""),
+    Source: SOURCE_LABELS[o.source] ?? o.source,
+    Stage: STAGE_LABELS[o.stage] ?? o.stage,
+    "Estimated Value": o.estimatedValue ?? "",
+    "Created At": o.createdAt,
+  }));
 
   return (
     <div className="flex flex-col gap-5 p-7">
@@ -58,12 +70,19 @@ export default async function OpportunitiesPage() {
           <h1 className="text-xl font-bold text-foreground">Opportunities</h1>
           <p className="text-sm text-muted-foreground">{opportunities.length} opportunities</p>
         </div>
-        <Link href="/opportunities/new">
-          <Button>
-            <Plus className="h-4 w-4" />
-            New Opportunity
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExportCsvButton
+            rows={exportRows}
+            filenamePrefix="opportunities"
+            columns={["ID", "Name", "Customer / Lead", "Email", "Phone", "Source", "Stage", "Estimated Value", "Created At"]}
+          />
+          <Link href="/opportunities/new">
+            <Button>
+              <Plus className="h-4 w-4" />
+              New Opportunity
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
