@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
 import { ConvertToCustomerButton } from "@/components/domain/convert-to-customer-button";
+import { EditOpportunityButton } from "@/components/domain/edit-opportunity-button";
 
 interface Opportunity {
   id: string;
@@ -76,7 +77,7 @@ export default async function OpportunitiesPage() {
               <TableHead>Stage</TableHead>
               <TableHead>Age</TableHead>
               <TableHead>Estimated value</TableHead>
-              <TableHead className="w-64" />
+              <TableHead className="w-80" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -132,6 +133,11 @@ export default async function OpportunitiesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
+                        <EditOpportunityButton
+                          opportunityId={opportunity.id}
+                          currentStage={opportunity.stage}
+                          currentEstimatedValue={opportunity.estimatedValue}
+                        />
                         {opportunity.customer ? (
                           <Link href={`/quotes/new?opportunityId=${opportunity.id}`}>
                             <Button variant="outline" size="sm">

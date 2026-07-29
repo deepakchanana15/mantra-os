@@ -74,6 +74,7 @@ export default function NewOpportunityPage() {
           : "Opportunity created",
       );
       router.push("/opportunities");
+      router.refresh();
     } finally {
       setLoading(false);
     }
