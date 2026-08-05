@@ -14,7 +14,6 @@ import { WebsitesService } from "./websites/websites.service";
 import { CurrenciesController } from "./currencies/currencies.controller";
 import { CurrenciesRepository } from "./currencies/currencies.repository";
 import { CurrenciesService } from "./currencies/currencies.service";
-import { TempRunMigrationController } from "./companies/temp-run-migration.controller";
 
 /**
  * Company/Country/Brand/Website/Currency master data — see DECISIONS.md
@@ -24,14 +23,7 @@ import { TempRunMigrationController } from "./companies/temp-run-migration.contr
  * Sub-phase B.
  */
 @Module({
-  controllers: [
-    CompaniesController,
-    CountriesController,
-    BrandsController,
-    WebsitesController,
-    CurrenciesController,
-    TempRunMigrationController,
-  ],
+  controllers: [CompaniesController, CountriesController, BrandsController, WebsitesController, CurrenciesController],
   providers: [
     CompaniesRepository,
     CompaniesService,
