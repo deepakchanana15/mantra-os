@@ -41,6 +41,16 @@ function defaultInvoiceNumber() {
   return `INV-${Date.now().toString(36).toUpperCase()}`;
 }
 
+function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(isoDateString: string, days: number): string {
+  const date = new Date(isoDateString);
+  date.setDate(date.getDate() + days);
+  return isoDate(date);
+}
+
 export default function NewInvoicePage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -53,7 +63,9 @@ export default function NewInvoicePage() {
   const [itemize, setItemize] = useState(false);
   const [lines, setLines] = useState<LineItemRow[]>([]);
   const [amount, setAmount] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [issuedAt, setIssuedAt] = useState(() => isoDate(new Date()));
+  const [dueDate, setDueDate] = useState(() => addDays(isoDate(new Date()), 3));
+  const [dueDateTouched, setDueDateTouched] = useState(false);
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
@@ -86,6 +98,7 @@ export default function NewInvoicePage() {
           status,
           amount: itemize ? undefined : Number(amount),
           lines: itemize ? validLines : undefined,
+          issuedAt: issuedAt || undefined,
           dueDate: dueDate || undefined,
           companyId,
           countryId,
@@ -222,9 +235,31 @@ export default function NewInvoicePage() {
               </div>
             )}
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="dueDate">Due date</Label>
-              <Input id="dueDate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="issuedAt">Issue date</Label>
+                <Input
+                  id="issuedAt"
+                  type="date"
+                  value={issuedAt}
+                  onChange={(e) => {
+                    setIssuedAt(e.target.value);
+                    if (!dueDateTouched) setDueDate(addDays(e.target.value, 3));
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="dueDate">Due date</Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => {
+                    setDueDateTouched(true);
+                    setDueDate(e.target.value);
+                  }}
+                />
+              </div>
             </div>
 
             <CompanyCountrySelect

@@ -14,6 +14,7 @@ interface InvoicePdfData {
   amount: { toString(): string };
   issuedAt: Date | string | null;
   dueDate: Date | string | null;
+  createdAt: Date | string;
   customer: {
     name: string;
     email: string | null;
@@ -126,7 +127,7 @@ export class InvoicePdfService {
       doc.text("DUE DATE", leftX + 150, metaY);
       doc.text("STATUS", leftX + 300, metaY);
       doc.fontSize(10).fillColor("#111111");
-      doc.text(formatDate(invoice.issuedAt), leftX, metaY + 14);
+      doc.text(formatDate(invoice.issuedAt ?? invoice.createdAt), leftX, metaY + 14);
       doc.text(formatDate(invoice.dueDate), leftX + 150, metaY + 14);
       doc.text(STATUS_LABELS[invoice.status] ?? invoice.status, leftX + 300, metaY + 14);
 
