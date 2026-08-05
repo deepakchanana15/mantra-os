@@ -37,6 +37,8 @@ interface Company {
   name: string;
   legalName: string | null;
   registrationNumber: string | null;
+  taxId: string | null;
+  address: string | null;
   baseCurrencyId: string | null;
 }
 

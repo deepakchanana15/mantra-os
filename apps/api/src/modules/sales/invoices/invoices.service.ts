@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { DeletionGuardService } from "../../../common/deletion/deletion-guard.service";
 import { CreateInvoiceDto } from "./dto/create-invoice.dto";
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
+import { InvoicePdfService } from "./invoice-pdf.service";
 import { InvoicesRepository } from "./invoices.repository";
 
 @Injectable()
@@ -9,7 +10,14 @@ export class InvoicesService {
   constructor(
     private readonly invoices: InvoicesRepository,
     private readonly deletionGuard: DeletionGuardService,
+    private readonly invoicePdf: InvoicePdfService,
   ) {}
+
+  async getPdf(id: string): Promise<{ buffer: Buffer; filename: string }> {
+    const invoice = await this.invoices.findOneOrThrow(id);
+    const buffer = await this.invoicePdf.generate(invoice);
+    return { buffer, filename: `${invoice.invoiceNumber}.pdf` };
+  }
 
   findAll(params: { skip?: number; take?: number; customerId?: string }) {
     return this.invoices.findAll(params);

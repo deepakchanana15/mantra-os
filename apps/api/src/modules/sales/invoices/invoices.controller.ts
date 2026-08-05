@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
+import type { Response } from "express";
 import { RequirePermission } from "../../../common/decorators/require-permission.decorator";
 import { PaginationQueryDto } from "../../../common/dto/pagination-query.dto";
 import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard";
@@ -24,6 +25,15 @@ export class InvoicesController {
   @RequirePermission(PERMISSIONS.INVOICES_READ)
   findOne(@Param("id") id: string) {
     return this.invoices.findOne(id);
+  }
+
+  @Get(":id/pdf")
+  @RequirePermission(PERMISSIONS.INVOICES_READ)
+  async downloadPdf(@Param("id") id: string, @Res() res: Response) {
+    const { buffer, filename } = await this.invoices.getPdf(id);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(buffer);
   }
 
   @Post()

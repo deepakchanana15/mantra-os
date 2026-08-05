@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
+import { invoiceCurrencyCode, type InvoiceCurrencySource } from "@/lib/invoice-currency";
 
-interface Invoice {
+interface Invoice extends InvoiceCurrencySource {
   id: string;
   invoiceNumber: string;
   status: string;
@@ -35,7 +37,11 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "ne
 
 export default async function InvoiceDetailPage({ params }: { params: { id: string } }) {
   const invoice = await apiFetch<Invoice>(`/v1/invoices/${params.id}`);
-  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", currencyDisplay: "code" });
+  const currency = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: invoiceCurrencyCode(invoice),
+    currencyDisplay: "code",
+  });
 
   return (
     <div className="flex flex-col gap-5 p-7">
@@ -59,7 +65,15 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
             </Link>
           )}
         </div>
-        <DeleteEntityButton apiPath={`/api/v1/invoices/${invoice.id}`} entityLabel="Invoice" redirectTo="/invoices" />
+        <div className="flex items-center gap-2">
+          <a href={`/api/v1/invoices/${invoice.id}/pdf`} download>
+            <Button variant="outline" size="sm">
+              <Download className="h-3.5 w-3.5" />
+              Download PDF
+            </Button>
+          </a>
+          <DeleteEntityButton apiPath={`/api/v1/invoices/${invoice.id}`} entityLabel="Invoice" redirectTo="/invoices" />
+        </div>
       </div>
 
       {invoice.lines.length > 0 ? (

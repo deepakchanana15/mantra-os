@@ -40,7 +40,15 @@ async function proxy(req: NextRequest, path: string[]) {
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   }
-  return new NextResponse(await res.text(), { status: res.status });
+
+  // Binary/non-JSON responses (e.g. the invoice PDF) — .text() would
+  // corrupt binary bytes, and the content type/filename must be forwarded
+  // for the browser to render/download it correctly.
+  const passthroughHeaders = new Headers();
+  if (resContentType) passthroughHeaders.set("content-type", resContentType);
+  const disposition = res.headers.get("content-disposition");
+  if (disposition) passthroughHeaders.set("content-disposition", disposition);
+  return new NextResponse(await res.arrayBuffer(), { status: res.status, headers: passthroughHeaders });
 }
 
 export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {

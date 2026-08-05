@@ -265,6 +265,10 @@ model Company {
   name               String
   legalName          String?
   registrationNumber String?
+  /** Tax identifier for invoicing — ABN (AU), VAT/USt-IdNr (DE), BTW (NL), GST/HST (CA), EIN (US), etc. */
+  taxId              String?
+  /** Free-text postal address for invoicing — printed as-is, no structured fields. */
+  address            String?
   baseCurrencyId     String?
   enabled            Boolean   @default(true)
   createdAt          DateTime  @default(now())

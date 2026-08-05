@@ -25,6 +25,8 @@ interface Company {
   name: string;
   legalName: string | null;
   registrationNumber: string | null;
+  taxId: string | null;
+  address: string | null;
   baseCurrencyId: string | null;
 }
 
@@ -32,10 +34,19 @@ interface CompanyFormState {
   name: string;
   legalName: string;
   registrationNumber: string;
+  taxId: string;
+  address: string;
   baseCurrencyId: string | undefined;
 }
 
-const EMPTY_FORM: CompanyFormState = { name: "", legalName: "", registrationNumber: "", baseCurrencyId: undefined };
+const EMPTY_FORM: CompanyFormState = {
+  name: "",
+  legalName: "",
+  registrationNumber: "",
+  taxId: "",
+  address: "",
+  baseCurrencyId: undefined,
+};
 
 /** A legal entity within the org (Mantra Sports USA LLC, ...). See DECISIONS.md "Global multi-country, multi-company, multi-brand architecture". */
 export function CompaniesTab({ companies: initial, currencies }: { companies: Company[]; currencies: Currency[] }) {
@@ -60,6 +71,8 @@ export function CompaniesTab({ companies: initial, currencies }: { companies: Co
       name: company.name,
       legalName: company.legalName ?? "",
       registrationNumber: company.registrationNumber ?? "",
+      taxId: company.taxId ?? "",
+      address: company.address ?? "",
       baseCurrencyId: company.baseCurrencyId ?? undefined,
     });
     setOpen(true);
@@ -73,6 +86,8 @@ export function CompaniesTab({ companies: initial, currencies }: { companies: Co
         name: form.name,
         legalName: form.legalName || undefined,
         registrationNumber: form.registrationNumber || undefined,
+        taxId: form.taxId || undefined,
+        address: form.address || undefined,
         baseCurrencyId: form.baseCurrencyId,
       });
       const res = await fetch(editingId ? `/api/v1/companies/${editingId}` : "/api/v1/companies", {
@@ -173,6 +188,26 @@ export function CompaniesTab({ companies: initial, currencies }: { companies: Co
                 placeholder="e.g. ACN, EIN, company registration number"
                 value={form.registrationNumber}
                 onChange={(e) => setForm((f) => ({ ...f, registrationNumber: e.target.value }))}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="company-tax-id">Tax ID</Label>
+              <Input
+                id="company-tax-id"
+                placeholder="e.g. ABN (AU), VAT (DE/NL), GST/HST (CA), EIN (US)"
+                value={form.taxId}
+                onChange={(e) => setForm((f) => ({ ...f, taxId: e.target.value }))}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="company-address">Address</Label>
+              <textarea
+                id="company-address"
+                rows={3}
+                placeholder="Printed on invoices as-is"
+                className="flex w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-faint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
               />
             </div>
             <div className="flex flex-col gap-1.5">

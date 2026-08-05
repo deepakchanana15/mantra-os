@@ -16,6 +16,18 @@ export class CreateCompanyDto {
   @MaxLength(100)
   registrationNumber?: string;
 
+  /** ABN (AU), VAT/USt-IdNr (DE), BTW (NL), GST/HST (CA), EIN (US), etc. — printed on invoices. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  taxId?: string;
+
+  /** Free-text postal address, printed as-is on invoices. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  address?: string;
+
   @IsOptional()
   @IsUUID()
   baseCurrencyId?: string;

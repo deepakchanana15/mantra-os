@@ -4,8 +4,9 @@ import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
+import { formatInvoiceAmount, type InvoiceCurrencySource } from "@/lib/invoice-currency";
 
-interface Invoice {
+interface Invoice extends InvoiceCurrencySource {
   id: string;
   invoiceNumber: string;
   status: string;
@@ -69,7 +70,7 @@ export default async function InvoicesPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{invoice.customer.name}</TableCell>
                   <TableCell className="text-muted-foreground">{STATUS_LABELS[invoice.status] ?? invoice.status}</TableCell>
-                  <TableCell className="text-muted-foreground">${invoice.amount}</TableCell>
+                  <TableCell className="text-muted-foreground">{formatInvoiceAmount(invoice.amount, invoice)}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : "—"}
                   </TableCell>

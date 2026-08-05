@@ -12,7 +12,12 @@ export class InvoicesRepository extends BaseRepository {
         deletedAt: null,
         ...(params.customerId ? { customerId: params.customerId } : {}),
       },
-      include: { customer: true, salesOrder: true },
+      include: {
+        customer: true,
+        salesOrder: true,
+        company: { include: { baseCurrency: true } },
+        country: { include: { currency: true } },
+      },
       skip: params.skip ?? 0,
       take: params.take ?? 50,
       orderBy: { createdAt: "desc" },
@@ -22,7 +27,13 @@ export class InvoicesRepository extends BaseRepository {
   async findOneOrThrow(id: string) {
     const invoice = await this.db.invoice.findFirst({
       where: { id, organizationId: this.organizationId, deletedAt: null },
-      include: { customer: true, salesOrder: true, lines: { include: { product: true } } },
+      include: {
+        customer: true,
+        salesOrder: true,
+        lines: { include: { product: true } },
+        company: { include: { baseCurrency: true } },
+        country: { include: { currency: true } },
+      },
     });
     if (!invoice) {
       throw new NotFoundException("Invoice not found");
