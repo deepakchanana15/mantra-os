@@ -33,11 +33,16 @@ export function CompanyCountrySelect({
   countryId,
   onCompanyChange,
   onCountryChange,
+  noCompanyLabel = "No company",
+  noCountryLabel = "No country",
 }: {
   companyId: string | undefined;
   countryId: string | undefined;
   onCompanyChange: (id: string | undefined) => void;
   onCountryChange: (id: string | undefined) => void;
+  /** Override the "unset" option's label — e.g. Suppliers use "All markets" since leaving this unset means available to every Company/Country, not "not yet assigned". */
+  noCompanyLabel?: string;
+  noCountryLabel?: string;
 }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [countries, setCountries] = useState<Country[]>([]);
@@ -62,7 +67,7 @@ export function CompanyCountrySelect({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" type="button" className="w-full justify-start">
-              {selectedCompany?.name ?? "No company"}
+              {selectedCompany?.name ?? noCompanyLabel}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-64 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
@@ -74,7 +79,7 @@ export function CompanyCountrySelect({
                 }
               }}
             >
-              No company
+              {noCompanyLabel}
             </DropdownMenuItem>
             {companies.map((c) => (
               <DropdownMenuItem
@@ -98,11 +103,11 @@ export function CompanyCountrySelect({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" type="button" className="w-full justify-start">
-              {selectedCountry?.name ?? "No country"}
+              {selectedCountry?.name ?? noCountryLabel}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-64 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
-            <DropdownMenuItem onSelect={() => onCountryChange(undefined)}>No country</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onCountryChange(undefined)}>{noCountryLabel}</DropdownMenuItem>
             {availableCountries.map((c) => (
               <DropdownMenuItem key={c.id} onSelect={() => onCountryChange(c.id)}>
                 {c.name} ({c.isoCode})

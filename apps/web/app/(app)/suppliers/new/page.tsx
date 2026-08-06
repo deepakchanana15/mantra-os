@@ -140,12 +140,20 @@ export default function NewSupplierPage() {
               <AddressFields idPrefix="supplier-address" value={address} onChange={setAddress} />
             </div>
 
-            <CompanyCountrySelect
-              companyId={companyId}
-              countryId={countryId}
-              onCompanyChange={setCompanyId}
-              onCountryChange={setCountryId}
-            />
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs text-faint">
+                Leave as &quot;All markets&quot; if this supplier sources for every country — only set a specific
+                Company/Country if this supplier is exclusive to one market.
+              </p>
+              <CompanyCountrySelect
+                companyId={companyId}
+                countryId={countryId}
+                onCompanyChange={setCompanyId}
+                onCountryChange={setCountryId}
+                noCompanyLabel="All markets"
+                noCountryLabel="All countries"
+              />
+            </div>
 
             <div className="mt-2 flex gap-2">
               <Button type="submit" disabled={loading}>
