@@ -4,8 +4,9 @@ import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { purchaseOrderCurrencyCode, type PurchaseOrderCurrencySource } from "@/lib/purchase-order-currency";
 
-interface PurchaseOrder {
+interface PurchaseOrder extends PurchaseOrderCurrencySource {
   id: string;
   status: string;
   orderDate: string;
@@ -23,7 +24,6 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "ne
 
 export default async function PurchaseOrdersPage() {
   const orders = await apiFetch<PurchaseOrder[]>("/v1/purchase-orders");
-  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
   return (
     <div className="flex flex-col gap-5 p-7">
@@ -60,6 +60,11 @@ export default async function PurchaseOrdersPage() {
             ) : (
               orders.map((order) => {
                 const total = order.lines.reduce((sum, l) => sum + l.quantity * Number(l.unitCost), 0);
+                const currency = new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: purchaseOrderCurrencyCode(order),
+                  currencyDisplay: "code",
+                });
                 return (
                   <TableRow key={order.id}>
                     <TableCell>

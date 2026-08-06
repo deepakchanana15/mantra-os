@@ -12,7 +12,12 @@ export class PurchaseOrdersRepository extends BaseRepository {
         deletedAt: null,
         ...(params.supplierId ? { supplierId: params.supplierId } : {}),
       },
-      include: { supplier: true, lines: { include: { product: true } } },
+      include: {
+        supplier: true,
+        lines: { include: { product: true } },
+        company: { include: { baseCurrency: true } },
+        country: { include: { currency: true } },
+      },
       skip: params.skip ?? 0,
       take: params.take ?? 50,
       orderBy: { createdAt: "desc" },
@@ -22,7 +27,13 @@ export class PurchaseOrdersRepository extends BaseRepository {
   async findOneOrThrow(id: string) {
     const order = await this.db.purchaseOrder.findFirst({
       where: { id, organizationId: this.organizationId, deletedAt: null },
-      include: { supplier: true, lines: { include: { product: true } }, goodsReceipts: true },
+      include: {
+        supplier: true,
+        lines: { include: { product: true } },
+        goodsReceipts: true,
+        company: { include: { baseCurrency: true } },
+        country: { include: { currency: true } },
+      },
     });
     if (!order) {
       throw new NotFoundException("Purchase order not found");

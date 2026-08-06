@@ -6,6 +6,7 @@ import { ExpensesService } from "./expenses/expenses.service";
 import { GoodsReceiptsController } from "./goods-receipts/goods-receipts.controller";
 import { GoodsReceiptsRepository } from "./goods-receipts/goods-receipts.repository";
 import { GoodsReceiptsService } from "./goods-receipts/goods-receipts.service";
+import { PurchaseOrderPdfService } from "./purchase-orders/purchase-order-pdf.service";
 import { PurchaseOrdersController } from "./purchase-orders/purchase-orders.controller";
 import { PurchaseOrdersRepository } from "./purchase-orders/purchase-orders.repository";
 import { PurchaseOrdersService } from "./purchase-orders/purchase-orders.service";
@@ -21,6 +22,7 @@ import { SuppliersService } from "./suppliers/suppliers.service";
     SuppliersService,
     PurchaseOrdersRepository,
     PurchaseOrdersService,
+    PurchaseOrderPdfService,
     GoodsReceiptsRepository,
     GoodsReceiptsService,
     ExpensesRepository,

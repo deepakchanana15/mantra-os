@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import PDFDocument from "pdfkit";
-import { MANTRA_LOGO_BASE64 } from "./mantra-logo";
+import { MANTRA_LOGO_BASE64 } from "../../../common/assets/mantra-logo";
+import { formatDate, formatMoney, formatPostalAddress } from "../../../common/pdf/pdf-format";
 
 interface InvoicePdfLine {
   quantity: number;
@@ -38,32 +39,6 @@ const STATUS_LABELS: Record<string, string> = {
 
 function currencyCode(invoice: InvoicePdfData): string {
   return invoice.country?.currency?.code ?? invoice.company?.baseCurrency?.code ?? "USD";
-}
-
-function formatMoney(amount: { toString(): string } | number, currency: string): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency, currencyDisplay: "code" }).format(Number(amount));
-}
-
-function formatDate(value: Date | string | null): string {
-  if (!value) return "—";
-  return new Date(value).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-interface BillingAddressShape {
-  line1?: string;
-  line2?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
-}
-
-function formatBillingAddress(value: unknown): string[] {
-  if (!value || typeof value !== "object") return [];
-  const address = value as BillingAddressShape;
-  const line2 = address.line2 ? `${address.line1}, ${address.line2}` : address.line1;
-  const cityLine = [address.city, address.state, address.postalCode].filter(Boolean).join(" ");
-  return [line2, cityLine, address.country].filter((l): l is string => !!l && l.trim().length > 0);
 }
 
 /**
@@ -115,7 +90,7 @@ export class InvoicePdfService {
       doc.fontSize(11).fillColor("#111111").text(invoice.customer.name, rightX, colTop + 14, { width: 220 });
       let toY = colTop + 30;
       const contactLines = [invoice.customer.email, invoice.customer.phone].filter((l): l is string => !!l);
-      for (const line of [...contactLines, ...formatBillingAddress(invoice.customer.billingAddress)]) {
+      for (const line of [...contactLines, ...formatPostalAddress(invoice.customer.billingAddress)]) {
         doc.fontSize(9).fillColor("#444444").text(line, rightX, toY, { width: 220 });
         toY += 12;
       }

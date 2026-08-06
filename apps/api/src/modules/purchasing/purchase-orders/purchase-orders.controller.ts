@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
+import type { Response } from "express";
 import { IsOptional, IsUUID } from "class-validator";
 import { RequirePermission } from "../../../common/decorators/require-permission.decorator";
 import { PaginationQueryDto } from "../../../common/dto/pagination-query.dto";
@@ -31,6 +32,15 @@ export class PurchaseOrdersController {
   @RequirePermission(PERMISSIONS.PURCHASE_ORDERS_READ)
   findOne(@Param("id") id: string) {
     return this.purchaseOrders.findOne(id);
+  }
+
+  @Get(":id/pdf")
+  @RequirePermission(PERMISSIONS.PURCHASE_ORDERS_READ)
+  async downloadPdf(@Param("id") id: string, @Res() res: Response) {
+    const { buffer, filename } = await this.purchaseOrders.getPdf(id);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(buffer);
   }
 
   @Post()

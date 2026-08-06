@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { ArrowLeft, PackageCheck } from "lucide-react";
+import { ArrowLeft, Download, PackageCheck } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
+import { purchaseOrderCurrencyCode, type PurchaseOrderCurrencySource } from "@/lib/purchase-order-currency";
 
-interface PurchaseOrder {
+interface PurchaseOrder extends PurchaseOrderCurrencySource {
   id: string;
   status: string;
   orderDate: string;
@@ -25,7 +26,11 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "ne
 
 export default async function PurchaseOrderDetailPage({ params }: { params: { id: string } }) {
   const order = await apiFetch<PurchaseOrder>(`/v1/purchase-orders/${params.id}`);
-  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+  const currency = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: purchaseOrderCurrencyCode(order),
+    currencyDisplay: "code",
+  });
   const total = order.lines.reduce((sum, l) => sum + l.quantity * Number(l.unitCost), 0);
 
   return (
@@ -43,6 +48,12 @@ export default async function PurchaseOrderDetailPage({ params }: { params: { id
           <p className="text-xs text-faint">Ordered {new Date(order.orderDate).toLocaleDateString()}</p>
         </div>
         <div className="flex gap-2">
+          <a href={`/api/v1/purchase-orders/${order.id}/pdf`} download>
+            <Button variant="outline">
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+          </a>
           <Link href={`/goods-receipts/new?purchaseOrderId=${order.id}`}>
             <Button variant="outline">
               <PackageCheck className="h-4 w-4" />
