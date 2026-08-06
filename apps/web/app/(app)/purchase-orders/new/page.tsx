@@ -22,22 +22,32 @@ interface Supplier {
   name: string;
 }
 
+interface Currency {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export default function NewPurchaseOrderPage() {
   const router = useRouter();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [supplierId, setSupplierId] = useState<string | undefined>(undefined);
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
+  const [currencyId, setCurrencyId] = useState<string | undefined>(undefined);
   const [lines, setLines] = useState<LineItemRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/v1/suppliers").then((res) => (res.ok ? res.json() : [])).then(setSuppliers);
     fetch("/api/v1/products").then((res) => (res.ok ? res.json() : [])).then(setProducts);
+    fetch("/api/v1/currencies").then((res) => (res.ok ? res.json() : [])).then(setCurrencies);
   }, []);
 
   const selectedSupplier = suppliers.find((s) => s.id === supplierId);
+  const selectedCurrency = currencies.find((c) => c.id === currencyId);
   const validLines = lines.filter((l) => l.productId);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -52,6 +62,7 @@ export default function NewPurchaseOrderPage() {
           supplierId,
           companyId,
           countryId,
+          currencyId,
           lines: validLines.map((l) => ({ productId: l.productId, quantity: l.quantity, unitCost: l.unitPrice })),
         }),
       });
@@ -104,6 +115,31 @@ export default function NewPurchaseOrderPage() {
               onCompanyChange={setCompanyId}
               onCountryChange={setCountryId}
             />
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Currency</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" type="button" className="w-full justify-start">
+                    {selectedCurrency ? `${selectedCurrency.code} — ${selectedCurrency.name}` : "Defaults to the issuing entity's currency"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-64 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
+                  <DropdownMenuItem onSelect={() => setCurrencyId(undefined)}>
+                    Defaults to the issuing entity&apos;s currency
+                  </DropdownMenuItem>
+                  {currencies.map((c) => (
+                    <DropdownMenuItem key={c.id} onSelect={() => setCurrencyId(c.id)}>
+                      {c.code} — {c.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <p className="text-xs text-faint">
+                Set this to the supplier&apos;s own invoicing currency (e.g. INR for suppliers in India) — overrides the
+                Company/Country default above.
+              </p>
+            </div>
 
             <LineItemsEditor
               products={products}

@@ -17,6 +17,7 @@ export class PurchaseOrdersRepository extends BaseRepository {
         lines: { include: { product: true } },
         company: { include: { baseCurrency: true } },
         country: { include: { currency: true } },
+        currency: true,
       },
       skip: params.skip ?? 0,
       take: params.take ?? 50,
@@ -33,6 +34,7 @@ export class PurchaseOrdersRepository extends BaseRepository {
         goodsReceipts: true,
         company: { include: { baseCurrency: true } },
         country: { include: { currency: true } },
+        currency: true,
       },
     });
     if (!order) {
@@ -48,6 +50,7 @@ export class PurchaseOrdersRepository extends BaseRepository {
         supplierId: dto.supplierId,
         companyId: dto.companyId,
         countryId: dto.countryId,
+        currencyId: dto.currencyId,
         createdBy: this.userId,
         updatedBy: this.userId,
         lines: {

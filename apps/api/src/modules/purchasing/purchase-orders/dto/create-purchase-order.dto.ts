@@ -27,6 +27,11 @@ export class CreatePurchaseOrderDto {
   @IsUUID()
   countryId?: string;
 
+  /** Explicit override — a Purchase Order is priced in whatever the supplier invoices in, which doesn't necessarily match the issuing Mantra entity's currency. Falls back to Country/Company currency when unset. */
+  @IsOptional()
+  @IsUUID()
+  currencyId?: string;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })

@@ -23,6 +23,7 @@ interface PurchaseOrderPdfData {
   lines: PurchaseOrderPdfLine[];
   company: { name: string; legalName: string | null; taxId: string | null; address: string | null; baseCurrency?: { code: string } | null } | null;
   country: { currency?: { code: string } | null } | null;
+  currency: { code: string } | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -34,7 +35,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function currencyCode(order: PurchaseOrderPdfData): string {
-  return order.country?.currency?.code ?? order.company?.baseCurrency?.code ?? "USD";
+  return order.currency?.code ?? order.country?.currency?.code ?? order.company?.baseCurrency?.code ?? "USD";
 }
 
 /** No PO-number field exists yet (unlike Invoice's user-supplied invoiceNumber) — this derives a short, stable reference purely for display. */

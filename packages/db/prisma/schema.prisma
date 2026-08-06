@@ -249,9 +249,10 @@ model Currency {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  companies Company[]
-  countries Country[]
-  websites  Website[]
+  companies      Company[]
+  countries      Country[]
+  websites       Website[]
+  purchaseOrders PurchaseOrder[]
 
   @@map("currencies")
 }
@@ -910,6 +911,11 @@ model PurchaseOrder {
   companyId      String?
   countryId      String?
   supplierId     String
+  /// Explicit override — Purchase Orders are priced in whatever the
+  /// supplier invoices in (e.g. INR for Indian suppliers), which doesn't
+  /// necessarily match the issuing Mantra entity's own currency the way an
+  /// Invoice's does. Falls back to Country/Company currency when unset.
+  currencyId     String?
   status         PurchaseOrderStatus @default(DRAFT)
   orderDate      DateTime            @default(now())
   createdAt      DateTime            @default(now())
@@ -921,6 +927,7 @@ model PurchaseOrder {
   organization  Organization        @relation(fields: [organizationId], references: [id])
   company       Company?            @relation(fields: [companyId], references: [id])
   country       Country?            @relation(fields: [countryId], references: [id])
+  currency      Currency?           @relation(fields: [currencyId], references: [id])
   supplier      Supplier            @relation(fields: [supplierId], references: [id])
   lines         PurchaseOrderLine[]
   goodsReceipts GoodsReceipt[]
@@ -930,6 +937,7 @@ model PurchaseOrder {
   @@index([supplierId])
   @@index([companyId])
   @@index([countryId])
+  @@index([currencyId])
   @@map("purchase_orders")
 }
 
