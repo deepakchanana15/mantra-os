@@ -168,7 +168,7 @@ export class InvoicePdfService {
 
       doc.fontSize(11).fillColor("#111111");
       doc.text("Total", colPrice, tableY, { width: 70, align: "right" });
-      doc.font("Helvetica-Bold").text(formatMoney(total, currency), colTotal, tableY, { width: 65, align: "right" });
+      doc.font("Helvetica-Bold").text(formatMoney(total, currency), colTotal - 20, tableY, { width: 85, align: "right" });
       doc.font("Helvetica");
       tableY += 30;
 
