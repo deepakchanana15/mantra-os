@@ -18,6 +18,7 @@ import {
 import { CompanyCountrySelect } from "@/components/domain/company-country-select";
 import { DiscountFields } from "@/components/domain/discount-fields";
 import { LineItemsEditor, type LineItemRow, type ProductOption } from "@/components/domain/line-items-editor";
+import { isValidDateInputValue } from "@/lib/date-input";
 
 interface Customer {
   id: string;
@@ -235,8 +236,11 @@ export default function NewInvoicePage() {
                 <Input
                   id="issuedAt"
                   type="date"
+                  min="1900-01-01"
+                  max="2099-12-31"
                   value={issuedAt}
                   onChange={(e) => {
+                    if (!isValidDateInputValue(e.target.value)) return;
                     setIssuedAt(e.target.value);
                     if (!dueDateTouched) setDueDate(e.target.value);
                   }}
@@ -247,8 +251,11 @@ export default function NewInvoicePage() {
                 <Input
                   id="dueDate"
                   type="date"
+                  min="1900-01-01"
+                  max="2099-12-31"
                   value={dueDate}
                   onChange={(e) => {
+                    if (!isValidDateInputValue(e.target.value)) return;
                     setDueDateTouched(true);
                     setDueDate(e.target.value);
                   }}

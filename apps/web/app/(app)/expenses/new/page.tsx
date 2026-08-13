@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MultiFileUpload, type UploadedAttachment } from "@/components/domain/multi-file-upload";
 import { CompanyCountrySelect } from "@/components/domain/company-country-select";
+import { isValidDateInputValue } from "@/lib/date-input";
 
 interface Supplier {
   id: string;
@@ -174,7 +175,16 @@ export default function NewExpensePage() {
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="expenseDate">Date</Label>
-              <Input id="expenseDate" type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} />
+              <Input
+                id="expenseDate"
+                type="date"
+                min="1900-01-01"
+                max="2099-12-31"
+                value={expenseDate}
+                onChange={(e) => {
+                  if (isValidDateInputValue(e.target.value)) setExpenseDate(e.target.value);
+                }}
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">

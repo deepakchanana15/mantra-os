@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CompanyCountrySelect } from "@/components/domain/company-country-select";
+import { isValidDateInputValue } from "@/lib/date-input";
 
 const STAGES = [
   { value: "NEW", label: "New" },
@@ -160,8 +161,12 @@ export default function NewOpportunityPage() {
                 <Input
                   id="expectedCloseDate"
                   type="date"
+                  min="1900-01-01"
+                  max="2099-12-31"
                   value={expectedCloseDate}
-                  onChange={(e) => setExpectedCloseDate(e.target.value)}
+                  onChange={(e) => {
+                    if (isValidDateInputValue(e.target.value)) setExpectedCloseDate(e.target.value);
+                  }}
                 />
               </div>
             </div>
