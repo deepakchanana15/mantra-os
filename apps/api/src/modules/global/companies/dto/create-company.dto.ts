@@ -28,6 +28,12 @@ export class CreateCompanyDto {
   @MaxLength(500)
   address?: string;
 
+  /** Free-text payment/bank details (account name, BSB/routing, account number, bank name), printed as-is on Invoices only. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  bankDetails?: string;
+
   @IsOptional()
   @IsUUID()
   baseCurrencyId?: string;

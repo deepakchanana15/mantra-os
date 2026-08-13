@@ -39,6 +39,7 @@ interface Company {
   registrationNumber: string | null;
   taxId: string | null;
   address: string | null;
+  bankDetails: string | null;
   baseCurrencyId: string | null;
 }
 

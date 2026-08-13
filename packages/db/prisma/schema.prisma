@@ -270,6 +270,8 @@ model Company {
   taxId              String?
   /** Free-text postal address for invoicing — printed as-is, no structured fields. */
   address            String?
+  /** Free-text payment/bank details (account name, BSB/routing, account number, bank name) — printed as-is on Invoices only, since it's for receiving payment, not Purchase Orders where we're the payer. */
+  bankDetails        String?
   baseCurrencyId     String?
   enabled            Boolean   @default(true)
   createdAt          DateTime  @default(now())

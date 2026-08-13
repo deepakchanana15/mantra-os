@@ -27,6 +27,7 @@ interface Company {
   registrationNumber: string | null;
   taxId: string | null;
   address: string | null;
+  bankDetails: string | null;
   baseCurrencyId: string | null;
 }
 
@@ -36,6 +37,7 @@ interface CompanyFormState {
   registrationNumber: string;
   taxId: string;
   address: string;
+  bankDetails: string;
   baseCurrencyId: string | undefined;
 }
 
@@ -45,6 +47,7 @@ const EMPTY_FORM: CompanyFormState = {
   registrationNumber: "",
   taxId: "",
   address: "",
+  bankDetails: "",
   baseCurrencyId: undefined,
 };
 
@@ -73,6 +76,7 @@ export function CompaniesTab({ companies: initial, currencies }: { companies: Co
       registrationNumber: company.registrationNumber ?? "",
       taxId: company.taxId ?? "",
       address: company.address ?? "",
+      bankDetails: company.bankDetails ?? "",
       baseCurrencyId: company.baseCurrencyId ?? undefined,
     });
     setOpen(true);
@@ -88,6 +92,7 @@ export function CompaniesTab({ companies: initial, currencies }: { companies: Co
         registrationNumber: form.registrationNumber || undefined,
         taxId: form.taxId || undefined,
         address: form.address || undefined,
+        bankDetails: form.bankDetails || undefined,
         baseCurrencyId: form.baseCurrencyId,
       });
       const res = await fetch(editingId ? `/api/v1/companies/${editingId}` : "/api/v1/companies", {
@@ -209,6 +214,18 @@ export function CompaniesTab({ companies: initial, currencies }: { companies: Co
                 value={form.address}
                 onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
               />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="company-bank-details">Bank details</Label>
+              <textarea
+                id="company-bank-details"
+                rows={4}
+                placeholder={"e.g.\nAccount Name: ...\nBSB: ...\nAccount Number: ...\nBank: ..."}
+                className="flex w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-faint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                value={form.bankDetails}
+                onChange={(e) => setForm((f) => ({ ...f, bankDetails: e.target.value }))}
+              />
+              <p className="text-xs text-faint">Printed on Invoice PDFs only, under the total — never on Purchase Orders.</p>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Base currency</Label>

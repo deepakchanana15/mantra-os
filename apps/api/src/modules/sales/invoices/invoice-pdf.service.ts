@@ -25,7 +25,14 @@ interface InvoicePdfData {
     billingAddress: unknown;
   };
   lines: InvoicePdfLine[];
-  company: { name: string; legalName: string | null; taxId: string | null; address: string | null; baseCurrency?: { code: string } | null } | null;
+  company: {
+    name: string;
+    legalName: string | null;
+    taxId: string | null;
+    address: string | null;
+    bankDetails: string | null;
+    baseCurrency?: { code: string } | null;
+  } | null;
   country: { currency?: { code: string } | null } | null;
 }
 
@@ -147,6 +154,17 @@ export class InvoicePdfService {
       doc.text("Total", colPrice, tableY, { width: 70, align: "right" });
       doc.font("Helvetica-Bold").text(formatMoney(invoice.amount, currency), colTotal, tableY, { width: 65, align: "right" });
       doc.font("Helvetica");
+      tableY += 30;
+
+      if (invoice.company?.bankDetails) {
+        doc.fontSize(9).fillColor("#999999").text("PAYMENT DETAILS", leftX, tableY);
+        tableY += 14;
+        doc.fontSize(9).fillColor("#444444");
+        for (const line of invoice.company.bankDetails.split("\n")) {
+          doc.text(line, leftX, tableY, { width: 300 });
+          tableY += 12;
+        }
+      }
 
       doc.fontSize(9).fillColor("#999999").text("Thank you for your business.", leftX, 750, { width: 495, align: "center" });
 
