@@ -102,4 +102,12 @@ export class InvoicesRepository extends BaseRepository {
   softDelete(id: string) {
     return this.db.invoice.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: this.userId } });
   }
+
+  async markPaid(id: string) {
+    await this.findOneOrThrow(id);
+    return this.db.invoice.update({
+      where: { id },
+      data: { status: "PAID", paidAt: new Date(), paidBy: this.userId, updatedBy: this.userId },
+    });
+  }
 }

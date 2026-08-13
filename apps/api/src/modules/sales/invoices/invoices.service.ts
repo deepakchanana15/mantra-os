@@ -1,9 +1,14 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { AttachmentEntityType } from "@mantra-os/db";
+import { AttachmentsRepository } from "../../../common/attachments/attachments.repository";
 import { DeletionGuardService } from "../../../common/deletion/deletion-guard.service";
 import { CreateInvoiceDto } from "./dto/create-invoice.dto";
+import { MarkInvoicePaidDto } from "./dto/mark-invoice-paid.dto";
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
 import { InvoicePdfService } from "./invoice-pdf.service";
 import { InvoicesRepository } from "./invoices.repository";
+
+const UNPAYABLE_STATUSES = new Set(["PAID", "VOID"]);
 
 @Injectable()
 export class InvoicesService {
@@ -11,6 +16,7 @@ export class InvoicesService {
     private readonly invoices: InvoicesRepository,
     private readonly deletionGuard: DeletionGuardService,
     private readonly invoicePdf: InvoicePdfService,
+    private readonly attachments: AttachmentsRepository,
   ) {}
 
   async getPdf(id: string): Promise<{ buffer: Buffer; filename: string }> {
@@ -23,8 +29,19 @@ export class InvoicesService {
     return this.invoices.findAll(params);
   }
 
-  findOne(id: string) {
-    return this.invoices.findOneOrThrow(id);
+  async findOne(id: string) {
+    const invoice = await this.invoices.findOneOrThrow(id);
+    const paymentProof = await this.attachments.findByEntity(AttachmentEntityType.INVOICE, id);
+    return { ...invoice, paymentProof };
+  }
+
+  async markPaid(id: string, dto: MarkInvoicePaidDto) {
+    const invoice = await this.invoices.findOneOrThrow(id);
+    if (UNPAYABLE_STATUSES.has(invoice.status)) {
+      throw new BadRequestException(`Invoice is already ${invoice.status.toLowerCase()}`);
+    }
+    await this.attachments.createMany(AttachmentEntityType.INVOICE, id, dto.attachments);
+    return this.invoices.markPaid(id);
   }
 
   create(dto: CreateInvoiceDto) {

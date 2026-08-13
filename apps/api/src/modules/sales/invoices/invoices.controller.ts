@@ -7,6 +7,7 @@ import { PermissionGuard } from "../../../common/guards/permission.guard";
 import { TenantMembershipGuard } from "../../../common/guards/tenant-membership.guard";
 import { PERMISSIONS } from "../../../common/permissions/permission-keys";
 import { CreateInvoiceDto } from "./dto/create-invoice.dto";
+import { MarkInvoicePaidDto } from "./dto/mark-invoice-paid.dto";
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
 import { InvoicesService } from "./invoices.service";
 
@@ -52,5 +53,11 @@ export class InvoicesController {
   @RequirePermission(PERMISSIONS.INVOICES_DELETE)
   remove(@Param("id") id: string) {
     return this.invoices.remove(id);
+  }
+
+  @Post(":id/mark-paid")
+  @RequirePermission(PERMISSIONS.INVOICES_UPDATE)
+  markPaid(@Param("id") id: string, @Body() dto: MarkInvoicePaidDto) {
+    return this.invoices.markPaid(id, dto);
   }
 }

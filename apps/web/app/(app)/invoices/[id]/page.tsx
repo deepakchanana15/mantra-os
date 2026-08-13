@@ -4,7 +4,9 @@ import { apiFetch } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AttachmentLink } from "@/components/domain/attachment-link";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
+import { MarkInvoicePaidButton } from "@/components/domain/mark-invoice-paid-button";
 import { invoiceCurrencyCode, type InvoiceCurrencySource } from "@/lib/invoice-currency";
 
 interface Invoice extends InvoiceCurrencySource {
@@ -15,10 +17,14 @@ interface Invoice extends InvoiceCurrencySource {
   discountAmount: string | null;
   issuedAt: string | null;
   dueDate: string | null;
+  paidAt: string | null;
+  paymentProof: { id: string; fileUrl: string; fileName: string }[];
   customer: { name: string };
   salesOrder: { id: string } | null;
   lines: { id: string; quantity: number; unitPrice: string; product: { name: string; sku: string } }[];
 }
+
+const CLOSED_STATUSES = new Set(["PAID", "VOID"]);
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Draft",
@@ -69,6 +75,21 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
               View linked sales order
             </Link>
           )}
+          {invoice.status === "PAID" && invoice.paidAt && (
+            <p className="mt-1 text-xs text-muted-foreground">Paid on {new Date(invoice.paidAt).toLocaleDateString()}</p>
+          )}
+          {invoice.paymentProof.length > 0 && (
+            <div className="mt-1 flex flex-col gap-0.5">
+              {invoice.paymentProof.map((proof) => (
+                <AttachmentLink
+                  key={proof.id}
+                  url={proof.fileUrl}
+                  fileName={proof.fileName}
+                  className="flex w-fit items-center gap-1 text-xs text-accent hover:underline"
+                />
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <a href={`/api/v1/invoices/${invoice.id}/pdf`} download>
@@ -77,6 +98,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
               Download PDF
             </Button>
           </a>
+          {!CLOSED_STATUSES.has(invoice.status) && <MarkInvoicePaidButton invoiceId={invoice.id} invoiceNumber={invoice.invoiceNumber} />}
           <DeleteEntityButton apiPath={`/api/v1/invoices/${invoice.id}`} entityLabel="Invoice" redirectTo="/invoices" />
         </div>
       </div>
