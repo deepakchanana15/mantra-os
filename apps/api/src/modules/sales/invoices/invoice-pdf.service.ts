@@ -30,6 +30,7 @@ interface InvoicePdfData {
     name: string;
     legalName: string | null;
     taxId: string | null;
+    registrationNumber: string | null;
     address: string | null;
     bankDetails: string | null;
     baseCurrency?: { code: string } | null;
@@ -95,8 +96,14 @@ export class InvoicePdfService {
           fromY += 12;
         }
       }
+      const isAustralianCompany = invoice.company?.baseCurrency?.code === "AUD";
       if (invoice.company?.taxId) {
-        doc.fontSize(9).fillColor("#444444").text(`Tax ID: ${invoice.company.taxId}`, leftX, fromY, { width: 240 });
+        doc.fontSize(9).fillColor("#444444").text(`${isAustralianCompany ? "ABN" : "Tax ID"}: ${invoice.company.taxId}`, leftX, fromY, { width: 240 });
+        fromY += 12;
+      }
+      if (invoice.company?.registrationNumber) {
+        doc.fontSize(9).fillColor("#444444").text(`${isAustralianCompany ? "ACN" : "Registration"}: ${invoice.company.registrationNumber}`, leftX, fromY, { width: 240 });
+        fromY += 12;
       }
 
       doc.fontSize(9).fillColor("#999999").text("BILL TO", rightX, colTop, { width: 240, align: "right" });
