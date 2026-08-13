@@ -46,12 +46,6 @@ function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function addDays(isoDateString: string, days: number): string {
-  const date = new Date(isoDateString);
-  date.setDate(date.getDate() + days);
-  return isoDate(date);
-}
-
 export default function NewInvoicePage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -66,7 +60,7 @@ export default function NewInvoicePage() {
   const [amount, setAmount] = useState("");
   const [discountAmount, setDiscountAmount] = useState(0);
   const [issuedAt, setIssuedAt] = useState(() => isoDate(new Date()));
-  const [dueDate, setDueDate] = useState(() => addDays(isoDate(new Date()), 3));
+  const [dueDate, setDueDate] = useState(() => isoDate(new Date()));
   const [dueDateTouched, setDueDateTouched] = useState(false);
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
@@ -244,7 +238,7 @@ export default function NewInvoicePage() {
                   value={issuedAt}
                   onChange={(e) => {
                     setIssuedAt(e.target.value);
-                    if (!dueDateTouched) setDueDate(addDays(e.target.value, 3));
+                    if (!dueDateTouched) setDueDate(e.target.value);
                   }}
                 />
               </div>
