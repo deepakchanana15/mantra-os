@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LineItemsEditor, type LineItemRow, type ProductOption } from "@/components/domain/line-items-editor";
 import { CompanyCountrySelect } from "@/components/domain/company-country-select";
+import { DiscountFields } from "@/components/domain/discount-fields";
 import { SalesChannelSelect, type SalesChannelValue } from "@/components/domain/sales-channel-select";
 
 interface Customer {
@@ -32,6 +33,7 @@ export default function NewSalesOrderPage() {
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [channel, setChannel] = useState<SalesChannelValue>({ salesChannel: undefined });
   const [lines, setLines] = useState<LineItemRow[]>([]);
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -41,6 +43,7 @@ export default function NewSalesOrderPage() {
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const validLines = lines.filter((l) => l.productId);
+  const subtotal = validLines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,6 +61,7 @@ export default function NewSalesOrderPage() {
           onlineChannelType: channel.onlineChannelType,
           offlineChannelType: channel.offlineChannelType,
           orderReference: channel.orderReference || undefined,
+          discountAmount: discountAmount || undefined,
           lines: validLines,
         }),
       });
@@ -120,6 +124,8 @@ export default function NewSalesOrderPage() {
               lines={lines}
               onChange={setLines}
             />
+
+            <DiscountFields subtotal={subtotal} discountAmount={discountAmount} onDiscountAmountChange={setDiscountAmount} />
 
             <div className="mt-2 flex gap-2">
               <Button type="submit" disabled={loading || !customerId || validLines.length === 0 || !channel.salesChannel}>

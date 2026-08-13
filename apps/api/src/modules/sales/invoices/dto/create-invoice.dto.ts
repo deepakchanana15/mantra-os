@@ -38,6 +38,12 @@ export class CreateInvoiceDto {
   @Type(() => OrderLineDto)
   lines?: OrderLineDto[];
 
+  /** Dollar discount off the subtotal (amount, or the sum of lines) — see DECISIONS.md "Invoice/Sales Order discounts". Percent is a frontend-only convenience, never submitted. */
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  discountAmount?: number;
+
   @IsOptional()
   @IsDateString()
   issuedAt?: string;

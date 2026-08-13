@@ -14,6 +14,7 @@ interface SalesOrder {
   salesChannel: string | null;
   customer: { name: string };
   lines: { quantity: number; unitPrice: string }[];
+  discountAmount: string | null;
 }
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "neutral"> = {
@@ -67,7 +68,8 @@ export default async function SalesOrdersPage({ searchParams }: { searchParams: 
               </TableRow>
             ) : (
               orders.map((order) => {
-                const total = order.lines.reduce((sum, l) => sum + l.quantity * Number(l.unitPrice), 0);
+                const subtotal = order.lines.reduce((sum, l) => sum + l.quantity * Number(l.unitPrice), 0);
+                const total = subtotal - Number(order.discountAmount ?? 0);
                 return (
                   <TableRow key={order.id}>
                     <TableCell>

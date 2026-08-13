@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { SalesChannel, SalesOrderStatus } from "@mantra-os/db";
 import { DeletionGuardService } from "../../../common/deletion/deletion-guard.service";
 import { CreateSalesOrderDto } from "./dto/create-sales-order.dto";
@@ -20,6 +20,12 @@ export class SalesOrdersService {
   }
 
   create(dto: CreateSalesOrderDto) {
+    if (dto.discountAmount !== undefined) {
+      const subtotal = dto.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+      if (dto.discountAmount > subtotal) {
+        throw new BadRequestException("Discount cannot exceed the sales order subtotal");
+      }
+    }
     return this.salesOrders.create(dto);
   }
 

@@ -13,6 +13,7 @@ interface InvoicePdfData {
   invoiceNumber: string;
   status: string;
   amount: { toString(): string };
+  discountAmount: { toString(): string } | null;
   issuedAt: Date | string | null;
   dueDate: Date | string | null;
   createdAt: Date | string;
@@ -67,6 +68,10 @@ export class InvoicePdfService {
 
       const currency = currencyCode(invoice);
       const logo = Buffer.from(MANTRA_LOGO_BASE64, "base64");
+      const subtotal = Number(invoice.amount);
+      const discount = Number(invoice.discountAmount ?? 0);
+      const total = subtotal - discount;
+      const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0;
 
       // Header: logo + invoice title/number
       doc.image(logo, 50, 45, { width: 60 });
@@ -144,15 +149,26 @@ export class InvoicePdfService {
         }
       } else {
         doc.fontSize(10).fillColor("#111111").text("Services / goods provided", colDesc, tableY, { width: 280 });
-        doc.text(formatMoney(invoice.amount, currency), colTotal, tableY, { width: 65, align: "right" });
+        doc.text(formatMoney(subtotal, currency), colTotal, tableY, { width: 65, align: "right" });
         tableY += 24;
       }
 
       doc.moveTo(leftX, tableY).lineTo(545, tableY).strokeColor("#E0DFDB").stroke();
       tableY += 12;
+
+      if (discount > 0) {
+        doc.fontSize(10).fillColor("#444444");
+        doc.text("Subtotal", colPrice, tableY, { width: 70, align: "right" });
+        doc.text(formatMoney(subtotal, currency), colTotal, tableY, { width: 65, align: "right" });
+        tableY += 16;
+        doc.text(`Discount (${discountPercent.toFixed(2)}%)`, colPrice - 40, tableY, { width: 110, align: "right" });
+        doc.text(`-${formatMoney(discount, currency)}`, colTotal, tableY, { width: 65, align: "right" });
+        tableY += 16;
+      }
+
       doc.fontSize(11).fillColor("#111111");
       doc.text("Total", colPrice, tableY, { width: 70, align: "right" });
-      doc.font("Helvetica-Bold").text(formatMoney(invoice.amount, currency), colTotal, tableY, { width: 65, align: "right" });
+      doc.font("Helvetica-Bold").text(formatMoney(total, currency), colTotal, tableY, { width: 65, align: "right" });
       doc.font("Helvetica");
       tableY += 30;
 

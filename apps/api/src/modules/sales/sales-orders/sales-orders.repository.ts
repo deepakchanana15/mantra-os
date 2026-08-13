@@ -41,6 +41,7 @@ export class SalesOrdersRepository extends BaseRepository {
         onlineChannelType: dto.onlineChannelType,
         offlineChannelType: dto.offlineChannelType,
         orderReference: dto.orderReference,
+        discountAmount: dto.discountAmount,
         companyId: dto.companyId,
         countryId: dto.countryId,
         createdBy: this.userId,

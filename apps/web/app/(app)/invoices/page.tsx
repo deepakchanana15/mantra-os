@@ -11,6 +11,7 @@ interface Invoice extends InvoiceCurrencySource {
   invoiceNumber: string;
   status: string;
   amount: string;
+  discountAmount: string | null;
   dueDate: string | null;
   customer: { name: string };
 }
@@ -70,7 +71,9 @@ export default async function InvoicesPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{invoice.customer.name}</TableCell>
                   <TableCell className="text-muted-foreground">{STATUS_LABELS[invoice.status] ?? invoice.status}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatInvoiceAmount(invoice.amount, invoice)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatInvoiceAmount(Number(invoice.amount) - Number(invoice.discountAmount ?? 0), invoice)}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : "—"}
                   </TableCell>

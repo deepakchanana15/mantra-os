@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CompanyCountrySelect } from "@/components/domain/company-country-select";
+import { DiscountFields } from "@/components/domain/discount-fields";
 import { LineItemsEditor, type LineItemRow, type ProductOption } from "@/components/domain/line-items-editor";
 
 interface Customer {
@@ -63,6 +64,7 @@ export default function NewInvoicePage() {
   const [itemize, setItemize] = useState(false);
   const [lines, setLines] = useState<LineItemRow[]>([]);
   const [amount, setAmount] = useState("");
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [issuedAt, setIssuedAt] = useState(() => isoDate(new Date()));
   const [dueDate, setDueDate] = useState(() => addDays(isoDate(new Date()), 3));
   const [dueDateTouched, setDueDateTouched] = useState(false);
@@ -81,6 +83,7 @@ export default function NewInvoicePage() {
   const selectedStatus = STATUSES.find((s) => s.value === status);
   const validLines = lines.filter((l) => l.productId);
   const computedTotal = validLines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0);
+  const subtotal = itemize ? computedTotal : Number(amount) || 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,6 +101,7 @@ export default function NewInvoicePage() {
           status,
           amount: itemize ? undefined : Number(amount),
           lines: itemize ? validLines : undefined,
+          discountAmount: discountAmount || undefined,
           issuedAt: issuedAt || undefined,
           dueDate: dueDate || undefined,
           companyId,
@@ -207,19 +211,13 @@ export default function NewInvoicePage() {
             </label>
 
             {itemize ? (
-              <div className="flex flex-col gap-2">
-                <LineItemsEditor
-                  products={products}
-                  priceLabel="Unit Price"
-                  priceSource="unitPrice"
-                  lines={lines}
-                  onChange={setLines}
-                />
-                <div className="flex justify-between border-t border-border pt-2 text-sm">
-                  <span className="font-semibold text-foreground">Total</span>
-                  <span className="tabular-nums font-semibold text-foreground">${computedTotal.toFixed(2)}</span>
-                </div>
-              </div>
+              <LineItemsEditor
+                products={products}
+                priceLabel="Unit Price"
+                priceSource="unitPrice"
+                lines={lines}
+                onChange={setLines}
+              />
             ) : (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="amount">Amount</Label>
@@ -234,6 +232,8 @@ export default function NewInvoicePage() {
                 />
               </div>
             )}
+
+            <DiscountFields subtotal={subtotal} discountAmount={discountAmount} onDiscountAmountChange={setDiscountAmount} />
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">

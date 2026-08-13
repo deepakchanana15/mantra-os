@@ -18,6 +18,7 @@ interface SalesOrder {
   customer: { name: string };
   lines: { id: string; quantity: number; unitPrice: string; product: { name: string; sku: string } }[];
   shipments: { id: string; status: string; trackingNumber: string | null }[];
+  discountAmount: string | null;
 }
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "neutral"> = {
@@ -31,7 +32,10 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "ne
 export default async function SalesOrderDetailPage({ params }: { params: { id: string } }) {
   const order = await apiFetch<SalesOrder>(`/v1/sales-orders/${params.id}`);
   const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-  const total = order.lines.reduce((sum, l) => sum + l.quantity * Number(l.unitPrice), 0);
+  const subtotal = order.lines.reduce((sum, l) => sum + l.quantity * Number(l.unitPrice), 0);
+  const discount = Number(order.discountAmount ?? 0);
+  const total = subtotal - discount;
+  const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0;
 
   return (
     <div className="flex flex-col gap-5 p-7">
@@ -90,6 +94,22 @@ export default async function SalesOrderDetailPage({ params }: { params: { id: s
                 </TableCell>
               </TableRow>
             ))}
+            {discount > 0 && (
+              <TableRow>
+                <TableCell colSpan={3} className="text-right text-muted-foreground">
+                  Subtotal
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">{currency.format(subtotal)}</TableCell>
+              </TableRow>
+            )}
+            {discount > 0 && (
+              <TableRow>
+                <TableCell colSpan={3} className="text-right text-muted-foreground">
+                  Discount ({discountPercent.toFixed(2)}%)
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">-{currency.format(discount)}</TableCell>
+              </TableRow>
+            )}
             <TableRow>
               <TableCell colSpan={3} className="text-right font-semibold text-foreground">
                 Total

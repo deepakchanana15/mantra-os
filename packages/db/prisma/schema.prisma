@@ -757,6 +757,10 @@ model SalesOrder {
   onlineChannelType  OnlineChannelType?
   offlineChannelType OfflineChannelType?
   orderReference     String?
+  /// Dollar discount off the line-items subtotal — see DECISIONS.md
+  /// "Invoice/Sales Order discounts". Percent is never stored; it's always
+  /// derived from this amount and the subtotal, so the two can never drift.
+  discountAmount     Decimal?            @db.Decimal(12, 2)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   createdBy          String
@@ -1497,7 +1501,13 @@ model Invoice {
   salesOrderId   String?
   invoiceNumber  String
   status         InvoiceStatus @default(DRAFT)
+  /// Subtotal — before discount. See DECISIONS.md "Invoice/Sales Order
+  /// discounts": the payable total is always amount - discountAmount,
+  /// computed on read, never stored separately.
   amount         Decimal       @db.Decimal(12, 2)
+  /// Dollar discount off `amount`. Percent is never stored — always derived
+  /// from this and `amount` so the two can't drift.
+  discountAmount Decimal?      @db.Decimal(12, 2)
   issuedAt       DateTime?
   dueDate        DateTime?
   createdAt      DateTime      @default(now())

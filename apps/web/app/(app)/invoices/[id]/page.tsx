@@ -12,6 +12,7 @@ interface Invoice extends InvoiceCurrencySource {
   invoiceNumber: string;
   status: string;
   amount: string;
+  discountAmount: string | null;
   issuedAt: string | null;
   dueDate: string | null;
   customer: { name: string };
@@ -42,6 +43,10 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
     currency: invoiceCurrencyCode(invoice),
     currencyDisplay: "code",
   });
+  const subtotal = Number(invoice.amount);
+  const discount = Number(invoice.discountAmount ?? 0);
+  const total = subtotal - discount;
+  const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0;
 
   return (
     <div className="flex flex-col gap-5 p-7">
@@ -101,22 +106,50 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
                   </TableCell>
                 </TableRow>
               ))}
+              {discount > 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right text-muted-foreground">
+                    Subtotal
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">{currency.format(subtotal)}</TableCell>
+                </TableRow>
+              )}
+              {discount > 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right text-muted-foreground">
+                    Discount ({discountPercent.toFixed(2)}%)
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">-{currency.format(discount)}</TableCell>
+                </TableRow>
+              )}
               <TableRow>
                 <TableCell colSpan={3} className="text-right font-semibold text-foreground">
                   Total
                 </TableCell>
-                <TableCell className="text-right font-semibold tabular-nums text-foreground">
-                  {currency.format(Number(invoice.amount))}
-                </TableCell>
+                <TableCell className="text-right font-semibold tabular-nums text-foreground">{currency.format(total)}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
         </div>
       ) : (
         <div className="rounded-lg border border-border bg-card p-5">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Amount</span>
-            <span className="font-semibold tabular-nums text-foreground">{currency.format(Number(invoice.amount))}</span>
+          <div className="flex flex-col gap-1">
+            {discount > 0 && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Subtotal</span>
+                <span className="tabular-nums">{currency.format(subtotal)}</span>
+              </div>
+            )}
+            {discount > 0 && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Discount ({discountPercent.toFixed(2)}%)</span>
+                <span className="tabular-nums">-{currency.format(discount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="font-semibold text-foreground">Total</span>
+              <span className="font-semibold tabular-nums text-foreground">{currency.format(total)}</span>
+            </div>
           </div>
         </div>
       )}

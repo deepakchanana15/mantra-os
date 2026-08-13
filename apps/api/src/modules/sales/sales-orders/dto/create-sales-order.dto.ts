@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { ArrayMinSize, IsArray, IsEnum, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from "class-validator";
+import { ArrayMinSize, IsArray, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength, ValidateNested } from "class-validator";
 import { OfflineChannelType, OnlineChannelType, SalesChannel } from "@mantra-os/db";
 import { OrderLineDto } from "../../../../common/dto/order-line.dto";
 
@@ -36,6 +36,12 @@ export class CreateSalesOrderDto {
   @IsOptional()
   @IsUUID()
   countryId?: string;
+
+  /** Dollar discount off the line-items subtotal — see DECISIONS.md "Invoice/Sales Order discounts". Percent is a frontend-only convenience, never submitted. */
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  discountAmount?: number;
 
   @IsArray()
   @ArrayMinSize(1)

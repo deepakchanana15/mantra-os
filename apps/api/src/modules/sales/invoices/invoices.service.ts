@@ -28,14 +28,14 @@ export class InvoicesService {
   }
 
   create(dto: CreateInvoiceDto) {
-    if (dto.lines?.length) {
-      const amount = dto.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-      return this.invoices.create({ ...dto, amount });
-    }
-    if (dto.amount === undefined) {
+    const amount = dto.lines?.length ? dto.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0) : dto.amount;
+    if (amount === undefined) {
       throw new BadRequestException("Provide either an amount or line items");
     }
-    return this.invoices.create({ ...dto, amount: dto.amount });
+    if (dto.discountAmount !== undefined && dto.discountAmount > amount) {
+      throw new BadRequestException("Discount cannot exceed the invoice subtotal");
+    }
+    return this.invoices.create({ ...dto, amount });
   }
 
   update(id: string, dto: UpdateInvoiceDto) {
