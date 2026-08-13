@@ -79,10 +79,11 @@ export class InvoicePdfService {
       doc.fontSize(10).fillColor("#666666").text(invoice.invoiceNumber, { align: "right" });
       doc.moveDown(2);
 
-      // From / Bill To — two columns
+      // From / Bill To — two columns, flush to the left and right margins
       const colTop = 130;
       const leftX = 50;
-      const rightX = 320;
+      const pageRight = 545;
+      const rightX = pageRight - 240;
 
       doc.fontSize(9).fillColor("#999999").text("FROM", leftX, colTop);
       doc.fontSize(11).fillColor("#111111").text(invoice.company?.legalName ?? invoice.company?.name ?? "Mantra Sports", leftX, colTop + 14, { width: 240 });
@@ -98,25 +99,28 @@ export class InvoicePdfService {
         doc.fontSize(9).fillColor("#444444").text(`Tax ID: ${invoice.company.taxId}`, leftX, fromY, { width: 240 });
       }
 
-      doc.fontSize(9).fillColor("#999999").text("BILL TO", rightX, colTop);
-      doc.fontSize(11).fillColor("#111111").text(invoice.customer.name, rightX, colTop + 14, { width: 220 });
+      doc.fontSize(9).fillColor("#999999").text("BILL TO", rightX, colTop, { width: 240, align: "right" });
+      doc.fontSize(11).fillColor("#111111").text(invoice.customer.name, rightX, colTop + 14, { width: 240, align: "right" });
       let toY = colTop + 30;
       const contactLines = [invoice.customer.email, invoice.customer.phone].filter((l): l is string => !!l);
       for (const line of [...contactLines, ...formatPostalAddress(invoice.customer.billingAddress)]) {
-        doc.fontSize(9).fillColor("#444444").text(line, rightX, toY, { width: 220 });
+        doc.fontSize(9).fillColor("#444444").text(line, rightX, toY, { width: 240, align: "right" });
         toY += 12;
       }
 
-      // Meta row: issue date / due date / status
+      // Meta row: issue date (left) / due date (center) / status (right)
       const metaY = Math.max(fromY, toY) + 20;
+      const metaColWidth = 150;
+      const metaCenterX = leftX + (pageRight - leftX - metaColWidth) / 2;
+      const metaRightX = pageRight - metaColWidth;
       doc.fontSize(9).fillColor("#999999");
-      doc.text("ISSUE DATE", leftX, metaY);
-      doc.text("DUE DATE", leftX + 150, metaY);
-      doc.text("STATUS", leftX + 300, metaY);
+      doc.text("ISSUE DATE", leftX, metaY, { width: metaColWidth });
+      doc.text("DUE DATE", metaCenterX, metaY, { width: metaColWidth, align: "center" });
+      doc.text("STATUS", metaRightX, metaY, { width: metaColWidth, align: "right" });
       doc.fontSize(10).fillColor("#111111");
-      doc.text(formatDate(invoice.issuedAt ?? invoice.createdAt), leftX, metaY + 14);
-      doc.text(formatDate(invoice.dueDate), leftX + 150, metaY + 14);
-      doc.text(STATUS_LABELS[invoice.status] ?? invoice.status, leftX + 300, metaY + 14);
+      doc.text(formatDate(invoice.issuedAt ?? invoice.createdAt), leftX, metaY + 14, { width: metaColWidth });
+      doc.text(formatDate(invoice.dueDate), metaCenterX, metaY + 14, { width: metaColWidth, align: "center" });
+      doc.text(STATUS_LABELS[invoice.status] ?? invoice.status, metaRightX, metaY + 14, { width: metaColWidth, align: "right" });
 
       // Line items table
       let tableY = metaY + 50;
