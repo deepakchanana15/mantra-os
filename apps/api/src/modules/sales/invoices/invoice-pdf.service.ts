@@ -14,6 +14,7 @@ interface InvoicePdfData {
   status: string;
   amount: { toString(): string };
   discountAmount: { toString(): string } | null;
+  gstApplicable: boolean;
   issuedAt: Date | string | null;
   dueDate: Date | string | null;
   createdAt: Date | string;
@@ -51,11 +52,10 @@ function currencyCode(invoice: InvoicePdfData): string {
 }
 
 /**
- * Renders an Invoice as a PDF. Not GST-registered for Mantra Sports
- * Australia (see DECISIONS.md "Invoice PDF generation") — so this is
- * deliberately a plain "Invoice", never "Tax Invoice", and never breaks out
- * a GST line. Revisit if/when GST registration status changes, or when
- * another country's company needs tax-inclusive line breakdowns.
+ * Renders an Invoice as a PDF. Stays a plain "Invoice", never "Tax
+ * Invoice" — see DECISIONS.md "Invoice PDF generation". GST is opt-in per
+ * invoice (`gstApplicable`) at a fixed 10% rate, breaking out as its own
+ * line between the post-discount Total and the Grand Total.
  */
 @Injectable()
 export class InvoicePdfService {
@@ -73,6 +73,8 @@ export class InvoicePdfService {
       const discount = Number(invoice.discountAmount ?? 0);
       const total = subtotal - discount;
       const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0;
+      const gst = invoice.gstApplicable ? Math.round(total * 0.1 * 100) / 100 : 0;
+      const grandTotal = total + gst;
 
       // Header: logo + invoice title/number
       doc.image(logo, 50, 45, { width: 60 });
@@ -177,11 +179,26 @@ export class InvoicePdfService {
         tableY += 16;
       }
 
-      doc.fontSize(11).fillColor("#111111");
-      doc.text("Total", colPrice, tableY, { width: 70, align: "right" });
-      doc.font("Helvetica-Bold").text(formatMoney(total, currency), colTotal - 20, tableY, { width: 85, align: "right" });
-      doc.font("Helvetica");
-      tableY += 30;
+      if (invoice.gstApplicable) {
+        doc.fontSize(10).fillColor("#444444");
+        doc.text("Total", colPrice, tableY, { width: 70, align: "right" });
+        doc.text(formatMoney(total, currency), colTotal - 20, tableY, { width: 85, align: "right" });
+        tableY += 16;
+        doc.text("GST (10%)", colPrice - 40, tableY, { width: 110, align: "right" });
+        doc.text(formatMoney(gst, currency), colTotal - 20, tableY, { width: 85, align: "right" });
+        tableY += 16;
+        doc.fontSize(11).fillColor("#111111");
+        doc.text("Grand Total", colPrice - 40, tableY, { width: 110, align: "right" });
+        doc.font("Helvetica-Bold").text(formatMoney(grandTotal, currency), colTotal - 20, tableY, { width: 85, align: "right" });
+        doc.font("Helvetica");
+        tableY += 30;
+      } else {
+        doc.fontSize(11).fillColor("#111111");
+        doc.text("Total", colPrice, tableY, { width: 70, align: "right" });
+        doc.font("Helvetica-Bold").text(formatMoney(total, currency), colTotal - 20, tableY, { width: 85, align: "right" });
+        doc.font("Helvetica");
+        tableY += 30;
+      }
 
       if (invoice.company?.bankDetails) {
         doc.fontSize(9).fillColor("#999999").text("PAYMENT DETAILS", leftX, tableY);

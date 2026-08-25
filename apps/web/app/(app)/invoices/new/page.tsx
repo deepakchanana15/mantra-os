@@ -60,6 +60,7 @@ export default function NewInvoicePage() {
   const [lines, setLines] = useState<LineItemRow[]>([]);
   const [amount, setAmount] = useState("");
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [gstApplicable, setGstApplicable] = useState(false);
   const [issuedAt, setIssuedAt] = useState(() => isoDate(new Date()));
   const [dueDate, setDueDate] = useState(() => isoDate(new Date()));
   const [dueDateTouched, setDueDateTouched] = useState(false);
@@ -79,6 +80,9 @@ export default function NewInvoicePage() {
   const validLines = lines.filter((l) => l.productId);
   const computedTotal = validLines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0);
   const subtotal = itemize ? computedTotal : Number(amount) || 0;
+  const total = subtotal - discountAmount;
+  const gst = gstApplicable ? Math.round(total * 0.1 * 100) / 100 : 0;
+  const grandTotal = total + gst;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,6 +101,7 @@ export default function NewInvoicePage() {
           amount: itemize ? undefined : Number(amount),
           lines: itemize ? validLines : undefined,
           discountAmount: discountAmount || undefined,
+          gstApplicable: gstApplicable || undefined,
           issuedAt: issuedAt || undefined,
           dueDate: dueDate || undefined,
           companyId,
@@ -229,6 +234,34 @@ export default function NewInvoicePage() {
             )}
 
             <DiscountFields subtotal={subtotal} discountAmount={discountAmount} onDiscountAmountChange={setDiscountAmount} />
+
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-1.5 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={gstApplicable}
+                  onChange={(e) => setGstApplicable(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-border accent-accent"
+                />
+                Add GST (10%, for Australian invoices)
+              </label>
+              {gstApplicable && (
+                <div className="flex flex-col gap-1 rounded-lg border border-border p-3 text-sm">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Total</span>
+                    <span className="tabular-nums">${total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>GST (10%)</span>
+                    <span className="tabular-nums">${gst.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-foreground">
+                    <span>Grand Total</span>
+                    <span className="tabular-nums">${grandTotal.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">

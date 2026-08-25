@@ -1509,6 +1509,10 @@ model Invoice {
   /// Dollar discount off `amount`. Percent is never stored — always derived
   /// from this and `amount` so the two can't drift.
   discountAmount Decimal?      @db.Decimal(12, 2)
+  /// Adds a flat 10% GST line (Australian goods and services tax) on top of
+  /// the post-discount total. The rate is fixed, so only the flag is
+  /// stored — the dollar amount is always derived at render time.
+  gstApplicable  Boolean       @default(false)
   issuedAt       DateTime?
   dueDate        DateTime?
   /// Set when this invoice is marked PAID — see DECISIONS.md "Invoice

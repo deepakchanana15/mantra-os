@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength, MinLength, ValidateNested } from "class-validator";
+import { IsArray, IsBoolean, IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength, MinLength, ValidateNested } from "class-validator";
 import { InvoiceStatus } from "@mantra-os/db";
 import { OrderLineDto } from "../../../../common/dto/order-line.dto";
 
@@ -43,6 +43,11 @@ export class CreateInvoiceDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   discountAmount?: number;
+
+  /** Adds a flat 10% GST line on top of the post-discount total — the rate is fixed, so only this flag is stored. */
+  @IsOptional()
+  @IsBoolean()
+  gstApplicable?: boolean;
 
   @IsOptional()
   @IsDateString()

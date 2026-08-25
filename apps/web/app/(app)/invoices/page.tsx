@@ -12,6 +12,7 @@ interface Invoice extends InvoiceCurrencySource {
   status: string;
   amount: string;
   discountAmount: string | null;
+  gstApplicable: boolean;
   dueDate: string | null;
   customer: { name: string };
 }
@@ -62,7 +63,10 @@ export default async function InvoicesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              invoices.map((invoice) => (
+              invoices.map((invoice) => {
+                const total = Number(invoice.amount) - Number(invoice.discountAmount ?? 0);
+                const grandTotal = invoice.gstApplicable ? Math.round(total * 1.1 * 100) / 100 : total;
+                return (
                 <TableRow key={invoice.id}>
                   <TableCell>
                     <Link href={`/invoices/${invoice.id}`} className="font-medium text-foreground hover:text-accent">
@@ -72,7 +76,7 @@ export default async function InvoicesPage() {
                   <TableCell className="text-muted-foreground">{invoice.customer.name}</TableCell>
                   <TableCell className="text-muted-foreground">{STATUS_LABELS[invoice.status] ?? invoice.status}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {formatInvoiceAmount(Number(invoice.amount) - Number(invoice.discountAmount ?? 0), invoice)}
+                    {formatInvoiceAmount(grandTotal, invoice)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : "—"}
@@ -81,7 +85,8 @@ export default async function InvoicesPage() {
                     <DeleteEntityButton apiPath={`/api/v1/invoices/${invoice.id}`} entityLabel="Invoice" />
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

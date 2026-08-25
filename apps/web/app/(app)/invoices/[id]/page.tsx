@@ -15,6 +15,7 @@ interface Invoice extends InvoiceCurrencySource {
   status: string;
   amount: string;
   discountAmount: string | null;
+  gstApplicable: boolean;
   issuedAt: string | null;
   dueDate: string | null;
   paidAt: string | null;
@@ -53,6 +54,8 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
   const discount = Number(invoice.discountAmount ?? 0);
   const total = subtotal - discount;
   const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0;
+  const gst = invoice.gstApplicable ? Math.round(total * 0.1 * 100) / 100 : 0;
+  const grandTotal = total + gst;
 
   return (
     <div className="flex flex-col gap-5 p-7">
@@ -145,11 +148,29 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
                 </TableRow>
               )}
               <TableRow>
-                <TableCell colSpan={3} className="text-right font-semibold text-foreground">
+                <TableCell colSpan={3} className={`text-right ${invoice.gstApplicable ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
                   Total
                 </TableCell>
-                <TableCell className="text-right font-semibold tabular-nums text-foreground">{currency.format(total)}</TableCell>
+                <TableCell className={`text-right tabular-nums ${invoice.gstApplicable ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
+                  {currency.format(total)}
+                </TableCell>
               </TableRow>
+              {invoice.gstApplicable && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right text-muted-foreground">
+                    GST (10%)
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">{currency.format(gst)}</TableCell>
+                </TableRow>
+              )}
+              {invoice.gstApplicable && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right font-semibold text-foreground">
+                    Grand Total
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums text-foreground">{currency.format(grandTotal)}</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
@@ -169,9 +190,23 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="font-semibold text-foreground">Total</span>
-              <span className="font-semibold tabular-nums text-foreground">{currency.format(total)}</span>
+              <span className={invoice.gstApplicable ? "text-muted-foreground" : "font-semibold text-foreground"}>Total</span>
+              <span className={`tabular-nums ${invoice.gstApplicable ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
+                {currency.format(total)}
+              </span>
             </div>
+            {invoice.gstApplicable && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>GST (10%)</span>
+                <span className="tabular-nums">{currency.format(gst)}</span>
+              </div>
+            )}
+            {invoice.gstApplicable && (
+              <div className="flex justify-between text-sm">
+                <span className="font-semibold text-foreground">Grand Total</span>
+                <span className="font-semibold tabular-nums text-foreground">{currency.format(grandTotal)}</span>
+              </div>
+            )}
           </div>
         </div>
       )}
