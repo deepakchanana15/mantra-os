@@ -1,7 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { PurchaseOrderStatus } from "@mantra-os/db";
 import { DeletionGuardService } from "../../../common/deletion/deletion-guard.service";
 import { CreatePurchaseOrderDto } from "./dto/create-purchase-order.dto";
+import { UpdatePurchaseOrderDto } from "./dto/update-purchase-order.dto";
 import { PurchaseOrderPdfService } from "./purchase-order-pdf.service";
 import { PurchaseOrdersRepository } from "./purchase-orders.repository";
 
@@ -29,6 +30,15 @@ export class PurchaseOrdersService {
 
   create(dto: CreatePurchaseOrderDto) {
     return this.purchaseOrders.create(dto);
+  }
+
+  /** Editing is only safe before the order has been sent to the supplier or any goods received against it. */
+  async update(id: string, dto: UpdatePurchaseOrderDto) {
+    const order = await this.purchaseOrders.findOneOrThrow(id);
+    if (order.status !== "DRAFT") {
+      throw new BadRequestException("Only draft purchase orders can be edited — cancel and create a new one instead");
+    }
+    return this.purchaseOrders.update(id, dto);
   }
 
   updateStatus(id: string, status: PurchaseOrderStatus) {

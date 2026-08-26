@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -30,11 +30,29 @@ interface Currency {
   name: string;
 }
 
-export default function NewPurchaseOrderPage() {
+interface PurchaseOrder {
+  id: string;
+  poNumber: string | null;
+  status: string;
+  deliveryDueDate: string | null;
+  supplierId: string;
+  companyId: string | null;
+  countryId: string | null;
+  currencyId: string | null;
+  lines: { productId: string; quantity: number; unitCost: string }[];
+}
+
+function isoDate(value: string | null): string {
+  return value ? value.slice(0, 10) : "";
+}
+
+export default function EditPurchaseOrderPage() {
   const router = useRouter();
+  const params = useParams<{ id: string }>();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [supplierId, setSupplierId] = useState<string | undefined>(undefined);
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
@@ -48,7 +66,29 @@ export default function NewPurchaseOrderPage() {
     fetch("/api/v1/suppliers").then((res) => (res.ok ? res.json() : [])).then(setSuppliers);
     fetch("/api/v1/products").then((res) => (res.ok ? res.json() : [])).then(setProducts);
     fetch("/api/v1/currencies").then((res) => (res.ok ? res.json() : [])).then(setCurrencies);
-  }, []);
+    fetch(`/api/v1/purchase-orders/${params.id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((order: PurchaseOrder | null) => {
+        if (!order) {
+          toast.error("Couldn't load this purchase order.");
+          router.push("/purchase-orders");
+          return;
+        }
+        if (order.status !== "DRAFT") {
+          toast.error("Only draft purchase orders can be edited.");
+          router.push(`/purchase-orders/${order.id}`);
+          return;
+        }
+        setSupplierId(order.supplierId);
+        setCompanyId(order.companyId ?? undefined);
+        setCountryId(order.countryId ?? undefined);
+        setCurrencyId(order.currencyId ?? undefined);
+        setPoNumber(order.poNumber ?? "");
+        setDeliveryDueDate(isoDate(order.deliveryDueDate));
+        setLines(order.lines.map((l) => ({ productId: l.productId, quantity: l.quantity, unitPrice: Number(l.unitCost) })));
+        setLoaded(true);
+      });
+  }, [params.id, router]);
 
   const selectedSupplier = suppliers.find((s) => s.id === supplierId);
   const selectedCurrency = currencies.find((c) => c.id === currencyId);
@@ -59,8 +99,8 @@ export default function NewPurchaseOrderPage() {
     if (!supplierId || validLines.length === 0) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/purchase-orders", {
-        method: "POST",
+      const res = await fetch(`/api/v1/purchase-orders/${params.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           supplierId,
@@ -74,24 +114,32 @@ export default function NewPurchaseOrderPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error?.message ?? "Couldn't create the purchase order.");
+        toast.error(data.error?.message ?? "Couldn't save changes.");
         return;
       }
-      toast.success("Purchase order created");
-      router.push(`/purchase-orders/${data.id}`);
+      toast.success("Purchase order updated");
+      router.push(`/purchase-orders/${params.id}`);
     } finally {
       setLoading(false);
     }
   }
 
+  if (!loaded) {
+    return (
+      <div className="flex flex-col gap-5 p-7">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5 p-7">
       <div>
-        <Link href="/purchase-orders" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <Link href={`/purchase-orders/${params.id}`} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-3.5 w-3.5" />
-          Purchase Orders
+          Back
         </Link>
-        <h1 className="mt-1 text-xl font-bold text-foreground">New Purchase Order</h1>
+        <h1 className="mt-1 text-xl font-bold text-foreground">Edit Purchase Order</h1>
       </div>
 
       <Card className="max-w-2xl">
@@ -158,10 +206,6 @@ export default function NewPurchaseOrderPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <p className="text-xs text-faint">
-                Set this to the supplier&apos;s own invoicing currency (e.g. INR for suppliers in India) — overrides the
-                Company/Country default above.
-              </p>
             </div>
 
             <LineItemsEditor
@@ -174,9 +218,9 @@ export default function NewPurchaseOrderPage() {
 
             <div className="mt-2 flex gap-2">
               <Button type="submit" disabled={loading || !supplierId || validLines.length === 0}>
-                {loading ? "Creating…" : "Create purchase order"}
+                {loading ? "Saving…" : "Save changes"}
               </Button>
-              <Link href="/purchase-orders">
+              <Link href={`/purchase-orders/${params.id}`}>
                 <Button type="button" variant="ghost">
                   Cancel
                 </Button>

@@ -1,17 +1,21 @@
 import Link from "next/link";
-import { ArrowLeft, Download, PackageCheck } from "lucide-react";
+import { ArrowLeft, Download, PackageCheck, Pencil } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
+import { StatusUpdater } from "@/components/domain/status-updater";
 import { purchaseOrderCurrencyCode, type PurchaseOrderCurrencySource } from "@/lib/purchase-order-currency";
+
+const STATUSES = ["DRAFT", "SENT", "PARTIALLY_RECEIVED", "RECEIVED", "CANCELLED"];
 
 interface PurchaseOrder extends PurchaseOrderCurrencySource {
   id: string;
   poNumber: string | null;
   status: string;
   orderDate: string;
+  deliveryDueDate: string | null;
   supplier: { name: string };
   lines: { id: string; quantity: number; unitCost: string; product: { name: string; sku: string } }[];
   goodsReceipts: { id: string; receivedAt: string }[];
@@ -49,9 +53,19 @@ export default async function PurchaseOrderDetailPage({ params }: { params: { id
           <p className="text-xs text-faint">
             {order.poNumber && `${order.supplier.name} — `}
             Ordered {new Date(order.orderDate).toLocaleDateString()}
+            {order.deliveryDueDate && ` — delivery due ${new Date(order.deliveryDueDate).toLocaleDateString()}`}
           </p>
         </div>
         <div className="flex gap-2">
+          <StatusUpdater apiPath={`/api/v1/purchase-orders/${order.id}/status`} statuses={STATUSES} currentStatus={order.status} />
+          {order.status === "DRAFT" && (
+            <Link href={`/purchase-orders/${order.id}/edit`}>
+              <Button variant="outline">
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+            </Link>
+          )}
           <a href={`/api/v1/purchase-orders/${order.id}/pdf`} download>
             <Button variant="outline">
               <Download className="h-4 w-4" />

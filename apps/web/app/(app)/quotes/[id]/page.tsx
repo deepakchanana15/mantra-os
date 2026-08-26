@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
-import { StatusUpdater } from "./status-updater";
+import { StatusUpdater } from "@/components/domain/status-updater";
 
 interface Quote {
   id: string;

@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { ArrayMinSize, IsArray, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength, ValidateNested } from "class-validator";
+import { ArrayMinSize, IsArray, IsDateString, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength, ValidateNested } from "class-validator";
 
 class PurchaseOrderLineDto {
   @IsUUID()
@@ -23,6 +23,10 @@ export class CreatePurchaseOrderDto {
   @IsString()
   @MaxLength(60)
   poNumber?: string;
+
+  @IsOptional()
+  @IsDateString()
+  deliveryDueDate?: string;
 
   /** Optional — see DECISIONS.md "Global multi-country, multi-company, multi-brand architecture" Sub-phase B. */
   @IsOptional()

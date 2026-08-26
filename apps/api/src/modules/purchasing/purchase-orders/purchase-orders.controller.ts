@@ -8,6 +8,7 @@ import { PermissionGuard } from "../../../common/guards/permission.guard";
 import { TenantMembershipGuard } from "../../../common/guards/tenant-membership.guard";
 import { PERMISSIONS } from "../../../common/permissions/permission-keys";
 import { CreatePurchaseOrderDto } from "./dto/create-purchase-order.dto";
+import { UpdatePurchaseOrderDto } from "./dto/update-purchase-order.dto";
 import { UpdatePurchaseOrderStatusDto } from "./dto/update-purchase-order-status.dto";
 import { PurchaseOrdersService } from "./purchase-orders.service";
 
@@ -53,6 +54,12 @@ export class PurchaseOrdersController {
   @RequirePermission(PERMISSIONS.PURCHASE_ORDERS_UPDATE)
   updateStatus(@Param("id") id: string, @Body() dto: UpdatePurchaseOrderStatusDto) {
     return this.purchaseOrders.updateStatus(id, dto.status);
+  }
+
+  @Patch(":id")
+  @RequirePermission(PERMISSIONS.PURCHASE_ORDERS_UPDATE)
+  update(@Param("id") id: string, @Body() dto: UpdatePurchaseOrderDto) {
+    return this.purchaseOrders.update(id, dto);
   }
 
   @Delete(":id")

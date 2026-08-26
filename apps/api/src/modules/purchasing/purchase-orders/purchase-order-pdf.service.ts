@@ -14,6 +14,7 @@ interface PurchaseOrderPdfData {
   poNumber: string | null;
   status: string;
   orderDate: Date | string;
+  deliveryDueDate: Date | string | null;
   supplier: {
     name: string;
     email: string | null;
@@ -99,14 +100,16 @@ export class PurchaseOrderPdfService {
         toY += 12;
       }
 
-      // Meta row: order date / status
+      // Meta row: order date / delivery due date / status
       const metaY = Math.max(fromY, toY) + 20;
       doc.fontSize(9).fillColor("#999999");
       doc.text("ORDER DATE", leftX, metaY);
-      doc.text("STATUS", leftX + 150, metaY);
+      doc.text("DELIVERY DUE DATE", leftX + 150, metaY);
+      doc.text("STATUS", leftX + 300, metaY);
       doc.fontSize(10).fillColor("#111111");
       doc.text(formatDate(order.orderDate), leftX, metaY + 14);
-      doc.text(STATUS_LABELS[order.status] ?? order.status, leftX + 150, metaY + 14);
+      doc.text(formatDate(order.deliveryDueDate), leftX + 150, metaY + 14);
+      doc.text(STATUS_LABELS[order.status] ?? order.status, leftX + 300, metaY + 14);
 
       // Line items table
       let tableY = metaY + 50;
@@ -141,7 +144,7 @@ export class PurchaseOrderPdfService {
       tableY += 12;
       doc.fontSize(11).fillColor("#111111");
       doc.text("Total", colPrice, tableY, { width: 70, align: "right" });
-      doc.font("Helvetica-Bold").text(formatMoney(total, currency), colTotal, tableY, { width: 65, align: "right" });
+      doc.font("Helvetica-Bold").text(formatMoney(total, currency), colTotal - 20, tableY, { width: 85, align: "right" });
       doc.font("Helvetica");
 
       doc.fontSize(9).fillColor("#999999").text("Please confirm receipt of this order.", leftX, 750, { width: 495, align: "center" });
