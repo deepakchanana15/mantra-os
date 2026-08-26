@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -37,6 +38,7 @@ export default function NewPurchaseOrderPage() {
   const [companyId, setCompanyId] = useState<string | undefined>(undefined);
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [currencyId, setCurrencyId] = useState<string | undefined>(undefined);
+  const [poNumber, setPoNumber] = useState("");
   const [lines, setLines] = useState<LineItemRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -60,6 +62,7 @@ export default function NewPurchaseOrderPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           supplierId,
+          poNumber: poNumber || undefined,
           companyId,
           countryId,
           currencyId,
@@ -91,6 +94,10 @@ export default function NewPurchaseOrderPage() {
       <Card className="max-w-2xl">
         <CardContent className="p-5">
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="poNumber">PO number</Label>
+              <Input id="poNumber" placeholder="Optional — e.g. PO-2026-001" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
+            </div>
             <div className="flex flex-col gap-1.5">
               <Label>Supplier</Label>
               <DropdownMenu>

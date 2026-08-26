@@ -28,6 +28,8 @@ interface Company {
   taxId: string | null;
   address: string | null;
   bankDetails: string | null;
+  phone: string | null;
+  lutArn: string | null;
   baseCurrencyId: string | null;
 }
 
@@ -38,6 +40,8 @@ interface CompanyFormState {
   taxId: string;
   address: string;
   bankDetails: string;
+  phone: string;
+  lutArn: string;
   baseCurrencyId: string | undefined;
 }
 
@@ -48,6 +52,8 @@ const EMPTY_FORM: CompanyFormState = {
   taxId: "",
   address: "",
   bankDetails: "",
+  phone: "",
+  lutArn: "",
   baseCurrencyId: undefined,
 };
 
@@ -77,6 +83,8 @@ export function CompaniesTab({ companies: initial, currencies }: { companies: Co
       taxId: company.taxId ?? "",
       address: company.address ?? "",
       bankDetails: company.bankDetails ?? "",
+      phone: company.phone ?? "",
+      lutArn: company.lutArn ?? "",
       baseCurrencyId: company.baseCurrencyId ?? undefined,
     });
     setOpen(true);
@@ -93,6 +101,8 @@ export function CompaniesTab({ companies: initial, currencies }: { companies: Co
         taxId: form.taxId || undefined,
         address: form.address || undefined,
         bankDetails: form.bankDetails || undefined,
+        phone: form.phone || undefined,
+        lutArn: form.lutArn || undefined,
         baseCurrencyId: form.baseCurrencyId,
       });
       const res = await fetch(editingId ? `/api/v1/companies/${editingId}` : "/api/v1/companies", {
@@ -190,7 +200,7 @@ export function CompaniesTab({ companies: initial, currencies }: { companies: Co
               <Label htmlFor="company-registration-number">Registration number</Label>
               <Input
                 id="company-registration-number"
-                placeholder="e.g. ACN, EIN, company registration number"
+                placeholder="e.g. ACN (AU), IEC (IN), EIN (US)"
                 value={form.registrationNumber}
                 onChange={(e) => setForm((f) => ({ ...f, registrationNumber: e.target.value }))}
               />
@@ -199,9 +209,27 @@ export function CompaniesTab({ companies: initial, currencies }: { companies: Co
               <Label htmlFor="company-tax-id">Tax ID</Label>
               <Input
                 id="company-tax-id"
-                placeholder="e.g. ABN (AU), VAT (DE/NL), GST/HST (CA), EIN (US)"
+                placeholder="e.g. ABN (AU), GSTIN (IN), VAT (DE/NL), GST/HST (CA), EIN (US)"
                 value={form.taxId}
                 onChange={(e) => setForm((f) => ({ ...f, taxId: e.target.value }))}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="company-phone">Phone</Label>
+              <Input
+                id="company-phone"
+                placeholder="Pre-fills an invoice's Consignee phone when this company is picked as consignee"
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="company-lut-arn">LUT ARN</Label>
+              <Input
+                id="company-lut-arn"
+                placeholder="India export invoices under LUT — this financial year's Letter of Undertaking ARN"
+                value={form.lutArn}
+                onChange={(e) => setForm((f) => ({ ...f, lutArn: e.target.value }))}
               />
             </div>
             <div className="flex flex-col gap-1.5">

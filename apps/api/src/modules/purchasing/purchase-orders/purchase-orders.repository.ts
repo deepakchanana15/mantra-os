@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { PurchaseOrderStatus } from "@mantra-os/db";
 import { BaseRepository } from "../../../common/repositories/base.repository";
 import { CreatePurchaseOrderDto } from "./dto/create-purchase-order.dto";
@@ -43,11 +43,20 @@ export class PurchaseOrdersRepository extends BaseRepository {
     return order;
   }
 
-  create(dto: CreatePurchaseOrderDto) {
+  async create(dto: CreatePurchaseOrderDto) {
+    if (dto.poNumber) {
+      const existing = await this.db.purchaseOrder.findUnique({
+        where: { organizationId_poNumber: { organizationId: this.organizationId, poNumber: dto.poNumber } },
+      });
+      if (existing) {
+        throw new ConflictException(`PO number "${dto.poNumber}" already exists`);
+      }
+    }
     return this.db.purchaseOrder.create({
       data: {
         organizationId: this.organizationId,
         supplierId: dto.supplierId,
+        poNumber: dto.poNumber,
         companyId: dto.companyId,
         countryId: dto.countryId,
         currencyId: dto.currencyId,

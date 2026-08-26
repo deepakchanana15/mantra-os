@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { ArrayMinSize, IsArray, IsInt, IsNumber, IsOptional, IsUUID, Min, ValidateNested } from "class-validator";
+import { ArrayMinSize, IsArray, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength, ValidateNested } from "class-validator";
 
 class PurchaseOrderLineDto {
   @IsUUID()
@@ -17,6 +17,12 @@ class PurchaseOrderLineDto {
 export class CreatePurchaseOrderDto {
   @IsUUID()
   supplierId!: string;
+
+  /** Optional reference number — needed so an Invoice raised against this PO can cite "Buyer's PO No." */
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  poNumber?: string;
 
   /** Optional — see DECISIONS.md "Global multi-country, multi-company, multi-brand architecture" Sub-phase B. */
   @IsOptional()

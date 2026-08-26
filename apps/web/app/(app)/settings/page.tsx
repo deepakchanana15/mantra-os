@@ -40,6 +40,8 @@ interface Company {
   taxId: string | null;
   address: string | null;
   bankDetails: string | null;
+  phone: string | null;
+  lutArn: string | null;
   baseCurrencyId: string | null;
 }
 

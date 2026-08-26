@@ -26,3 +26,18 @@ export function formatPostalAddress(value: unknown): string[] {
   const cityLine = [address.city, address.state, address.postalCode].filter(Boolean).join(" ");
   return [line2, cityLine, address.country].filter((l): l is string => !!l && l.trim().length > 0);
 }
+
+/**
+ * Company.taxId and Company.registrationNumber are deliberately generic
+ * free-text fields (they hold whatever tax/registration identifier a given
+ * country uses) — each jurisdiction prints under its own label.
+ */
+export function companyTaxLabels(company: { baseCurrency?: { code: string } | null } | null | undefined): {
+  taxIdLabel: string;
+  registrationLabel: string;
+} {
+  const currencyCode = company?.baseCurrency?.code;
+  if (currencyCode === "AUD") return { taxIdLabel: "ABN", registrationLabel: "ACN" };
+  if (currencyCode === "INR") return { taxIdLabel: "GSTIN", registrationLabel: "IEC" };
+  return { taxIdLabel: "Tax ID", registrationLabel: "Registration" };
+}

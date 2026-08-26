@@ -16,11 +16,15 @@ interface Invoice extends InvoiceCurrencySource {
   amount: string;
   discountAmount: string | null;
   gstApplicable: boolean;
+  gstRate: string | null;
+  exportUnderLut: boolean;
   issuedAt: string | null;
   dueDate: string | null;
   paidAt: string | null;
   paymentProof: { id: string; fileUrl: string; fileName: string }[];
-  customer: { name: string };
+  customer: { name: string } | null;
+  consigneeCompany: { id: string; name: string; legalName: string | null } | null;
+  purchaseOrder: { id: string; poNumber: string | null } | null;
   salesOrder: { id: string } | null;
   lines: { id: string; quantity: number; unitPrice: string; product: { name: string; sku: string } }[];
 }
@@ -54,8 +58,11 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
   const discount = Number(invoice.discountAmount ?? 0);
   const total = subtotal - discount;
   const discountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0;
-  const gst = invoice.gstApplicable ? Math.round(total * 0.1 * 100) / 100 : 0;
+  const gstRatePct = invoice.gstRate != null ? Number(invoice.gstRate) : 10;
+  const gst = !invoice.exportUnderLut && invoice.gstApplicable ? Math.round(total * (gstRatePct / 100) * 100) / 100 : 0;
   const grandTotal = total + gst;
+  const gstLabel = invoice.gstRate != null ? "IGST" : "GST";
+  const partyName = invoice.consigneeCompany?.legalName ?? invoice.consigneeCompany?.name ?? invoice.customer?.name ?? "—";
 
   return (
     <div className="flex flex-col gap-5 p-7">
@@ -70,12 +77,17 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
             <Badge variant={STATUS_VARIANT[invoice.status] ?? "neutral"}>{STATUS_LABELS[invoice.status] ?? invoice.status}</Badge>
           </div>
           <p className="text-xs text-faint">
-            {invoice.customer.name}
+            {partyName}
             {invoice.dueDate && ` — due ${new Date(invoice.dueDate).toLocaleDateString()}`}
           </p>
           {invoice.salesOrder && (
             <Link href={`/sales-orders/${invoice.salesOrder.id}`} className="mt-1 block text-xs text-accent hover:underline">
               View linked sales order
+            </Link>
+          )}
+          {invoice.purchaseOrder && (
+            <Link href={`/purchase-orders/${invoice.purchaseOrder.id}`} className="mt-1 block text-xs text-accent hover:underline">
+              View linked purchase order {invoice.purchaseOrder.poNumber ? `(${invoice.purchaseOrder.poNumber})` : ""}
             </Link>
           )}
           {invoice.status === "PAID" && invoice.paidAt && (
@@ -148,22 +160,29 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
                 </TableRow>
               )}
               <TableRow>
-                <TableCell colSpan={3} className={`text-right ${invoice.gstApplicable ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
+                <TableCell colSpan={3} className={`text-right ${invoice.gstApplicable || invoice.exportUnderLut ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
                   Total
                 </TableCell>
-                <TableCell className={`text-right tabular-nums ${invoice.gstApplicable ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
+                <TableCell className={`text-right tabular-nums ${invoice.gstApplicable || invoice.exportUnderLut ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
                   {currency.format(total)}
                 </TableCell>
               </TableRow>
-              {invoice.gstApplicable && (
+              {invoice.exportUnderLut && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-right text-xs text-muted-foreground">
+                    Supply meant for export under LUT without payment of Integrated Tax
+                  </TableCell>
+                </TableRow>
+              )}
+              {!invoice.exportUnderLut && invoice.gstApplicable && (
                 <TableRow>
                   <TableCell colSpan={3} className="text-right text-muted-foreground">
-                    GST (10%)
+                    {gstLabel} ({gstRatePct}%)
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">{currency.format(gst)}</TableCell>
                 </TableRow>
               )}
-              {invoice.gstApplicable && (
+              {(invoice.gstApplicable || invoice.exportUnderLut) && (
                 <TableRow>
                   <TableCell colSpan={3} className="text-right font-semibold text-foreground">
                     Grand Total
@@ -190,18 +209,21 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className={invoice.gstApplicable ? "text-muted-foreground" : "font-semibold text-foreground"}>Total</span>
-              <span className={`tabular-nums ${invoice.gstApplicable ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
+              <span className={invoice.gstApplicable || invoice.exportUnderLut ? "text-muted-foreground" : "font-semibold text-foreground"}>Total</span>
+              <span className={`tabular-nums ${invoice.gstApplicable || invoice.exportUnderLut ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
                 {currency.format(total)}
               </span>
             </div>
-            {invoice.gstApplicable && (
+            {invoice.exportUnderLut && (
+              <p className="text-right text-xs text-muted-foreground">Supply meant for export under LUT without payment of Integrated Tax</p>
+            )}
+            {!invoice.exportUnderLut && invoice.gstApplicable && (
               <div className="flex justify-between text-sm text-muted-foreground">
-                <span>GST (10%)</span>
+                <span>{gstLabel} ({gstRatePct}%)</span>
                 <span className="tabular-nums">{currency.format(gst)}</span>
               </div>
             )}
-            {invoice.gstApplicable && (
+            {(invoice.gstApplicable || invoice.exportUnderLut) && (
               <div className="flex justify-between text-sm">
                 <span className="font-semibold text-foreground">Grand Total</span>
                 <span className="font-semibold tabular-nums text-foreground">{currency.format(grandTotal)}</span>

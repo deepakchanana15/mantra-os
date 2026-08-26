@@ -34,6 +34,18 @@ export class CreateCompanyDto {
   @MaxLength(500)
   bankDetails?: string;
 
+  /** Pre-fills an invoice's Consignee phone when this Company is picked as the consignee. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  phone?: string;
+
+  /** LUT (Letter of Undertaking) ARN — only meaningful for an INR-based company exporting without IGST. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  lutArn?: string;
+
   @IsOptional()
   @IsUUID()
   baseCurrencyId?: string;

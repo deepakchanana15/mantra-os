@@ -4,8 +4,26 @@ import { InvoiceStatus } from "@mantra-os/db";
 import { OrderLineDto } from "../../../../common/dto/order-line.dto";
 
 export class CreateInvoiceDto {
+  /** Optional — see `consigneeCompanyId`. At least one of the two must be provided (enforced in InvoicesService). */
+  @IsOptional()
   @IsUUID()
-  customerId!: string;
+  customerId?: string;
+
+  /** Intercompany consignee — pick from this org's own Companies rather than Customers. See DECISIONS.md "India export invoice compliance". */
+  @IsOptional()
+  @IsUUID()
+  consigneeCompanyId?: string;
+
+  /** Overrides consigneeCompany.phone when set — lets the phone be entered manually when the Company has none on file. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  consigneePhone?: string;
+
+  /** Optional — the Purchase Order this export invoice was raised against. */
+  @IsOptional()
+  @IsUUID()
+  purchaseOrderId?: string;
 
   @IsOptional()
   @IsUUID()
@@ -44,10 +62,74 @@ export class CreateInvoiceDto {
   @Min(0)
   discountAmount?: number;
 
-  /** Adds a flat 10% GST line on top of the post-discount total — the rate is fixed, so only this flag is stored. */
+  /** Adds a GST/IGST line on top of the post-discount total — 10% for AU unless gstRate overrides it. */
   @IsOptional()
   @IsBoolean()
   gstApplicable?: boolean;
+
+  /** Overrides the default 10% rate — India's IGST varies by HSN code (5/12/18/28%). */
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  gstRate?: number;
+
+  /** India export invoices: goods exported under LUT carry no IGST — mutually exclusive with gstApplicable in practice. */
+  @IsOptional()
+  @IsBoolean()
+  exportUnderLut?: boolean;
+
+  /** Buyer's own tax identifier (e.g. an overseas buyer's ABN), printed on export invoices. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  buyerTaxId?: string;
+
+  /** India export invoice compliance fields — all optional. See DECISIONS.md "India export invoice compliance". */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  carriageBy?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  placeOfReceipt?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  countryOfOrigin?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  flightOrVesselNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  portOfLoading?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  portOfDischarge?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  paymentTerms?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  freightTerms?: string;
+
+  /** 1 unit of the invoice's own currency = exchangeRate INR — used to print the INR taxable value/IGST amount export invoices require. */
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  exchangeRate?: number;
 
   @IsOptional()
   @IsDateString()

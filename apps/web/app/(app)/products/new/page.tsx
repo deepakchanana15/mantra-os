@@ -34,6 +34,7 @@ export default function NewProductPage() {
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [unitPrice, setUnitPrice] = useState("");
   const [unitCost, setUnitCost] = useState("");
+  const [hsnCode, setHsnCode] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export default function NewProductPage() {
           countryId,
           unitPrice: Number(unitPrice),
           unitCost: unitCost ? Number(unitCost) : undefined,
+          hsnCode: hsnCode || undefined,
         }),
       });
       const data = await res.json();
@@ -150,6 +152,16 @@ export default function NewProductPage() {
                   onChange={(e) => setUnitCost(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="hsnCode">HSN / SAC code</Label>
+              <Input
+                id="hsnCode"
+                placeholder="For Indian export invoice line items, e.g. 61099020"
+                value={hsnCode}
+                onChange={(e) => setHsnCode(e.target.value)}
+              />
             </div>
 
             <div className="mt-2 flex gap-2">

@@ -25,7 +25,7 @@ interface InvoicePdfData {
     // Prisma Json field — shape follows AddressDto by convention, but isn't
     // type-guaranteed, so formatBillingAddress() narrows it defensively.
     billingAddress: unknown;
-  };
+  } | null;
   lines: InvoicePdfLine[];
   company: {
     name: string;
@@ -109,10 +109,10 @@ export class InvoicePdfService {
       }
 
       doc.fontSize(9).fillColor("#999999").text("BILL TO", rightX, colTop, { width: 240, align: "right" });
-      doc.fontSize(11).fillColor("#111111").text(invoice.customer.name, rightX, colTop + 14, { width: 240, align: "right" });
+      doc.fontSize(11).fillColor("#111111").text(invoice.customer?.name ?? "—", rightX, colTop + 14, { width: 240, align: "right" });
       let toY = colTop + 30;
-      const contactLines = [invoice.customer.email, invoice.customer.phone].filter((l): l is string => !!l);
-      for (const line of [...contactLines, ...formatPostalAddress(invoice.customer.billingAddress)]) {
+      const contactLines = [invoice.customer?.email, invoice.customer?.phone].filter((l): l is string => !!l);
+      for (const line of [...contactLines, ...formatPostalAddress(invoice.customer?.billingAddress)]) {
         doc.fontSize(9).fillColor("#444444").text(line, rightX, toY, { width: 240, align: "right" });
         toY += 12;
       }

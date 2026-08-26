@@ -5,6 +5,7 @@ import { DeletionGuardService } from "../../../common/deletion/deletion-guard.se
 import { CreateInvoiceDto } from "./dto/create-invoice.dto";
 import { MarkInvoicePaidDto } from "./dto/mark-invoice-paid.dto";
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
+import { IndiaExportInvoicePdfService } from "./india-export-invoice-pdf.service";
 import { InvoicePdfService } from "./invoice-pdf.service";
 import { InvoicesRepository } from "./invoices.repository";
 
@@ -16,12 +17,14 @@ export class InvoicesService {
     private readonly invoices: InvoicesRepository,
     private readonly deletionGuard: DeletionGuardService,
     private readonly invoicePdf: InvoicePdfService,
+    private readonly indiaExportInvoicePdf: IndiaExportInvoicePdfService,
     private readonly attachments: AttachmentsRepository,
   ) {}
 
   async getPdf(id: string): Promise<{ buffer: Buffer; filename: string }> {
     const invoice = await this.invoices.findOneOrThrow(id);
-    const buffer = await this.invoicePdf.generate(invoice);
+    const isIndianCompany = invoice.company?.baseCurrency?.code === "INR";
+    const buffer = isIndianCompany ? await this.indiaExportInvoicePdf.generate(invoice) : await this.invoicePdf.generate(invoice);
     return { buffer, filename: `${invoice.invoiceNumber}.pdf` };
   }
 
@@ -45,6 +48,9 @@ export class InvoicesService {
   }
 
   create(dto: CreateInvoiceDto) {
+    if (!dto.customerId && !dto.consigneeCompanyId) {
+      throw new BadRequestException("Provide either a customer or a consignee company");
+    }
     const amount = dto.lines?.length ? dto.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0) : dto.amount;
     if (amount === undefined) {
       throw new BadRequestException("Provide either an amount or line items");

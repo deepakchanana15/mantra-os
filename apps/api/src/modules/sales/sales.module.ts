@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { InventoryModule } from "../inventory/inventory.module";
+import { IndiaExportInvoicePdfService } from "./invoices/india-export-invoice-pdf.service";
 import { InvoicePdfService } from "./invoices/invoice-pdf.service";
 import { InvoicesController } from "./invoices/invoices.controller";
 import { InvoicesRepository } from "./invoices/invoices.repository";
@@ -50,6 +51,7 @@ import { WhatsAppWebhookController } from "./whatsapp/whatsapp-webhook.controlle
     InvoicesRepository,
     InvoicesService,
     InvoicePdfService,
+    IndiaExportInvoicePdfService,
     LeadIntakeKeysRepository,
     LeadIntakeKeysService,
     WhatsAppPhoneNumbersRepository,

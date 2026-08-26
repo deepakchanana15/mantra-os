@@ -8,6 +8,7 @@ import { purchaseOrderCurrencyCode, type PurchaseOrderCurrencySource } from "@/l
 
 interface PurchaseOrder extends PurchaseOrderCurrencySource {
   id: string;
+  poNumber: string | null;
   status: string;
   orderDate: string;
   supplier: { name: string };
@@ -69,8 +70,9 @@ export default async function PurchaseOrdersPage() {
                   <TableRow key={order.id}>
                     <TableCell>
                       <Link href={`/purchase-orders/${order.id}`} className="font-medium text-foreground hover:text-accent">
-                        {order.supplier.name}
+                        {order.poNumber ?? order.supplier.name}
                       </Link>
+                      {order.poNumber && <div className="text-xs text-faint">{order.supplier.name}</div>}
                     </TableCell>
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[order.status] ?? "neutral"}>{order.status}</Badge>

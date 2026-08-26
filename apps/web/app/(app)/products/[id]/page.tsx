@@ -10,6 +10,7 @@ interface Product extends ProductCurrencySource {
   sku: string;
   name: string;
   description: string | null;
+  hsnCode: string | null;
   unitPrice: string;
   unitCost: string | null;
   category: { name: string } | null;
@@ -47,6 +48,10 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
             <span className="tabular-nums text-foreground">
               {product.unitCost ? formatProductPrice(product.unitCost, product) : "—"}
             </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">HSN / SAC code</span>
+            <span className="font-mono text-foreground">{product.hsnCode ?? "—"}</span>
           </div>
           {product.description && (
             <div className="border-t border-border pt-3 text-muted-foreground">{product.description}</div>

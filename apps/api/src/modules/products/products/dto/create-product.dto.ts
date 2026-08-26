@@ -15,6 +15,12 @@ export class CreateProductDto {
   @IsString()
   description?: string;
 
+  /** HSN (goods) / SAC (services) tariff code — printed on Indian export invoice line items. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  hsnCode?: string;
+
   @IsOptional()
   @IsUUID()
   categoryId?: string;

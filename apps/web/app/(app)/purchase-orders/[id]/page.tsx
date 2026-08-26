@@ -9,6 +9,7 @@ import { purchaseOrderCurrencyCode, type PurchaseOrderCurrencySource } from "@/l
 
 interface PurchaseOrder extends PurchaseOrderCurrencySource {
   id: string;
+  poNumber: string | null;
   status: string;
   orderDate: string;
   supplier: { name: string };
@@ -42,10 +43,13 @@ export default async function PurchaseOrderDetailPage({ params }: { params: { id
             Purchase Orders
           </Link>
           <div className="mt-1 flex items-center gap-2.5">
-            <h1 className="text-xl font-bold text-foreground">{order.supplier.name}</h1>
+            <h1 className="text-xl font-bold text-foreground">{order.poNumber ?? order.supplier.name}</h1>
             <Badge variant={STATUS_VARIANT[order.status] ?? "neutral"}>{order.status}</Badge>
           </div>
-          <p className="text-xs text-faint">Ordered {new Date(order.orderDate).toLocaleDateString()}</p>
+          <p className="text-xs text-faint">
+            {order.poNumber && `${order.supplier.name} — `}
+            Ordered {new Date(order.orderDate).toLocaleDateString()}
+          </p>
         </div>
         <div className="flex gap-2">
           <a href={`/api/v1/purchase-orders/${order.id}/pdf`} download>

@@ -16,7 +16,7 @@ export class PurchaseOrdersService {
   async getPdf(id: string): Promise<{ buffer: Buffer; filename: string }> {
     const order = await this.purchaseOrders.findOneOrThrow(id);
     const buffer = await this.purchaseOrderPdf.generate(order);
-    return { buffer, filename: `PO-${order.id.slice(0, 8).toUpperCase()}.pdf` };
+    return { buffer, filename: `${order.poNumber ?? `PO-${order.id.slice(0, 8).toUpperCase()}`}.pdf` };
   }
 
   findAll(params: { skip?: number; take?: number; supplierId?: string }) {

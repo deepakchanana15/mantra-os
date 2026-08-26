@@ -11,6 +11,7 @@ interface PurchaseOrderPdfLine {
 
 interface PurchaseOrderPdfData {
   id: string;
+  poNumber: string | null;
   status: string;
   orderDate: Date | string;
   supplier: {
@@ -38,9 +39,9 @@ function currencyCode(order: PurchaseOrderPdfData): string {
   return order.currency?.code ?? order.country?.currency?.code ?? order.company?.baseCurrency?.code ?? "USD";
 }
 
-/** No PO-number field exists yet (unlike Invoice's user-supplied invoiceNumber) — this derives a short, stable reference purely for display. */
+/** Falls back to a short, stable reference derived from the id for POs predating the poNumber field. */
 function displayReference(order: PurchaseOrderPdfData): string {
-  return `PO-${order.id.slice(0, 8).toUpperCase()}`;
+  return order.poNumber ?? `PO-${order.id.slice(0, 8).toUpperCase()}`;
 }
 
 /**

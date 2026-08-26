@@ -13,8 +13,11 @@ interface Invoice extends InvoiceCurrencySource {
   amount: string;
   discountAmount: string | null;
   gstApplicable: boolean;
+  gstRate: string | null;
+  exportUnderLut: boolean;
   dueDate: string | null;
-  customer: { name: string };
+  customer: { name: string } | null;
+  consigneeCompany: { name: string; legalName: string | null } | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -65,7 +68,9 @@ export default async function InvoicesPage() {
             ) : (
               invoices.map((invoice) => {
                 const total = Number(invoice.amount) - Number(invoice.discountAmount ?? 0);
-                const grandTotal = invoice.gstApplicable ? Math.round(total * 1.1 * 100) / 100 : total;
+                const gstRatePct = invoice.gstRate != null ? Number(invoice.gstRate) : 10;
+                const grandTotal = !invoice.exportUnderLut && invoice.gstApplicable ? Math.round(total * (1 + gstRatePct / 100) * 100) / 100 : total;
+                const partyName = invoice.consigneeCompany?.legalName ?? invoice.consigneeCompany?.name ?? invoice.customer?.name ?? "—";
                 return (
                 <TableRow key={invoice.id}>
                   <TableCell>
@@ -73,7 +78,7 @@ export default async function InvoicesPage() {
                       {invoice.invoiceNumber}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{invoice.customer.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{partyName}</TableCell>
                   <TableCell className="text-muted-foreground">{STATUS_LABELS[invoice.status] ?? invoice.status}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatInvoiceAmount(grandTotal, invoice)}
