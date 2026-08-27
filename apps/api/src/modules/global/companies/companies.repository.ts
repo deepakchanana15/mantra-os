@@ -8,6 +8,7 @@ export class CompaniesRepository extends BaseRepository {
   findAll() {
     return this.db.company.findMany({
       where: { organizationId: this.organizationId, deletedAt: null },
+      include: { baseCurrency: true },
       orderBy: { name: "asc" },
     });
   }
