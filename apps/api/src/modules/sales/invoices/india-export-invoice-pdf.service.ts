@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import PDFDocument from "pdfkit";
+import { MANTRA_LOGO_BASE64 } from "../../../common/assets/mantra-logo";
 import { amountToWords } from "../../../common/pdf/number-to-words";
 import { companyTaxLabels, formatDate, formatMoney, formatPostalAddress } from "../../../common/pdf/pdf-format";
 
@@ -55,7 +56,7 @@ function currencyCode(invoice: IndiaExportInvoiceData): string {
 }
 
 /**
- * Renders an Indian export Proforma Invoice — a fundamentally different,
+ * Renders an Indian export Invoice — a fundamentally different,
  * customs/bank-oriented grid layout from InvoicePdfService's clean modern
  * design. Auto-selected in InvoicesService.getPdf() whenever the issuing
  * Company's base currency is INR. See DECISIONS.md "India export invoice
@@ -90,10 +91,12 @@ export class IndiaExportInvoicePdfService {
       const consigneeLabels = companyTaxLabels(invoice.consigneeCompany);
       const companyLabels = companyTaxLabels(invoice.company);
 
-      // Title
-      doc.fontSize(16).fillColor("#111111").font("Helvetica-Bold").text("PROFORMA INVOICE", leftX, 40, { width: pageRight - leftX, align: "center" });
+      // Logo + title
+      const logo = Buffer.from(MANTRA_LOGO_BASE64, "base64");
+      doc.image(logo, leftX, 35, { width: 50 });
+      doc.fontSize(16).fillColor("#111111").font("Helvetica-Bold").text("INVOICE", leftX, 40, { width: pageRight - leftX, align: "center" });
       doc.font("Helvetica");
-      let y = 70;
+      let y = 95;
 
       function rule() {
         doc.moveTo(leftX, y).lineTo(pageRight, y).strokeColor(borderColor).stroke();
