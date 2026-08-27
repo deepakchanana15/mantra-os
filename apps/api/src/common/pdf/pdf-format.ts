@@ -4,6 +4,11 @@ export function formatMoney(amount: { toString(): string } | number, currency: s
   return new Intl.NumberFormat("en-US", { style: "currency", currency, currencyDisplay: "code" }).format(Number(amount));
 }
 
+/** Bare number, no currency code — for dense grids (e.g. India export invoice line items) where the currency is already stated in a column header. */
+export function formatNumber(amount: { toString(): string } | number): string {
+  return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(amount));
+}
+
 export function formatDate(value: Date | string | null): string {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
