@@ -2,24 +2,18 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { SalesByChannelWidget, type ChannelStat } from "@/components/domain/sales-by-channel-widget";
-import { RevenueBreakdownWidget } from "@/components/domain/revenue-breakdown-widget";
+import { RevenueSummaryWidget, type CurrencyPeriodStat } from "@/components/domain/revenue-summary-widget";
+import { RevenueBreakdownWidget, type RevenueBreakdownStat } from "@/components/domain/revenue-breakdown-widget";
 import { MarketingPerformanceWidget, type MarketingCampaignStat } from "@/components/domain/marketing-performance-widget";
-
-interface CompanyCountryStat {
-  label: string;
-  isIntercompany: boolean;
-  orders: number;
-  revenue: number;
-}
 
 interface DashboardSummary {
   activeCustomers: number;
   openSalesOrders: number;
   lowStockProducts: number;
-  revenueMonthToDate: number;
   salesByChannel: ChannelStat[];
-  revenueByCompany: CompanyCountryStat[];
-  revenueByCountry: CompanyCountryStat[];
+  revenueByCurrency: CurrencyPeriodStat[];
+  revenueByCompany: RevenueBreakdownStat[];
+  revenueByCountry: RevenueBreakdownStat[];
   marketingPerformance: MarketingCampaignStat[];
 }
 
@@ -42,7 +36,6 @@ function Kpi({ label, value }: { label: string; value: string }) {
  */
 export default async function ReportsPage() {
   const summary = await apiFetch<DashboardSummary>("/v1/reports/dashboard");
-  const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
   return (
     <div className="flex flex-col gap-6 p-7">
@@ -57,12 +50,13 @@ export default async function ReportsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Kpi label="Active customers" value={summary.activeCustomers.toLocaleString()} />
         <Kpi label="Open sales orders" value={summary.openSalesOrders.toLocaleString()} />
         <Kpi label="Low stock products" value={summary.lowStockProducts.toLocaleString()} />
-        <Kpi label="Revenue (MTD)" value={currency.format(summary.revenueMonthToDate)} />
       </div>
+
+      <RevenueSummaryWidget revenueByCurrency={summary.revenueByCurrency} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SalesByChannelWidget salesByChannel={summary.salesByChannel} />
@@ -70,13 +64,13 @@ export default async function ReportsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <RevenueBreakdownWidget title="Revenue by company (MTD)" labelHeading="Company" stats={summary.revenueByCompany} />
-        <RevenueBreakdownWidget title="Revenue by country (MTD)" labelHeading="Country" stats={summary.revenueByCountry} />
+        <RevenueBreakdownWidget title="Revenue by company" labelHeading="Company" stats={summary.revenueByCompany} />
+        <RevenueBreakdownWidget title="Revenue by country" labelHeading="Country" stats={summary.revenueByCountry} />
       </div>
       <p className="text-xs text-faint">
-        Revenue (MTD) above counts customer sales only. Rows badged <span className="font-medium">B2B · Export</span> are
-        intercompany goods transfers (e.g. an India entity invoicing an Australian sibling entity) — not counted in that
-        total.
+        Revenue above counts customer sales only, shown in each row&apos;s own currency. Rows badged{" "}
+        <span className="font-medium">B2B · Export</span> are intercompany goods transfers (e.g. an India entity
+        invoicing an Australian sibling entity) — not counted in the revenue totals.
       </p>
     </div>
   );
