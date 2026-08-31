@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
 import { formatInvoiceAmount, type InvoiceCurrencySource } from "@/lib/invoice-currency";
@@ -78,7 +79,16 @@ export default async function InvoicesPage() {
                       {invoice.invoiceNumber}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{partyName}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      {partyName}
+                      {invoice.consigneeCompany && (
+                        <Badge variant="neutral" className="text-[10px]">
+                          B2B · Export
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{STATUS_LABELS[invoice.status] ?? invoice.status}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatInvoiceAmount(grandTotal, invoice)}

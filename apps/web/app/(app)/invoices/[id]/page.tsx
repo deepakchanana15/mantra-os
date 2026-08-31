@@ -75,6 +75,11 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           <div className="mt-1 flex items-center gap-2.5">
             <h1 className="text-xl font-bold text-foreground">{invoice.invoiceNumber}</h1>
             <Badge variant={STATUS_VARIANT[invoice.status] ?? "neutral"}>{STATUS_LABELS[invoice.status] ?? invoice.status}</Badge>
+            {invoice.consigneeCompany && (
+              <Badge variant="neutral" className="text-[10px]">
+                B2B · Export
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-faint">
             {partyName}
