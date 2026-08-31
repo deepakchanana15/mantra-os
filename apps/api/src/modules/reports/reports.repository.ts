@@ -40,7 +40,7 @@ export class ReportsRepository extends BaseRepository {
           status: { not: SalesOrderStatus.CANCELLED },
           orderDate: { gte: startOfMonth },
         },
-        include: { lines: true },
+        include: { lines: true, company: true, country: true },
       }),
       // Per-campaign, not per-channel — see DECISIONS.md "Per-campaign ad
       // performance, not channel-consolidated". Sourced from AdCampaign's
@@ -70,13 +70,35 @@ export class ReportsRepository extends BaseRepository {
     );
 
     const byChannel = new Map<string, { orders: number; revenue: number }>();
+    const byCompany = new Map<string, { orders: number; revenue: number }>();
+    const byCountry = new Map<string, { orders: number; revenue: number }>();
     for (const order of salesOrdersThisMonth) {
-      const key = order.salesChannel ?? "UNSPECIFIED";
       const orderRevenue = order.lines.reduce((sum, line) => sum + line.quantity * Number(line.unitPrice), 0);
-      const existing = byChannel.get(key) ?? { orders: 0, revenue: 0 };
-      byChannel.set(key, { orders: existing.orders + 1, revenue: existing.revenue + orderRevenue });
+
+      const channelKey = order.salesChannel ?? "UNSPECIFIED";
+      const existingChannel = byChannel.get(channelKey) ?? { orders: 0, revenue: 0 };
+      byChannel.set(channelKey, { orders: existingChannel.orders + 1, revenue: existingChannel.revenue + orderRevenue });
+
+      const companyKey = order.company?.name ?? "Unassigned";
+      const existingCompany = byCompany.get(companyKey) ?? { orders: 0, revenue: 0 };
+      byCompany.set(companyKey, { orders: existingCompany.orders + 1, revenue: existingCompany.revenue + orderRevenue });
+
+      const countryKey = order.country?.name ?? "Unassigned";
+      const existingCountry = byCountry.get(countryKey) ?? { orders: 0, revenue: 0 };
+      byCountry.set(countryKey, { orders: existingCountry.orders + 1, revenue: existingCountry.revenue + orderRevenue });
     }
     const salesByChannel = Array.from(byChannel.entries()).map(([channel, stats]) => ({ channel, ...stats }));
+    // Sourced from Sales Orders only, which always require a real Customer
+    // (no intercompany/consignee concept the way Invoice has) — so this
+    // never includes intercompany transfers like an India-entity export
+    // invoice to an Australian sibling entity. See DECISIONS.md "India
+    // export invoice compliance".
+    const revenueByCompany = Array.from(byCompany.entries())
+      .map(([company, stats]) => ({ company, ...stats }))
+      .sort((a, b) => b.revenue - a.revenue);
+    const revenueByCountry = Array.from(byCountry.entries())
+      .map(([country, stats]) => ({ country, ...stats }))
+      .sort((a, b) => b.revenue - a.revenue);
 
     const marketingPerformance = campaignsLast30d.map((campaign) => ({
       channel: campaign.channel,
@@ -94,6 +116,8 @@ export class ReportsRepository extends BaseRepository {
       lowStockProducts: lowStockCount,
       revenueMonthToDate,
       salesByChannel,
+      revenueByCompany,
+      revenueByCountry,
       marketingPerformance,
     };
   }

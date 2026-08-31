@@ -1,7 +1,13 @@
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { SalesByChannelWidget, type ChannelStat } from "@/components/domain/sales-by-channel-widget";
+import { RevenueBreakdownWidget } from "@/components/domain/revenue-breakdown-widget";
 import { MarketingPerformanceWidget, type MarketingCampaignStat } from "@/components/domain/marketing-performance-widget";
+
+interface CompanyCountryStat {
+  orders: number;
+  revenue: number;
+}
 
 interface DashboardSummary {
   activeCustomers: number;
@@ -9,6 +15,8 @@ interface DashboardSummary {
   lowStockProducts: number;
   revenueMonthToDate: number;
   salesByChannel: ChannelStat[];
+  revenueByCompany: (CompanyCountryStat & { company: string })[];
+  revenueByCountry: (CompanyCountryStat & { country: string })[];
   marketingPerformance: MarketingCampaignStat[];
 }
 
@@ -44,6 +52,19 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SalesByChannelWidget salesByChannel={summary.salesByChannel} />
         <MarketingPerformanceWidget marketingPerformance={summary.marketingPerformance} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <RevenueBreakdownWidget
+          title="Revenue by company (MTD)"
+          labelHeading="Company"
+          stats={summary.revenueByCompany.map((s) => ({ label: s.company, orders: s.orders, revenue: s.revenue }))}
+        />
+        <RevenueBreakdownWidget
+          title="Revenue by country (MTD)"
+          labelHeading="Country"
+          stats={summary.revenueByCountry.map((s) => ({ label: s.country, orders: s.orders, revenue: s.revenue }))}
+        />
       </div>
     </div>
   );
