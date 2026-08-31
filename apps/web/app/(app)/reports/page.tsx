@@ -6,6 +6,8 @@ import { RevenueBreakdownWidget } from "@/components/domain/revenue-breakdown-wi
 import { MarketingPerformanceWidget, type MarketingCampaignStat } from "@/components/domain/marketing-performance-widget";
 
 interface CompanyCountryStat {
+  label: string;
+  isIntercompany: boolean;
   orders: number;
   revenue: number;
 }
@@ -16,8 +18,8 @@ interface DashboardSummary {
   lowStockProducts: number;
   revenueMonthToDate: number;
   salesByChannel: ChannelStat[];
-  revenueByCompany: (CompanyCountryStat & { company: string })[];
-  revenueByCountry: (CompanyCountryStat & { country: string })[];
+  revenueByCompany: CompanyCountryStat[];
+  revenueByCountry: CompanyCountryStat[];
   marketingPerformance: MarketingCampaignStat[];
 }
 
@@ -68,17 +70,14 @@ export default async function ReportsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <RevenueBreakdownWidget
-          title="Revenue by company (MTD)"
-          labelHeading="Company"
-          stats={summary.revenueByCompany.map((s) => ({ label: s.company, orders: s.orders, revenue: s.revenue }))}
-        />
-        <RevenueBreakdownWidget
-          title="Revenue by country (MTD)"
-          labelHeading="Country"
-          stats={summary.revenueByCountry.map((s) => ({ label: s.country, orders: s.orders, revenue: s.revenue }))}
-        />
+        <RevenueBreakdownWidget title="Revenue by company (MTD)" labelHeading="Company" stats={summary.revenueByCompany} />
+        <RevenueBreakdownWidget title="Revenue by country (MTD)" labelHeading="Country" stats={summary.revenueByCountry} />
       </div>
+      <p className="text-xs text-faint">
+        Revenue (MTD) above counts customer sales only. Rows badged <span className="font-medium">B2B · Export</span> are
+        intercompany goods transfers (e.g. an India entity invoicing an Australian sibling entity) — not counted in that
+        total.
+      </p>
     </div>
   );
 }
