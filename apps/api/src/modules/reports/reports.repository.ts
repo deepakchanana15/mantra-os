@@ -20,6 +20,24 @@ function emptyPeriodTotals(): PeriodTotals {
   return { orders: 0, revenue: 0 };
 }
 
+/**
+ * Maps a company's own base currency to its home country name, for
+ * attributing an intercompany export invoice's revenue row — deliberately
+ * NOT sourced from Invoice.countryOfOrigin, since that's a free-text field
+ * a user could leave blank or mistype (e.g. as the destination country
+ * instead of the origin). baseCurrency is a controlled field, so this is
+ * the reliable source of truth for "which of our own entities is this".
+ */
+const CURRENCY_TO_HOME_COUNTRY: Record<string, string> = {
+  AUD: "Australia",
+  INR: "India",
+  USD: "United States",
+  GBP: "United Kingdom",
+  CAD: "Canada",
+  NZD: "New Zealand",
+  EUR: "Europe",
+};
+
 function addToPeriods(row: { mtd: PeriodTotals; ytd: PeriodTotals; allTime: PeriodTotals }, date: Date, revenue: number, startOfMonth: Date, startOfYear: Date) {
   row.allTime.orders += 1;
   row.allTime.revenue += revenue;
@@ -172,7 +190,8 @@ export class ReportsRepository extends BaseRepository {
       addToPeriods(companyRow, invoiceDate, invoiceValue, startOfMonth, startOfYear);
       byCompany.set(companyKey, companyRow);
 
-      const countryLabel = invoice.countryOfOrigin || "India";
+      const issuerCurrency = invoice.company?.baseCurrency?.code;
+      const countryLabel = (issuerCurrency && CURRENCY_TO_HOME_COUNTRY[issuerCurrency]) || invoice.countryOfOrigin || "Unassigned";
       const countryKey = `b2b:${countryLabel}:${currency}`;
       const countryRow = byCountry.get(countryKey) ?? { label: countryLabel, currency, isIntercompany: true, mtd: emptyPeriodTotals(), ytd: emptyPeriodTotals(), allTime: emptyPeriodTotals() };
       addToPeriods(countryRow, invoiceDate, invoiceValue, startOfMonth, startOfYear);
