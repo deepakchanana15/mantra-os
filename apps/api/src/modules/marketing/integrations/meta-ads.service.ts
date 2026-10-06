@@ -1,5 +1,10 @@
 import { Injectable } from "@nestjs/common";
 
+interface MetaActionRow {
+  action_type: string;
+  value: string;
+}
+
 interface MetaInsightRow {
   campaign_id: string;
   campaign_name: string;
@@ -14,6 +19,27 @@ interface MetaInsightRow {
    * DECISIONS.md), while this field on the already-working Insights edge
    * is documented and reliable. */
   account_currency?: string;
+  /** Conversion breakdown — lead-form submissions show up here, not as
+   * their own top-level field. See extractLeadCount() below. */
+  actions?: MetaActionRow[];
+}
+
+/**
+ * Meta reports Instant Form / on-Facebook lead submissions under one of a
+ * few action_type values depending on the campaign's objective and API
+ * version — checked in priority order and the first match used (never
+ * summed across them, since more than one can describe the same
+ * underlying leads and summing would double-count).
+ */
+const LEAD_ACTION_TYPES = ["onsite_conversion.lead_grouped", "lead", "leadgen.other"];
+
+export function extractLeadCount(actions: MetaActionRow[] | undefined): number {
+  if (!actions) return 0;
+  for (const actionType of LEAD_ACTION_TYPES) {
+    const match = actions.find((a) => a.action_type === actionType);
+    if (match) return Number(match.value) || 0;
+  }
+  return 0;
 }
 
 interface MetaInsightsResponse {
@@ -60,7 +86,7 @@ export class MetaAdsService {
   }): Promise<MetaInsightRow[]> {
     const url = new URL(`https://graph.facebook.com/${this.apiVersion}/act_${params.accountId}/insights`);
     url.searchParams.set("level", "campaign");
-    url.searchParams.set("fields", "campaign_id,campaign_name,impressions,clicks,spend");
+    url.searchParams.set("fields", "campaign_id,campaign_name,impressions,clicks,spend,actions");
     url.searchParams.set("time_range", JSON.stringify({ since: params.since, until: params.until }));
     url.searchParams.set("access_token", params.accessToken);
 
@@ -114,7 +140,7 @@ export class MetaAdsService {
   }): Promise<MetaInsightRow[]> {
     const url = new URL(`https://graph.facebook.com/${this.apiVersion}/act_${params.accountId}/insights`);
     url.searchParams.set("level", "campaign");
-    url.searchParams.set("fields", "campaign_id,campaign_name,impressions,clicks,spend,reach,account_currency");
+    url.searchParams.set("fields", "campaign_id,campaign_name,impressions,clicks,spend,reach,account_currency,actions");
     url.searchParams.set("date_preset", params.datePreset);
     url.searchParams.set("limit", "500");
     url.searchParams.set("access_token", params.accessToken);

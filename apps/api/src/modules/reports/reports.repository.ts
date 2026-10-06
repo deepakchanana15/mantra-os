@@ -124,7 +124,7 @@ export class ReportsRepository extends BaseRepository {
       this.db.adCampaign.findMany({
         where: {
           organizationId: this.organizationId,
-          OR: [{ last30dSpend: { gt: 0 } }, { last30dImpressions: { gt: 0 } }, { last30dClicks: { gt: 0 } }],
+          OR: [{ last30dSpend: { gt: 0 } }, { last30dImpressions: { gt: 0 } }, { last30dClicks: { gt: 0 } }, { last30dLeads: { gt: 0 } }],
         },
         orderBy: { last30dSpend: "desc" },
       }),
@@ -212,6 +212,7 @@ export class ReportsRepository extends BaseRepository {
       spend: Number(campaign.last30dSpend),
       impressions: campaign.last30dImpressions,
       clicks: campaign.last30dClicks,
+      leads: campaign.last30dLeads,
     }));
 
     return {

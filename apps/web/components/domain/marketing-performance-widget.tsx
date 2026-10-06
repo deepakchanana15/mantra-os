@@ -9,6 +9,7 @@ export interface MarketingCampaignStat {
   spend: number;
   impressions: number;
   clicks: number;
+  leads: number;
 }
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -57,6 +58,7 @@ export function MarketingPerformanceWidget({ marketingPerformance }: { marketing
                 <TableHead className="text-right">Impressions</TableHead>
                 <TableHead className="text-right">Clicks</TableHead>
                 <TableHead className="text-right">CTR</TableHead>
+                <TableHead className="text-right">Leads</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -74,6 +76,7 @@ export function MarketingPerformanceWidget({ marketingPerformance }: { marketing
                   <TableCell className="text-right tabular-nums">
                     {stat.impressions > 0 ? `${((stat.clicks / stat.impressions) * 100).toFixed(2)}%` : "—"}
                   </TableCell>
+                  <TableCell className="text-right tabular-nums">{stat.leads.toLocaleString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

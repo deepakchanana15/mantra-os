@@ -1,0 +1,2 @@
+ALTER TABLE "ad_campaigns" ADD COLUMN     "last30dLeads" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "lifetimeLeads" INTEGER NOT NULL DEFAULT 0;

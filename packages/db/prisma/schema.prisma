@@ -1276,9 +1276,13 @@ model AdCampaign {
   lifetimeImpressions Int              @default(0)
   lifetimeClicks      Int              @default(0)
   lifetimeReach       Int?
+  /// Lead-form submissions — read from Meta's `actions` breakdown, not a
+  /// top-level Insights field. See MetaAdsService.extractLeadCount().
+  lifetimeLeads       Int              @default(0)
   last30dSpend        Decimal          @default(0) @db.Decimal(12, 2)
   last30dImpressions  Int              @default(0)
   last30dClicks       Int              @default(0)
+  last30dLeads        Int              @default(0)
   lastSyncedAt        DateTime?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt

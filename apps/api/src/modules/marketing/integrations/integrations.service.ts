@@ -4,7 +4,7 @@ import { TenantContextService } from "../../../common/context/tenant-context.ser
 import { PrismaService } from "../../../prisma/prisma.service";
 import { ConnectIntegrationDto } from "./dto/connect-integration.dto";
 import { AdCampaignSnapshotRow, IntegrationsRepository } from "./integrations.repository";
-import { MetaAdsService } from "./meta-ads.service";
+import { extractLeadCount, MetaAdsService } from "./meta-ads.service";
 
 /** Meta's account-level budget fields are in the currency's minor unit
  * (cents for USD/AUD/etc.), unlike `spend` in insights which is already a
@@ -95,6 +95,7 @@ export class IntegrationsService {
           impressions: Number(row.impressions ?? 0),
           clicks: Number(row.clicks ?? 0),
           spend: Number(row.spend ?? 0),
+          leads: extractLeadCount(row.actions),
         })),
       );
 
@@ -174,9 +175,11 @@ export class IntegrationsService {
         lifetimeImpressions: Number(life?.impressions ?? 0),
         lifetimeClicks: Number(life?.clicks ?? 0),
         lifetimeReach: life?.reach ? Number(life.reach) : undefined,
+        lifetimeLeads: extractLeadCount(life?.actions),
         last30dSpend: Number(recent?.spend ?? 0),
         last30dImpressions: Number(recent?.impressions ?? 0),
         last30dClicks: Number(recent?.clicks ?? 0),
+        last30dLeads: extractLeadCount(recent?.actions),
       };
     });
 

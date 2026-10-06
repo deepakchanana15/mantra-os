@@ -44,9 +44,11 @@ interface AdCampaign {
   lifetimeImpressions: number;
   lifetimeClicks: number;
   lifetimeReach: number | null;
+  lifetimeLeads: number;
   last30dSpend: string;
   last30dImpressions: number;
   last30dClicks: number;
+  last30dLeads: number;
   lastSyncedAt: string | null;
 }
 
@@ -190,13 +192,15 @@ export default async function MarketingPage() {
                   <TableHead className="text-right">Lifetime clicks</TableHead>
                   <TableHead className="text-right">Lifetime CTR</TableHead>
                   <TableHead className="text-right">Lifetime reach</TableHead>
+                  <TableHead className="text-right">Lifetime leads</TableHead>
                   <TableHead className="text-right">Last 30 days spend</TableHead>
+                  <TableHead className="text-right">Last 30 days leads</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {adCampaigns.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="py-10 text-center text-sm text-faint">
+                    <TableCell colSpan={13} className="py-10 text-center text-sm text-faint">
                       No ad-platform campaigns synced yet.
                     </TableCell>
                   </TableRow>
@@ -229,9 +233,11 @@ export default async function MarketingPage() {
                       <TableCell className="text-right tabular-nums">
                         {campaign.lifetimeReach !== null ? campaign.lifetimeReach.toLocaleString() : "—"}
                       </TableCell>
+                      <TableCell className="text-right tabular-nums">{campaign.lifetimeLeads.toLocaleString()}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatMoney(Number(campaign.last30dSpend), campaign.currency)}
                       </TableCell>
+                      <TableCell className="text-right tabular-nums">{campaign.last30dLeads.toLocaleString()}</TableCell>
                     </TableRow>
                   ))
                 )}

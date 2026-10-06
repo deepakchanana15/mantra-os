@@ -10,6 +10,7 @@ export interface AdMetricRow {
   impressions: number;
   clicks: number;
   spend: number;
+  leads: number;
 }
 
 export interface AdCampaignSnapshotRow {
@@ -26,9 +27,11 @@ export interface AdCampaignSnapshotRow {
   lifetimeImpressions: number;
   lifetimeClicks: number;
   lifetimeReach?: number;
+  lifetimeLeads: number;
   last30dSpend: number;
   last30dImpressions: number;
   last30dClicks: number;
+  last30dLeads: number;
 }
 
 const INTEGRATION_SELECT = {
@@ -120,7 +123,7 @@ export class IntegrationsRepository extends BaseRepository {
             },
           },
           create: { organizationId: this.organizationId, channel, ...row },
-          update: { campaignName: row.campaignName, impressions: row.impressions, clicks: row.clicks, spend: row.spend },
+          update: { campaignName: row.campaignName, impressions: row.impressions, clicks: row.clicks, spend: row.spend, leads: row.leads },
         }),
       ),
     );
