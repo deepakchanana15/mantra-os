@@ -76,4 +76,15 @@ export class MembershipsRepository extends BaseRepository {
     await this.findOneOrThrow(membershipId);
     return this.db.membership.delete({ where: { id: membershipId } });
   }
+
+  /**
+   * Owner/Admin force-sets a teammate's password directly — no email
+   * dependency, unlike the self-service forgot-password flow. Shared with
+   * them out of band, same as the temporary password `create()` sets.
+   */
+  async resetPassword(membershipId: string, password: string): Promise<void> {
+    const membership = await this.findOneOrThrow(membershipId);
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    await this.db.user.update({ where: { id: membership.userId }, data: { passwordHash } });
+  }
 }

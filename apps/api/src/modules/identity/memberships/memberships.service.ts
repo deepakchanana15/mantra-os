@@ -21,4 +21,8 @@ export class MembershipsService {
   remove(membershipId: string) {
     return this.memberships.remove(membershipId);
   }
+
+  resetPassword(membershipId: string, password: string) {
+    return this.memberships.resetPassword(membershipId, password);
+  }
 }

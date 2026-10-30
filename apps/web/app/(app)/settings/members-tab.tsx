@@ -139,6 +139,77 @@ function AddMemberDialog({ onCreated }: { onCreated: (member: Member) => void })
   );
 }
 
+/** Owner/Admin force-sets a teammate's password directly — no email
+ * dependency, unlike the self-service "Forgot password" flow on the login
+ * page. Shared with them out of band, same as the temporary password set
+ * when the member was first added. */
+function ResetPasswordDialog({ memberId, memberName }: { memberId: string; memberName: string }) {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/v1/members/${memberId}/password`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error?.message ?? "Couldn't reset this password.");
+        return;
+      }
+      toast.success(`Password reset — share it with ${memberName} directly`);
+      setPassword("");
+      setOpen(false);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) setPassword(""); }}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm">
+          Reset password
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reset {memberName}&apos;s password</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="reset-password">New password</Label>
+            <Input
+              id="reset-password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">
+              At least 8 characters. Share this with {memberName} directly — there&apos;s no reset email for this path.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Resetting…" : "Reset password"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function MembersTab({ members: initialMembers }: { members: Member[] }) {
   const router = useRouter();
   const [members, setMembers] = useState(initialMembers);
@@ -192,7 +263,7 @@ export function MembersTab({ members: initialMembers }: { members: Member[] }) {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead className="w-24" />
+              <TableHead className="w-48" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -218,14 +289,17 @@ export function MembersTab({ members: initialMembers }: { members: Member[] }) {
                   </DropdownMenu>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={busyId === member.id}
-                    onClick={() => removeMember(member.id)}
-                  >
-                    Remove
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <ResetPasswordDialog memberId={member.id} memberName={member.user.name} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busyId === member.id}
+                      onClick={() => removeMember(member.id)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
