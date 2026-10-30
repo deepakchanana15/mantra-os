@@ -1,11 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { RequirePermission } from "../../../common/decorators/require-permission.decorator";
-import { PaginationQueryDto } from "../../../common/dto/pagination-query.dto";
 import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard";
 import { PermissionGuard } from "../../../common/guards/permission.guard";
 import { TenantMembershipGuard } from "../../../common/guards/tenant-membership.guard";
 import { PERMISSIONS } from "../../../common/permissions/permission-keys";
 import { CreateOpportunityDto } from "./dto/create-opportunity.dto";
+import { ListOpportunitiesQueryDto } from "./dto/list-opportunities-query.dto";
 import { UpdateOpportunityDto } from "./dto/update-opportunity.dto";
 import { OpportunitiesService } from "./opportunities.service";
 
@@ -16,7 +16,7 @@ export class OpportunitiesController {
 
   @Get()
   @RequirePermission(PERMISSIONS.OPPORTUNITIES_READ)
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: ListOpportunitiesQueryDto) {
     return this.opportunities.findAll(query);
   }
 

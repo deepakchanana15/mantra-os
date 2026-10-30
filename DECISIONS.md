@@ -4,6 +4,64 @@ Record of significant, hard-to-reverse decisions. Newest first.
 
 ---
 
+## 2026-10-22 — Meta API version staleness, and per-campaign demographic/geographic breakdowns
+
+**Context:** The user reported the Dashboard's Marketing performance numbers looked frozen/understated. Investigation (see the session transcript, not duplicated here) traced it to two separate, real bugs:
+
+**Bug 1 — the connected ad-account access token had expired.** `IntegrationsService.sync()` had been failing silently every day with Meta's `"API access blocked"` error, so `AdCampaign` kept serving whatever was last successfully synced. Fixed by the user regenerating a fresh, `ads_read`-only, never-expiring System User token and reconnecting via Settings → Integrations.
+
+**Bug 2 — `MetaAdsService` was calling Graph API version `v19.0`, which had been fully retired by Meta** (no longer even selectable in Graph API Explorer's version dropdown) by the time this was investigated. It didn't error outright, but it silently omitted two real, currently-active ODAX-objective campaigns from `/campaigns` list calls — confirmed by running the identical request against `v19.0` vs `v26.0` directly in Graph API Explorer: `v26.0` returned all 6 campaigns on the account, the deployed `v19.0` code path only ever surfaced 4. Fixed by bumping `apiVersion` to `v26.0` (the single constant every Graph API call in the service derives its URL from). **Lesson:** a hardcoded API version string is a silent-failure risk that doesn't surface as an error — worth periodically bumping, not just setting once at integration-build time.
+
+**New feature, requested in the same conversation: per-campaign demographic (age×gender) and geographic breakdowns**, added to the existing Ad Campaigns archive as expandable rows (click a campaign to reveal its breakdown, fetched lazily and cached client-side, not loaded upfront for every campaign).
+
+**Meta's Insights API has no city-level performance breakdown** — `region` (state/province) is the finest geographic breakdown dimension it exposes via `breakdowns=`. Surfaced this constraint to the user before building rather than silently approximating it. The user's chosen resolution: show the *region-level performance* breakdown (spend/impressions/leads by state) **and separately** a *targeted-cities list* — which cities each campaign's ad sets are actually configured to target, read from `targeting.geo_locations.cities` on the ad set object (a configuration fact, not a performance metric) via a new `fetchAdSetsTargeting()` call, unioned and deduped by Meta's own city key across a campaign's ad sets.
+
+**Three new tables (`AdCampaignDemographic`, `AdCampaignRegion`, `AdCampaignTargetedCity`), same snapshot-refreshed-on-sync shape as the existing `AdCampaign`** (lifetime + last-30-day totals overwritten each sync) rather than a growing day-by-day ledger like `AdCampaignMetric` — chosen for consistency with the existing per-campaign archive pattern and because the user's ask was "stored and synced," not a historical trend view. `AdCampaignTargetedCity` is replace-on-sync (delete all + recreate), not upsert-and-keep, since unlike spend/impressions (historical facts) a targeting list is current configuration — a city no longer targeted should disappear, not linger as stale data.
+
+**The new breakdown sync step uses `Promise.allSettled`, not `Promise.all`,** unlike the existing single-row-per-campaign upserts — a breakdown sync can be dozens of rows (every age×gender or region combination across every campaign), and `Promise.all` failing the entire batch over one bad row would have silently wiped out breakdown data for otherwise-fine campaigns. This is a direct lesson from debugging this exact session's Bug 1/Bug 2 investigation, where exactly this kind of all-or-nothing batch failure was a live hypothesis before being ruled out.
+
+**`SyncCronController`'s constructor also had a `config.getOrThrow("CRON_SECRET")`** — a repeat of the exact anti-pattern already fixed once in `WhatsAppWebhookController` (see "WhatsApp lead capture"): a missing env var in a controller constructor crashes the *entire* API at bootstrap, not just that one feature. Fixed opportunistically while in the area, same `config.get() ?? ""` pattern.
+
+**Reversibility:** High. The API-version bump only changes which (current, supported) Graph API version is called — no behavior change for existing working calls. The new tables are additive only.
+
+---
+
+## 2026-10-22 — Opportunity stage guidance text and Lost reason tracking
+
+**Context:** The user wanted each Opportunity stage to carry a short explanation of when to use it, visible while a salesperson is picking a stage — plus a new "Attempting Contact" stage (between New and Qualified, for the outreach-sent-but-no-response window) and a structured Lost reason sub-category so lost leads can be reported on, not just marked closed with no detail.
+
+**New `ATTEMPTING_CONTACT` stage, between `NEW` and `QUALIFIED`:** matches the user's own funnel description — a lead moves here once contact has been attempted (WhatsApp/email sent) but before the customer has actually responded; `QUALIFIED` remains "customer responded and confirmed interest."
+
+**Stage descriptions live in `apps/web/lib/opportunity-stages.ts`, same shape as `lib/customer-types.ts`** (`{value, label, description}` plus `*Label`/`*Description` lookup helpers) — reused by all three places a stage is picked (New Opportunity form, Edit Opportunity dialog, Opportunities list's CSV export), so there's one source of truth for the wording instead of three copies drifting apart. The description renders below the stage dropdown trigger, same established pattern as `CUSTOMER_TYPES`/`customerTypeDescription()` on the New Customer form — chosen over showing a description per dropdown item to stay consistent with that existing precedent rather than inventing a second pattern for the same kind of UI.
+
+**New `OpportunityLostReason` enum (10 values from the user's own list) — required whenever `stage` is set to `LOST`, enforced in `OpportunitiesRepository`, not as a DTO decorator:** a `@ValidateIf((o) => o.stage === LOST) @IsEnum(...)` decorator alone doesn't work reliably on `UpdateOpportunityDto`, since `PartialType` wraps every inherited field with its own blanket `@IsOptional()` — that silently lets `lostReason` through unvalidated on a PATCH that omits it, defeating the "required" rule. The DTO only validates *format* (`@IsOptional() @IsEnum(...)`, always permissive); the actual business rule — required when the *effective* stage (this patch's `stage`, falling back to what's already saved) is LOST, and `OTHER` additionally requires non-empty notes — is asserted in the repository's `create()`/`update()`, same precedent as the existing `customerId`/`leadEmail` "need one of these" check already living there.
+
+**`lostReason` is never auto-cleared when an opportunity is reopened out of Lost** — moving a Lost opportunity back to e.g. Qualified leaves the last lost reason on the record rather than silently wiping it; simplest behavior, avoids surprising data loss, and the field is irrelevant for display once the stage is no longer Lost anyway.
+
+**Reversibility:** High. Additive schema only (one new enum, one new nullable column, one new enum value appended to an existing enum) — no changes to existing data or existing stage semantics.
+
+---
+
+## 2026-10-07 — Meta Lead Ads → Opportunities
+
+**Context:** `OpportunitySource.META_LEAD_AD` had existed in the schema since the lead-attribution plan ("Meta → Website → WhatsApp") with a display label already wired into the Opportunities page, but no backend ever created a row with that source — confirmed by grep, nothing used the enum value. The user had been asking about ad-metrics lead *counts* (a dashboard number, built separately — see the Meta Ads lead-count work), but their follow-up question ("what time does the data transfer to our opportunities table") revealed they expected real lead contact records, not just a count. This closes that gap: individual Lead Ads form submissions (name/phone/email, like "Lloyd Dean" from the Leads Center) now create real Opportunities, the same way WEBSITE and WHATSAPP already do.
+
+**Webhook + follow-up fetch, not a single call:** Meta's `leadgen` webhook payload only carries IDs (`leadgen_id`, `page_id`, `form_id`, `ad_id`) — the lead's actual answers require a separate `GET /{leadgen_id}?fields=field_data,...` call authorized with a Page Access Token holding the `leads_retrieval` permission. `MetaAdsService.fetchLeadDetails()` makes that call; if it fails (expired token, Meta outage), the Opportunity is still created bare rather than the lead being silently dropped — a human can backfill details from the Leads Center once notified.
+
+**New `MetaLeadPage` (no RLS, same reasoning as `WhatsAppPhoneNumber`) maps Meta's Page ID to an org/company**, carrying its own Page Access Token — deliberately separate from `MarketingIntegration.accessToken` (the ad-account token used for Insights), since `leads_retrieval` is a Page-level permission, not an ad-account one, and a System User token scoped to one doesn't necessarily cover the other.
+
+**Idempotency via `Opportunity.externalLeadId`, now with its own `@@unique([organizationId, externalLeadId])`:** unlike WhatsApp (which dedupes on a separate `WhatsAppMessage.externalMessageId` ledger, since messages group into one Opportunity over time), a Meta lead is a single one-time event — Meta's own `leadgen_id` is globally unique per submission, so storing it directly on the Opportunity and constraining on it is sufficient; a redelivered webhook is checked against existing rows and skipped.
+
+**Free-form form fields handled by extracting what we have columns for, keeping the rest:** Meta's lead forms mix a few standard fields (`full_name`/`first_name`/`last_name`, `email`, `phone_number`) with whatever custom questions the form's author added — `mapLeadFieldData()` pulls the standard ones into `leadName`/`leadEmail`/`leadPhone` and folds every other answered question into `notes` as `key: value` lines, so a custom question is never silently dropped even though it has no dedicated column.
+
+**Customer matching checks email first, then phone (tolerant digit-suffix match, same as WhatsApp's `phonesMatch`)** — Meta lead forms often include both, so this tries the higher-confidence signal (email) before falling back to WhatsApp's looser phone comparison.
+
+**`MetaLeadPage` CRUD (Settings → Meta Leads tab) follows the WhatsApp tab's pattern exactly** — Owner/Admin only (same `rolesFor` bucket as `whatsapp_phone_numbers`/`lead_intake_keys`/`marketing_integrations`, since this resource identifies a real external credential), `pageAccessToken` never returned by any read endpoint once stored.
+
+**Reversibility:** High. Additive schema only (one new table, one new unique index on `Opportunity`, no changes to existing data). Signature verification reuses `WHATSAPP_APP_SECRET` as a fallback if `META_APP_SECRET` isn't set, since both webhooks are typically configured under the same Meta Developer App — but this is a fallback, not an assumption the code depends on.
+
+---
+
 ## 2026-07-27 — WhatsApp lead capture
 
 **Context:** Final piece of the "lead attribution" plan (Meta → Website → WhatsApp), following the same pattern as `/v1/leads/intake` but for incoming WhatsApp messages instead of form submissions. The user already had a WhatsApp Business Account ("Mantra Sports", +61 466 242 222, AU) connected in Meta Business Manager — just not yet linked to the Cloud API/webhook that makes messages reach MantraOS.

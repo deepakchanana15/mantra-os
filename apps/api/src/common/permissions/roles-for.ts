@@ -19,13 +19,14 @@ export function rolesFor(resource: string, action: string): SystemRoleKey[] {
     resource === "members" ||
     resource === "marketing_integrations" ||
     resource === "lead_intake_keys" ||
-    resource === "whatsapp_phone_numbers"
+    resource === "whatsapp_phone_numbers" ||
+    resource === "meta_lead_pages"
   ) {
     // Org-level settings, membership management, and ad-platform/lead-intake/
-    // WhatsApp connection records — restricted to Owner/Admin even for
-    // reads, since these resources each identify a real external channel
+    // WhatsApp/Meta-lead connection records — restricted to Owner/Admin even
+    // for reads, since these resources each identify a real external channel
     // (an access token, a website's public-intake key, or which phone
-    // number feeds this org's leads) that shouldn't be broadly readable.
+    // number/Page feeds this org's leads) that shouldn't be broadly readable.
     return ["owner", "admin"];
   }
   if (resource === "ad_campaign_metrics") {

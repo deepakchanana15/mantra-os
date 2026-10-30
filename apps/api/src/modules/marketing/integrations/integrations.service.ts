@@ -3,7 +3,13 @@ import { IntegrationStatus, MarketingChannel } from "@mantra-os/db";
 import { TenantContextService } from "../../../common/context/tenant-context.service";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { ConnectIntegrationDto } from "./dto/connect-integration.dto";
-import { AdCampaignSnapshotRow, IntegrationsRepository } from "./integrations.repository";
+import {
+  AdCampaignDemographicRow,
+  AdCampaignRegionRow,
+  AdCampaignSnapshotRow,
+  AdCampaignTargetedCityRow,
+  IntegrationsRepository,
+} from "./integrations.repository";
 import { extractLeadCount, MetaAdsService } from "./meta-ads.service";
 
 /** Meta's account-level budget fields are in the currency's minor unit
@@ -53,6 +59,18 @@ export class IntegrationsService {
 
   findAllCampaigns() {
     return this.integrations.findAllCampaigns();
+  }
+
+  findCampaignDemographics(externalCampaignId: string) {
+    return this.integrations.findCampaignDemographics(externalCampaignId);
+  }
+
+  findCampaignRegions(externalCampaignId: string) {
+    return this.integrations.findCampaignRegions(externalCampaignId);
+  }
+
+  findCampaignTargetedCities(externalCampaignId: string) {
+    return this.integrations.findCampaignTargetedCities(externalCampaignId);
   }
 
   connect(dto: ConnectIntegrationDto) {
@@ -112,11 +130,28 @@ export class IntegrationsService {
         archiveWarning = archiveError instanceof Error ? archiveError.message : "Campaign archive refresh failed";
       }
 
+      // Same isolation reasoning as the archive refresh above, kept as its
+      // own step rather than folded into refreshCampaignSnapshots — the
+      // demographics/region/targeted-city breakdowns are supplementary
+      // detail, not the primary numbers the Dashboard and Ad Campaigns
+      // archive depend on, so a problem here must never block either.
+      let breakdownWarning: string | undefined;
+      try {
+        await this.refreshCampaignBreakdowns(channel, integration);
+      } catch (breakdownError) {
+        breakdownWarning = breakdownError instanceof Error ? breakdownError.message : "Breakdown refresh failed";
+      }
+
+      const warnings = [
+        archiveWarning && `campaign archive refresh failed: ${archiveWarning}`,
+        breakdownWarning && `breakdown refresh failed: ${breakdownWarning}`,
+      ].filter((w): w is string => Boolean(w));
+
       await this.integrations.updateSyncResult(channel, {
         status: IntegrationStatus.CONNECTED,
-        lastError: archiveWarning ? `Metrics synced, but campaign archive refresh failed: ${archiveWarning}` : null,
+        lastError: warnings.length ? `Metrics synced, but ${warnings.join("; ")}` : null,
       });
-      return { synced: rows.length, campaignArchiveWarning: archiveWarning };
+      return { synced: rows.length, campaignArchiveWarning: archiveWarning, breakdownWarning };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Sync failed";
       await this.recordSyncFailureIndependently(channel, message);
@@ -184,5 +219,97 @@ export class IntegrationsService {
     });
 
     await this.integrations.upsertCampaignSnapshots(channel, snapshots);
+  }
+
+  /**
+   * Refreshes the per-campaign demographic (age×gender) and region
+   * breakdowns, plus each campaign's targeted-cities list — see
+   * DECISIONS.md "Per-campaign demographic and geographic breakdowns" for
+   * why cities are a targeting-config list rather than a performance
+   * breakdown (Meta's Insights API has no city-level breakdown dimension).
+   */
+  private async refreshCampaignBreakdowns(
+    channel: MarketingChannel,
+    integration: { accessToken: string; accountId: string },
+  ): Promise<void> {
+    const [demoLifetime, demoLast30d, regionLifetime, regionLast30d, adSets] = await Promise.all([
+      this.metaAds.fetchCampaignInsightsByPreset({ ...integration, datePreset: "maximum", breakdowns: "age,gender" }),
+      this.metaAds.fetchCampaignInsightsByPreset({ ...integration, datePreset: "last_30d", breakdowns: "age,gender" }),
+      this.metaAds.fetchCampaignInsightsByPreset({ ...integration, datePreset: "maximum", breakdowns: "region" }),
+      this.metaAds.fetchCampaignInsightsByPreset({ ...integration, datePreset: "last_30d", breakdowns: "region" }),
+      this.metaAds.fetchAdSetsTargeting(integration),
+    ]);
+
+    const demoKey = (campaignId: string, age?: string, gender?: string) => `${campaignId}::${age ?? "unknown"}::${gender ?? "unknown"}`;
+    const demoLast30dByKey = new Map(demoLast30d.map((row) => [demoKey(row.campaign_id, row.age, row.gender), row]));
+    const demographicRows: AdCampaignDemographicRow[] = demoLifetime.map((row) => {
+      const recent = demoLast30dByKey.get(demoKey(row.campaign_id, row.age, row.gender));
+      return {
+        externalCampaignId: row.campaign_id,
+        ageRange: row.age ?? "unknown",
+        gender: row.gender ?? "unknown",
+        lifetimeSpend: Number(row.spend ?? 0),
+        lifetimeImpressions: Number(row.impressions ?? 0),
+        lifetimeClicks: Number(row.clicks ?? 0),
+        lifetimeLeads: extractLeadCount(row.actions),
+        last30dSpend: Number(recent?.spend ?? 0),
+        last30dImpressions: Number(recent?.impressions ?? 0),
+        last30dClicks: Number(recent?.clicks ?? 0),
+        last30dLeads: extractLeadCount(recent?.actions),
+      };
+    });
+
+    const regionKey = (campaignId: string, region?: string) => `${campaignId}::${region ?? "Unknown"}`;
+    const regionLast30dByKey = new Map(regionLast30d.map((row) => [regionKey(row.campaign_id, row.region), row]));
+    const regionRows: AdCampaignRegionRow[] = regionLifetime.map((row) => {
+      const recent = regionLast30dByKey.get(regionKey(row.campaign_id, row.region));
+      return {
+        externalCampaignId: row.campaign_id,
+        region: row.region ?? "Unknown",
+        lifetimeSpend: Number(row.spend ?? 0),
+        lifetimeImpressions: Number(row.impressions ?? 0),
+        lifetimeClicks: Number(row.clicks ?? 0),
+        lifetimeLeads: extractLeadCount(row.actions),
+        last30dSpend: Number(recent?.spend ?? 0),
+        last30dImpressions: Number(recent?.impressions ?? 0),
+        last30dClicks: Number(recent?.clicks ?? 0),
+        last30dLeads: extractLeadCount(recent?.actions),
+      };
+    });
+
+    await Promise.all([
+      this.integrations.upsertCampaignDemographics(channel, demographicRows),
+      this.integrations.upsertCampaignRegions(channel, regionRows),
+    ]);
+
+    // Union each campaign's ad sets' targeted cities, deduped by Meta's own
+    // city key (an ad set can repeat or vary targeting from its siblings).
+    const citiesByCampaign = new Map<string, Map<string, AdCampaignTargetedCityRow>>();
+    for (const adSet of adSets) {
+      const cities = adSet.targeting?.geo_locations?.cities ?? [];
+      if (cities.length === 0) continue;
+      const existing = citiesByCampaign.get(adSet.campaign_id) ?? new Map<string, AdCampaignTargetedCityRow>();
+      for (const city of cities) {
+        existing.set(city.key, {
+          externalCampaignId: adSet.campaign_id,
+          cityKey: city.key,
+          cityName: city.name,
+          regionName: city.region,
+          countryCode: city.country,
+        });
+      }
+      citiesByCampaign.set(adSet.campaign_id, existing);
+    }
+
+    // Every campaign with either spend activity or ad-set targeting gets
+    // its city list replaced — including campaigns with zero targeted
+    // cities right now, so a city removed from targeting actually
+    // disappears here too instead of lingering as stale data.
+    const campaignIds = new Set([...demoLifetime.map((r) => r.campaign_id), ...regionLifetime.map((r) => r.campaign_id), ...citiesByCampaign.keys()]);
+    await Promise.all(
+      Array.from(campaignIds).map((campaignId) =>
+        this.integrations.replaceCampaignTargetedCities(channel, campaignId, Array.from(citiesByCampaign.get(campaignId)?.values() ?? [])),
+      ),
+    );
   }
 }

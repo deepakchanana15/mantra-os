@@ -7,6 +7,7 @@ import { CreateSegmentDialog } from "./create-segment-dialog";
 import { CreateTemplateDialog } from "./create-template-dialog";
 import { CreateCampaignDialog } from "./create-campaign-dialog";
 import { SendCampaignButton } from "./send-campaign-button";
+import { AdCampaign, AdCampaignsTable } from "./ad-campaigns-table";
 
 interface Segment {
   id: string;
@@ -29,66 +30,10 @@ interface Campaign {
   stats: { sent?: number; delivered?: number; opened?: number; clicked?: number; bounced?: number } | null;
 }
 
-interface AdCampaign {
-  id: string;
-  channel: string;
-  name: string;
-  status: string | null;
-  objective: string | null;
-  currency: string | null;
-  dailyBudget: string | null;
-  lifetimeBudget: string | null;
-  startDate: string | null;
-  stopDate: string | null;
-  lifetimeSpend: string;
-  lifetimeImpressions: number;
-  lifetimeClicks: number;
-  lifetimeReach: number | null;
-  lifetimeLeads: number;
-  last30dSpend: string;
-  last30dImpressions: number;
-  last30dClicks: number;
-  last30dLeads: number;
-  lastSyncedAt: string | null;
-}
-
 function rate(count: number | undefined, of: number | undefined): string {
   if (!count || !of) return "—";
   return `${Math.round((count / of) * 100)}%`;
 }
-
-function ctr(clicks: number, impressions: number): string {
-  return impressions > 0 ? `${((clicks / impressions) * 100).toFixed(2)}%` : "—";
-}
-
-/**
- * Never assume USD — the platform's own spend figures are already in the
- * ad account's real currency (e.g. INR). A campaign whose currency hasn't
- * synced yet shows a plain number rather than a wrong currency symbol. See
- * DECISIONS.md "Per-campaign ad performance, not channel-consolidated".
- */
-function formatMoney(amount: number, currency: string | null): string {
-  if (!currency) {
-    return amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 2 }).format(amount);
-}
-
-const AD_CHANNEL_LABELS: Record<string, string> = {
-  META: "Meta",
-  GOOGLE: "Google Ads",
-  BING: "Bing/Microsoft Ads",
-};
-
-const AD_STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "neutral"> = {
-  ACTIVE: "success",
-  PAUSED: "warning",
-  ARCHIVED: "neutral",
-  DELETED: "destructive",
-  WITH_ISSUES: "destructive",
-  PENDING_REVIEW: "warning",
-  DISAPPROVED: "destructive",
-};
 
 const CAMPAIGN_STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "neutral"> = {
   DRAFT: "neutral",
@@ -176,74 +121,10 @@ export default async function MarketingPage() {
         <TabsContent value="ad-campaigns">
           <p className="mb-3 text-sm text-muted-foreground">
             Every campaign ever run on a connected ad platform — a permanent archive, not filtered by status or age.
-            Connect a platform in Settings → Integrations.
+            Connect a platform in Settings → Integrations. Click a row to see its age/gender and region breakdown,
+            plus which cities its ad sets are targeting.
           </p>
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Channel</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Objective</TableHead>
-                  <TableHead>Live since</TableHead>
-                  <TableHead className="text-right">Lifetime spend</TableHead>
-                  <TableHead className="text-right">Lifetime impressions</TableHead>
-                  <TableHead className="text-right">Lifetime clicks</TableHead>
-                  <TableHead className="text-right">Lifetime CTR</TableHead>
-                  <TableHead className="text-right">Lifetime reach</TableHead>
-                  <TableHead className="text-right">Lifetime leads</TableHead>
-                  <TableHead className="text-right">Last 30 days spend</TableHead>
-                  <TableHead className="text-right">Last 30 days leads</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {adCampaigns.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={13} className="py-10 text-center text-sm text-faint">
-                      No ad-platform campaigns synced yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  adCampaigns.map((campaign) => (
-                    <TableRow key={campaign.id}>
-                      <TableCell className="font-medium text-foreground">{campaign.name}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {AD_CHANNEL_LABELS[campaign.channel] ?? campaign.channel}
-                      </TableCell>
-                      <TableCell>
-                        {campaign.status ? (
-                          <Badge variant={AD_STATUS_VARIANT[campaign.status] ?? "neutral"}>{campaign.status}</Badge>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{campaign.objective ?? "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {campaign.startDate ? new Date(campaign.startDate).toLocaleDateString() : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatMoney(Number(campaign.lifetimeSpend), campaign.currency)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{campaign.lifetimeImpressions.toLocaleString()}</TableCell>
-                      <TableCell className="text-right tabular-nums">{campaign.lifetimeClicks.toLocaleString()}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {ctr(campaign.lifetimeClicks, campaign.lifetimeImpressions)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {campaign.lifetimeReach !== null ? campaign.lifetimeReach.toLocaleString() : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{campaign.lifetimeLeads.toLocaleString()}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatMoney(Number(campaign.last30dSpend), campaign.currency)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{campaign.last30dLeads.toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <AdCampaignsTable campaigns={adCampaigns} />
         </TabsContent>
 
         <TabsContent value="segments">

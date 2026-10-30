@@ -1,10 +1,68 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { CustomerType } from "@mantra-os/db";
+import { CustomerType, OpportunityLostReason, OpportunityStage } from "@mantra-os/db";
 import { BusinessCodeService } from "../../../common/business-code/business-code.service";
 import { TenantContextService } from "../../../common/context/tenant-context.service";
 import { BaseRepository } from "../../../common/repositories/base.repository";
 import { CreateOpportunityDto } from "./dto/create-opportunity.dto";
 import { UpdateOpportunityDto } from "./dto/update-opportunity.dto";
+
+// Pipeline order (New → ... → Won/Lost), matching OpportunityStage's own
+// declaration order in schema.prisma — used to sort the in-memory search
+// path the same way Postgres's native enum ordering already sorts the
+// plain (no-search) path for free.
+const STAGE_ORDER: Record<string, number> = {
+  NEW: 0,
+  ATTEMPTING_CONTACT: 1,
+  QUALIFIED: 2,
+  PROPOSAL: 3,
+  NEGOTIATION: 4,
+  WON: 5,
+  LOST: 6,
+};
+
+function digitsOnly(value: string | null | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+function normalizeSpaces(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function stripWhitespace(value: string | null | undefined): string {
+  return (value ?? "").replace(/\s+/g, "");
+}
+
+interface SortableOpportunity {
+  createdAt: Date;
+  stageChangedAt: Date;
+  stage: string;
+  estimatedValue: unknown;
+  name: string;
+}
+
+function sortOpportunities<T extends SortableOpportunity>(rows: T[], sortBy: string, sortDir: "asc" | "desc"): T[] {
+  const dir = sortDir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    let cmp: number;
+    switch (sortBy) {
+      case "stage":
+        cmp = (STAGE_ORDER[a.stage] ?? 0) - (STAGE_ORDER[b.stage] ?? 0);
+        break;
+      case "stageChangedAt":
+        cmp = a.stageChangedAt.getTime() - b.stageChangedAt.getTime();
+        break;
+      case "estimatedValue":
+        cmp = Number(a.estimatedValue ?? 0) - Number(b.estimatedValue ?? 0);
+        break;
+      case "name":
+        cmp = a.name.localeCompare(b.name);
+        break;
+      default:
+        cmp = a.createdAt.getTime() - b.createdAt.getTime();
+    }
+    return cmp * dir;
+  });
+}
 
 @Injectable()
 export class OpportunitiesRepository extends BaseRepository {
@@ -15,18 +73,82 @@ export class OpportunitiesRepository extends BaseRepository {
     super(tenantContext);
   }
 
-  findAll(params: { skip?: number; take?: number; customerId?: string }) {
-    return this.db.opportunity.findMany({
-      where: {
-        organizationId: this.organizationId,
-        deletedAt: null,
-        ...(params.customerId ? { customerId: params.customerId } : {}),
-      },
-      include: { customer: true },
-      skip: params.skip ?? 0,
-      take: params.take ?? 50,
-      orderBy: { createdAt: "desc" },
+  async findAll(params: {
+    skip?: number;
+    take?: number;
+    customerId?: string;
+    sortBy?: string;
+    sortDir?: "asc" | "desc";
+    search?: string;
+  }) {
+    const where = {
+      organizationId: this.organizationId,
+      deletedAt: null,
+      ...(params.customerId ? { customerId: params.customerId } : {}),
+    };
+    const skip = params.skip ?? 0;
+    const take = params.take ?? 50;
+    const sortBy = params.sortBy ?? "createdAt";
+    const sortDir = params.sortDir ?? "desc";
+    const search = params.search?.trim();
+
+    if (!search) {
+      // stage sorts in pipeline order (New → ... → Won/Lost), not
+      // alphabetically — Postgres enums order by their declaration order
+      // in the schema, which happens to already be the funnel order
+      // OpportunityStage was written in.
+      const orderBy = { [sortBy]: sortDir };
+      const [data, total] = await Promise.all([
+        this.db.opportunity.findMany({ where, include: { customer: true }, skip, take, orderBy }),
+        this.db.opportunity.count({ where }),
+      ]);
+      return { data, total, skip, take };
+    }
+
+    // A search needs to tolerate formatting differences a SQL `contains`
+    // can't express — a phone pasted with spaces/dashes must still match
+    // one stored without them, and a stray leading/trailing/doubled space
+    // in what someone typed or pasted must never prevent a match. Same
+    // "normalize and compare in application code" reasoning as the
+    // WhatsApp/Meta webhooks' phonesMatch() — filtered here instead of at
+    // the DB layer, fine at this business's real scale (revisit only if
+    // it becomes a bottleneck).
+    const candidates = await this.db.opportunity.findMany({ where, include: { customer: true } });
+    const searchDigits = digitsOnly(search);
+    const searchNoSpace = stripWhitespace(search).toLowerCase();
+    const searchNameTerm = normalizeSpaces(search).toLowerCase();
+
+    const matches = candidates.filter((o) => {
+      const name = normalizeSpaces(o.name).toLowerCase();
+      const email = stripWhitespace(o.leadEmail ?? o.customer?.email).toLowerCase();
+      const phone = digitsOnly(o.leadPhone ?? o.customer?.phone);
+      return (
+        name.includes(searchNameTerm) ||
+        (searchNoSpace.length > 0 && email.includes(searchNoSpace)) ||
+        (searchDigits.length > 0 && phone.includes(searchDigits))
+      );
     });
+
+    const sorted = sortOpportunities(matches, sortBy, sortDir);
+    const total = sorted.length;
+    const data = sorted.slice(skip, skip + take);
+    return { data, total, skip, take };
+  }
+
+  /**
+   * A lost reason is required whenever the *effective* stage (after this
+   * change) is LOST, and "Other" additionally requires notes explaining
+   * what "other" means — see `OpportunityLostReason`'s schema comment for
+   * why this lives here rather than as a DTO decorator.
+   */
+  private assertValidLostReason(params: { stage?: OpportunityStage; lostReason?: OpportunityLostReason | null; notes?: string | null }) {
+    if (params.stage !== OpportunityStage.LOST) return;
+    if (!params.lostReason) {
+      throw new BadRequestException("A lost reason is required when marking an opportunity as Lost");
+    }
+    if (params.lostReason === OpportunityLostReason.OTHER && !params.notes?.trim()) {
+      throw new BadRequestException('Notes are required when the lost reason is "Other"');
+    }
   }
 
   async findOneOrThrow(id: string) {
@@ -53,6 +175,7 @@ export class OpportunitiesRepository extends BaseRepository {
     if (!dto.customerId && !dto.leadEmail) {
       throw new BadRequestException("Provide either a customerId or a leadName/leadEmail to identify who this opportunity is with");
     }
+    this.assertValidLostReason({ stage: dto.stage, lostReason: dto.lostReason, notes: dto.notes });
 
     let customerId = dto.customerId;
     if (!customerId && dto.leadEmail) {
@@ -72,6 +195,7 @@ export class OpportunitiesRepository extends BaseRepository {
         leadPhone: customerId ? undefined : dto.leadPhone,
         name: dto.name,
         stage: dto.stage,
+        lostReason: dto.lostReason,
         estimatedValue: dto.estimatedValue,
         expectedCloseDate: dto.expectedCloseDate ? new Date(dto.expectedCloseDate) : undefined,
         notes: dto.notes,
@@ -103,6 +227,16 @@ export class OpportunitiesRepository extends BaseRepository {
     const existing = await this.findOneOrThrow(id);
     const stageChanged = dto.stage !== undefined && dto.stage !== existing.stage;
 
+    // Effective values (this patch's, falling back to what's already
+    // saved) — so a PATCH that sets stage=LOST without resending an
+    // already-correct lostReason/notes from a prior edit isn't wrongly
+    // rejected, while a PATCH that newly sets stage=LOST is still checked.
+    this.assertValidLostReason({
+      stage: dto.stage ?? existing.stage,
+      lostReason: dto.lostReason !== undefined ? dto.lostReason : existing.lostReason,
+      notes: dto.notes !== undefined ? dto.notes : existing.notes,
+    });
+
     if (stageChanged) {
       await this.db.opportunityStageHistory.create({
         data: {
@@ -120,6 +254,7 @@ export class OpportunitiesRepository extends BaseRepository {
       data: {
         name: dto.name,
         stage: dto.stage,
+        lostReason: dto.lostReason,
         stageChangedAt: stageChanged ? new Date() : undefined,
         estimatedValue: dto.estimatedValue,
         expectedCloseDate: dto.expectedCloseDate ? new Date(dto.expectedCloseDate) : undefined,

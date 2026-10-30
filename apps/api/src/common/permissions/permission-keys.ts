@@ -119,6 +119,10 @@ export const PERMISSIONS = {
   WHATSAPP_PHONE_NUMBERS_READ: "whatsapp_phone_numbers:read",
   WHATSAPP_PHONE_NUMBERS_DELETE: "whatsapp_phone_numbers:delete",
 
+  META_LEAD_PAGES_CREATE: "meta_lead_pages:create",
+  META_LEAD_PAGES_READ: "meta_lead_pages:read",
+  META_LEAD_PAGES_DELETE: "meta_lead_pages:delete",
+
   OPPORTUNITIES_CREATE: "opportunities:create",
   OPPORTUNITIES_READ: "opportunities:read",
   OPPORTUNITIES_UPDATE: "opportunities:update",

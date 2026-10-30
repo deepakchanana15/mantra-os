@@ -34,6 +34,41 @@ export interface AdCampaignSnapshotRow {
   last30dLeads: number;
 }
 
+export interface AdCampaignDemographicRow {
+  externalCampaignId: string;
+  ageRange: string;
+  gender: string;
+  lifetimeSpend: number;
+  lifetimeImpressions: number;
+  lifetimeClicks: number;
+  lifetimeLeads: number;
+  last30dSpend: number;
+  last30dImpressions: number;
+  last30dClicks: number;
+  last30dLeads: number;
+}
+
+export interface AdCampaignRegionRow {
+  externalCampaignId: string;
+  region: string;
+  lifetimeSpend: number;
+  lifetimeImpressions: number;
+  lifetimeClicks: number;
+  lifetimeLeads: number;
+  last30dSpend: number;
+  last30dImpressions: number;
+  last30dClicks: number;
+  last30dLeads: number;
+}
+
+export interface AdCampaignTargetedCityRow {
+  externalCampaignId: string;
+  cityKey: string;
+  cityName: string;
+  regionName?: string;
+  countryCode?: string;
+}
+
 const INTEGRATION_SELECT = {
   id: true,
   channel: true,
@@ -156,6 +191,91 @@ export class IntegrationsRepository extends BaseRepository {
     return this.db.adCampaign.findMany({
       where: { organizationId: this.organizationId },
       orderBy: { lifetimeSpend: "desc" },
+    });
+  }
+
+  /**
+   * `Promise.allSettled`, not `Promise.all` — unlike the single-row-per-
+   * campaign upserts above, a breakdown sync can be dozens of rows (every
+   * age×gender or region combination across every campaign), and one bad
+   * row failing the *entire* batch (as `Promise.all` would) would silently
+   * wipe out breakdown data for campaigns whose rows were otherwise fine.
+   * Failures are swallowed here — this is supplementary detail, not the
+   * primary spend/impressions figures `AdCampaign` itself already has.
+   */
+  async upsertCampaignDemographics(channel: MarketingChannel, rows: AdCampaignDemographicRow[]): Promise<void> {
+    await Promise.allSettled(
+      rows.map((row) =>
+        this.db.adCampaignDemographic.upsert({
+          where: {
+            organizationId_channel_externalCampaignId_ageRange_gender: {
+              organizationId: this.organizationId,
+              channel,
+              externalCampaignId: row.externalCampaignId,
+              ageRange: row.ageRange,
+              gender: row.gender,
+            },
+          },
+          create: { organizationId: this.organizationId, channel, ...row, lastSyncedAt: new Date() },
+          update: { ...row, lastSyncedAt: new Date() },
+        }),
+      ),
+    );
+  }
+
+  findCampaignDemographics(externalCampaignId: string) {
+    return this.db.adCampaignDemographic.findMany({
+      where: { organizationId: this.organizationId, externalCampaignId },
+      orderBy: [{ ageRange: "asc" }, { gender: "asc" }],
+    });
+  }
+
+  async upsertCampaignRegions(channel: MarketingChannel, rows: AdCampaignRegionRow[]): Promise<void> {
+    await Promise.allSettled(
+      rows.map((row) =>
+        this.db.adCampaignRegion.upsert({
+          where: {
+            organizationId_channel_externalCampaignId_region: {
+              organizationId: this.organizationId,
+              channel,
+              externalCampaignId: row.externalCampaignId,
+              region: row.region,
+            },
+          },
+          create: { organizationId: this.organizationId, channel, ...row, lastSyncedAt: new Date() },
+          update: { ...row, lastSyncedAt: new Date() },
+        }),
+      ),
+    );
+  }
+
+  findCampaignRegions(externalCampaignId: string) {
+    return this.db.adCampaignRegion.findMany({
+      where: { organizationId: this.organizationId, externalCampaignId },
+      orderBy: { lifetimeSpend: "desc" },
+    });
+  }
+
+  /**
+   * Replace-on-sync, not upsert-and-keep: unlike spend/impressions
+   * (historical facts that never need removing), a targeted-city list is
+   * current *configuration* — if a city is no longer targeted, it should
+   * disappear here too, not linger as stale data implying it still is.
+   */
+  async replaceCampaignTargetedCities(channel: MarketingChannel, externalCampaignId: string, rows: AdCampaignTargetedCityRow[]): Promise<void> {
+    await this.db.adCampaignTargetedCity.deleteMany({
+      where: { organizationId: this.organizationId, channel, externalCampaignId },
+    });
+    if (rows.length === 0) return;
+    await this.db.adCampaignTargetedCity.createMany({
+      data: rows.map((row) => ({ organizationId: this.organizationId, channel, ...row, lastSyncedAt: new Date() })),
+    });
+  }
+
+  findCampaignTargetedCities(externalCampaignId: string) {
+    return this.db.adCampaignTargetedCity.findMany({
+      where: { organizationId: this.organizationId, externalCampaignId },
+      orderBy: { cityName: "asc" },
     });
   }
 }

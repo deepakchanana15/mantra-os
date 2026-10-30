@@ -10,6 +10,7 @@ import { WebsitesTab } from "./websites-tab";
 import { IntegrationsTab } from "./integrations-tab";
 import { LeadIntakeTab } from "./lead-intake-tab";
 import { WhatsAppTab } from "./whatsapp-tab";
+import { MetaLeadsTab } from "./meta-leads-tab";
 
 interface Organization {
   name: string;
@@ -97,7 +98,17 @@ interface WhatsAppPhoneNumber {
   createdAt: string;
 }
 
+interface MetaLeadPage {
+  id: string;
+  pageId: string;
+  label: string;
+  enabled: boolean;
+  company: { name: string } | null;
+  createdAt: string;
+}
+
 const WHATSAPP_WEBHOOK_URL = "https://mantra-os-api.vercel.app/v1/whatsapp/webhook";
+const META_LEADS_WEBHOOK_URL = "https://mantra-os-api.vercel.app/v1/meta-leads/webhook";
 
 /** apiFetch throws on non-2xx — used here to gracefully hide Owner/Admin-only tabs for everyone else, rather than showing a broken page. */
 async function fetchOrNull<T>(path: string): Promise<T | null> {
@@ -122,6 +133,7 @@ export default async function SettingsPage() {
     integrations,
     leadIntakeKeys,
     whatsappPhoneNumbers,
+    metaLeadPages,
   ] = await Promise.all([
     apiFetch<Organization>("/v1/organizations/me"),
     fetchOrNull<Member[]>("/v1/members"),
@@ -134,6 +146,7 @@ export default async function SettingsPage() {
     fetchOrNull<Integration[]>("/v1/marketing-integrations"),
     fetchOrNull<LeadIntakeKey[]>("/v1/lead-intake-keys"),
     fetchOrNull<WhatsAppPhoneNumber[]>("/v1/whatsapp-phone-numbers"),
+    fetchOrNull<MetaLeadPage[]>("/v1/meta-lead-pages"),
   ]);
   const globalDomainAvailable = currencies && companies && countries && brands && websites;
 
@@ -155,6 +168,7 @@ export default async function SettingsPage() {
           {integrations && <TabsTrigger value="integrations">Integrations</TabsTrigger>}
           {leadIntakeKeys && companies && <TabsTrigger value="lead-intake">Lead Intake</TabsTrigger>}
           {whatsappPhoneNumbers && companies && <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>}
+          {metaLeadPages && companies && <TabsTrigger value="meta-leads">Meta Leads</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="organization">
@@ -205,6 +219,12 @@ export default async function SettingsPage() {
         {whatsappPhoneNumbers && companies && (
           <TabsContent value="whatsapp">
             <WhatsAppTab phoneNumbers={whatsappPhoneNumbers} companies={companies} webhookUrl={WHATSAPP_WEBHOOK_URL} />
+          </TabsContent>
+        )}
+
+        {metaLeadPages && companies && (
+          <TabsContent value="meta-leads">
+            <MetaLeadsTab pages={metaLeadPages} companies={companies} webhookUrl={META_LEADS_WEBHOOK_URL} />
           </TabsContent>
         )}
       </Tabs>

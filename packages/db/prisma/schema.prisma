@@ -63,6 +63,9 @@ model Organization {
   marketingIntegrations   MarketingIntegration[]
   adCampaignMetrics       AdCampaignMetric[]
   adCampaigns             AdCampaign[]
+  adCampaignDemographics  AdCampaignDemographic[]
+  adCampaignRegions       AdCampaignRegion[]
+  adCampaignTargetedCities AdCampaignTargetedCity[]
   notifications           Notification[]
   opportunities           Opportunity[]
   invoices                Invoice[]
@@ -76,6 +79,7 @@ model Organization {
   opportunityStageHistory OpportunityStageHistory[]
   whatsappPhoneNumbers    WhatsAppPhoneNumber[]
   whatsappMessages        WhatsAppMessage[]
+  metaLeadPages           MetaLeadPage[]
 
   @@map("organizations")
 }
@@ -300,6 +304,7 @@ model Company {
   products             Product[]
   leadIntakeKeys       LeadIntakeKey[]
   whatsappPhoneNumbers WhatsAppPhoneNumber[]
+  metaLeadPages        MetaLeadPage[]
 
   @@index([organizationId])
   @@map("companies")
@@ -1294,6 +1299,93 @@ model AdCampaign {
   @@map("ad_campaigns")
 }
 
+/// Per-campaign performance broken down by age range + gender — same
+/// snapshot-refreshed-on-sync shape as `AdCampaign` itself (lifetime +
+/// last-30-day totals, overwritten each sync, not a growing day-by-day
+/// ledger), one row per (campaign, age range, gender) combination Meta's
+/// own `breakdowns=age,gender` insights call returns. See DECISIONS.md
+/// "Per-campaign demographic and geographic breakdowns".
+model AdCampaignDemographic {
+  id                  String           @id @default(uuid())
+  organizationId      String
+  channel             MarketingChannel
+  externalCampaignId  String
+  /// Meta's own bucket strings, e.g. "25-34", "unknown".
+  ageRange            String
+  /// Meta's own value, e.g. "male"/"female"/"unknown".
+  gender              String
+  lifetimeSpend       Decimal          @default(0) @db.Decimal(12, 2)
+  lifetimeImpressions Int              @default(0)
+  lifetimeClicks      Int              @default(0)
+  lifetimeLeads       Int              @default(0)
+  last30dSpend        Decimal          @default(0) @db.Decimal(12, 2)
+  last30dImpressions  Int              @default(0)
+  last30dClicks       Int              @default(0)
+  last30dLeads        Int              @default(0)
+  lastSyncedAt        DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, channel, externalCampaignId, ageRange, gender])
+  @@index([organizationId])
+  @@map("ad_campaign_demographics")
+}
+
+/// Per-campaign performance broken down by region (state/province) — the
+/// most granular *performance* geography Meta's Insights API exposes; it
+/// has no city-level breakdown. See `AdCampaignTargetedCity` for the
+/// separate, non-performance "which cities is this campaign targeting"
+/// list. Same snapshot shape as `AdCampaignDemographic`.
+model AdCampaignRegion {
+  id                  String           @id @default(uuid())
+  organizationId      String
+  channel             MarketingChannel
+  externalCampaignId  String
+  /// Meta's own region label, e.g. "New South Wales".
+  region              String
+  lifetimeSpend       Decimal          @default(0) @db.Decimal(12, 2)
+  lifetimeImpressions Int              @default(0)
+  lifetimeClicks      Int              @default(0)
+  lifetimeLeads       Int              @default(0)
+  last30dSpend        Decimal          @default(0) @db.Decimal(12, 2)
+  last30dImpressions  Int              @default(0)
+  last30dClicks       Int              @default(0)
+  last30dLeads        Int              @default(0)
+  lastSyncedAt        DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, channel, externalCampaignId, region])
+  @@index([organizationId])
+  @@map("ad_campaign_regions")
+}
+
+/// Which cities a campaign's ad sets are actually targeting — a
+/// *targeting-configuration* list (from each ad set's own
+/// `targeting.geo_locations.cities`), not a performance metric, since Meta
+/// doesn't expose city-level spend/impressions. A campaign's ad sets may
+/// target overlapping or different cities; rows here are the union across
+/// all of a campaign's ad sets, deduped by Meta's own city key.
+model AdCampaignTargetedCity {
+  id                  String           @id @default(uuid())
+  organizationId      String
+  channel             MarketingChannel
+  externalCampaignId  String
+  /// Meta's own geo-location key for this city (stable across syncs,
+  /// unlike name alone which can collide across countries).
+  cityKey             String
+  cityName            String
+  regionName          String?
+  countryCode         String?
+  lastSyncedAt        DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, channel, externalCampaignId, cityKey])
+  @@index([organizationId])
+  @@map("ad_campaign_targeted_cities")
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Sales pipeline & billing domain (Sub-phase C — see DECISIONS.md "Global
 // multi-country, multi-company, multi-brand architecture")
@@ -1301,6 +1393,7 @@ model AdCampaign {
 
 enum OpportunityStage {
   NEW
+  ATTEMPTING_CONTACT
   QUALIFIED
   PROPOSAL
   NEGOTIATION
@@ -1317,6 +1410,24 @@ enum OpportunitySource {
   WEBSITE
   META_LEAD_AD
   WHATSAPP
+}
+
+/// Why a Lost opportunity didn't convert — required whenever `stage` is set
+/// to LOST (enforced in OpportunitiesRepository, not here, since a plain
+/// @IsEnum on the DTO can't express "required only when stage=LOST" once
+/// PartialType's blanket @IsOptional() is applied on update). OTHER
+/// additionally requires `notes` to explain what "other" means.
+enum OpportunityLostReason {
+  NO_RESPONSE
+  INVALID_PHONE_NUMBER
+  NOT_INTERESTED
+  PRICE_TOO_HIGH
+  SHIPPING_COST
+  PURCHASED_FROM_COMPETITOR
+  NOT_READY_TO_BUY
+  PRODUCT_NOT_AVAILABLE
+  DUPLICATE_LEAD
+  OTHER
 }
 
 /// Pre-Quote sales pipeline stage — see DECISIONS.md "Opportunity linked to
@@ -1349,6 +1460,8 @@ model Opportunity {
   /// StockLevel/InventoryTransaction — see DATABASE.md). See DECISIONS.md
   /// "Opportunity stage-duration tracking".
   stageChangedAt    DateTime          @default(now())
+  /// Required whenever `stage` is LOST — see `OpportunityLostReason`'s own comment.
+  lostReason        OpportunityLostReason?
   estimatedValue    Decimal?          @db.Decimal(12, 2)
   expectedCloseDate DateTime?
   notes             String?
@@ -1358,7 +1471,9 @@ model Opportunity {
   utmSource         String?
   utmMedium         String?
   utmCampaign       String?
-  /// Meta/WhatsApp's own lead/click id, once those channels are wired up — unused by WEBSITE.
+  /// Meta's leadgen_id for META_LEAD_AD (globally unique per lead, used to
+  /// dedupe a redelivered webhook — see @@unique below); WhatsApp's own
+  /// thread grouping doesn't use this field. Unused by WEBSITE.
   externalLeadId    String?
   /// The prospect's own name/email/phone, captured directly — populated
   /// when there's no Customer yet (every intake-created Opportunity), kept
@@ -1387,6 +1502,7 @@ model Opportunity {
   whatsappMessages WhatsAppMessage[]
 
   @@unique([organizationId, code])
+  @@unique([organizationId, externalLeadId])
   @@index([organizationId])
   @@index([customerId])
   @@index([companyId])
@@ -1497,6 +1613,36 @@ model WhatsAppMessage {
   @@index([organizationId])
   @@index([opportunityId])
   @@map("whatsapp_messages")
+}
+
+/// Maps a Facebook Page running Lead Ads to the organization/company it
+/// belongs to — looked up by incoming `leadgen` webhook payloads before any
+/// org context exists, the same problem `WhatsAppPhoneNumber` solves for
+/// WhatsApp numbers. `pageAccessToken` is deliberately separate from
+/// `MarketingIntegration.accessToken`: retrieving a lead's actual answers
+/// (the `leads_retrieval` permission) is authorized against the Page, not
+/// the ad account used for Insights. Deliberately no RLS policy, same
+/// reasoning as `WhatsAppPhoneNumber`.
+model MetaLeadPage {
+  id              String   @id @default(uuid())
+  organizationId  String
+  companyId       String?
+  /// Meta's own Page ID — what every leadgen webhook payload carries, and
+  /// the only thing available before we know which org this belongs to.
+  pageId          String   @unique
+  pageAccessToken String
+  label           String
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String
+  updatedBy       String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  company      Company?     @relation(fields: [companyId], references: [id])
+
+  @@index([organizationId])
+  @@map("meta_lead_pages")
 }
 
 enum InvoiceStatus {

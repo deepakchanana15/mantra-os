@@ -35,7 +35,11 @@ export class SyncCronController {
     private readonly integrationsRepo: IntegrationsRepository,
     private readonly integrationsService: IntegrationsService,
   ) {
-    this.cronSecret = config.getOrThrow<string>("CRON_SECRET");
+    // Deliberately not getOrThrow — see WhatsAppWebhookController's
+    // constructor comment: a missing env var here must not crash the
+    // entire API at bootstrap. A missing CRON_SECRET now just makes this
+    // one endpoint reject every request (401) instead.
+    this.cronSecret = config.get<string>("CRON_SECRET") ?? "";
   }
 
   @Get()

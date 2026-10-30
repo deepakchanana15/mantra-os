@@ -25,6 +25,24 @@ export class IntegrationsController {
     return this.integrations.findAllCampaigns();
   }
 
+  @Get("campaigns/:externalCampaignId/demographics")
+  @RequirePermission(PERMISSIONS.AD_CAMPAIGN_METRICS_READ)
+  findCampaignDemographics(@Param("externalCampaignId") externalCampaignId: string) {
+    return this.integrations.findCampaignDemographics(externalCampaignId);
+  }
+
+  @Get("campaigns/:externalCampaignId/regions")
+  @RequirePermission(PERMISSIONS.AD_CAMPAIGN_METRICS_READ)
+  findCampaignRegions(@Param("externalCampaignId") externalCampaignId: string) {
+    return this.integrations.findCampaignRegions(externalCampaignId);
+  }
+
+  @Get("campaigns/:externalCampaignId/targeted-cities")
+  @RequirePermission(PERMISSIONS.AD_CAMPAIGN_METRICS_READ)
+  findCampaignTargetedCities(@Param("externalCampaignId") externalCampaignId: string) {
+    return this.integrations.findCampaignTargetedCities(externalCampaignId);
+  }
+
   @Post()
   @RequirePermission(PERMISSIONS.MARKETING_INTEGRATIONS_CREATE)
   connect(@Body() dto: ConnectIntegrationDto) {

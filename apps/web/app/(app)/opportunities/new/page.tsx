@@ -17,15 +17,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CompanyCountrySelect } from "@/components/domain/company-country-select";
 import { isValidDateInputValue } from "@/lib/date-input";
-
-const STAGES = [
-  { value: "NEW", label: "New" },
-  { value: "QUALIFIED", label: "Qualified" },
-  { value: "PROPOSAL", label: "Proposal" },
-  { value: "NEGOTIATION", label: "Negotiation" },
-  { value: "WON", label: "Won" },
-  { value: "LOST", label: "Lost" },
-];
+import { OPPORTUNITY_STAGES, opportunityStageDescription } from "@/lib/opportunity-stages";
+import { OPPORTUNITY_LOST_REASONS, opportunityLostReasonLabel } from "@/lib/opportunity-lost-reasons";
 
 export default function NewOpportunityPage() {
   const router = useRouter();
@@ -34,6 +27,7 @@ export default function NewOpportunityPage() {
   const [leadPhone, setLeadPhone] = useState("");
   const [name, setName] = useState("");
   const [stage, setStage] = useState("NEW");
+  const [lostReason, setLostReason] = useState("");
   const [estimatedValue, setEstimatedValue] = useState("");
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
   const [notes, setNotes] = useState("");
@@ -41,11 +35,22 @@ export default function NewOpportunityPage() {
   const [countryId, setCountryId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
-  const selectedStage = STAGES.find((s) => s.value === stage);
+  const selectedStage = OPPORTUNITY_STAGES.find((s) => s.value === stage);
+  const selectedLostReason = OPPORTUNITY_LOST_REASONS.find((r) => r.value === lostReason);
+  const isLost = stage === "LOST";
+  const notesRequired = isLost && lostReason === "OTHER";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!leadName || !leadEmail) return;
+    if (isLost && !lostReason) {
+      toast.error("Pick a lost reason before saving");
+      return;
+    }
+    if (notesRequired && !notes.trim()) {
+      toast.error('Notes are required when the lost reason is "Other"');
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/v1/opportunities", {
@@ -57,6 +62,7 @@ export default function NewOpportunityPage() {
           leadPhone: leadPhone || undefined,
           name,
           stage,
+          lostReason: isLost ? lostReason : undefined,
           estimatedValue: estimatedValue ? Number(estimatedValue) : undefined,
           expectedCloseDate: expectedCloseDate || undefined,
           notes: notes || undefined,
@@ -135,14 +141,35 @@ export default function NewOpportunityPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                  {STAGES.map((s) => (
+                  {OPPORTUNITY_STAGES.map((s) => (
                     <DropdownMenuItem key={s.value} onSelect={() => setStage(s.value)}>
                       {s.label}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              <p className="text-xs text-muted-foreground">{opportunityStageDescription(stage)}</p>
             </div>
+
+            {isLost && (
+              <div className="flex flex-col gap-1.5">
+                <Label>Lost reason</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" type="button" className="w-full justify-start">
+                      {selectedLostReason?.label ?? "Select a reason"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-72 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
+                    {OPPORTUNITY_LOST_REASONS.map((r) => (
+                      <DropdownMenuItem key={r.value} onSelect={() => setLostReason(r.value)}>
+                        {r.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
@@ -172,8 +199,13 @@ export default function NewOpportunityPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">Notes{notesRequired ? " *" : ""}</Label>
               <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              {notesRequired && (
+                <p className="text-xs text-muted-foreground">
+                  Required — explain what &quot;{opportunityLostReasonLabel("OTHER")}&quot; means here.
+                </p>
+              )}
             </div>
 
             <CompanyCountrySelect

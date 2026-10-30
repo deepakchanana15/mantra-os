@@ -1,5 +1,5 @@
 import { IsDateString, IsEmail, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength, MinLength } from "class-validator";
-import { OpportunityStage } from "@mantra-os/db";
+import { OpportunityLostReason, OpportunityStage } from "@mantra-os/db";
 
 export class CreateOpportunityDto {
   /**
@@ -34,6 +34,18 @@ export class CreateOpportunityDto {
 
   @IsEnum(OpportunityStage)
   stage: OpportunityStage = OpportunityStage.NEW;
+
+  /**
+   * Format-validated here only (always optional at the DTO level) — the
+   * actual business rule ("required when stage is LOST") is enforced in
+   * OpportunitiesRepository, since PartialType's blanket @IsOptional() on
+   * UpdateOpportunityDto would otherwise silently let a bare @ValidateIf
+   * requirement through on partial updates. See OpportunityLostReason's
+   * schema comment.
+   */
+  @IsOptional()
+  @IsEnum(OpportunityLostReason)
+  lostReason?: OpportunityLostReason;
 
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })

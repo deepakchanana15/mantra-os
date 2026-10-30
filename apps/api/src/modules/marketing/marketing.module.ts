@@ -11,6 +11,10 @@ import { IntegrationsRepository } from "./integrations/integrations.repository";
 import { IntegrationsService } from "./integrations/integrations.service";
 import { MetaAdsService } from "./integrations/meta-ads.service";
 import { SyncCronController } from "./integrations/sync-cron.controller";
+import { MetaLeadPagesController } from "./leads/meta-lead-pages.controller";
+import { MetaLeadPagesRepository } from "./leads/meta-lead-pages.repository";
+import { MetaLeadPagesService } from "./leads/meta-lead-pages.service";
+import { MetaLeadWebhookController } from "./leads/meta-lead-webhook.controller";
 import { SegmentsController } from "./segments/segments.controller";
 import { SegmentsRepository } from "./segments/segments.repository";
 import { SegmentsService } from "./segments/segments.service";
@@ -23,6 +27,8 @@ import { SegmentsService } from "./segments/segments.service";
     CampaignsController,
     IntegrationsController,
     SyncCronController,
+    MetaLeadPagesController,
+    MetaLeadWebhookController,
   ],
   providers: [
     SegmentsRepository,
@@ -34,6 +40,8 @@ import { SegmentsService } from "./segments/segments.service";
     IntegrationsRepository,
     IntegrationsService,
     MetaAdsService,
+    MetaLeadPagesRepository,
+    MetaLeadPagesService,
   ],
 })
 export class MarketingModule {}

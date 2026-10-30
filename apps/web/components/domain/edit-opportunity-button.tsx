@@ -9,15 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
-const STAGES = [
-  { value: "NEW", label: "New" },
-  { value: "QUALIFIED", label: "Qualified" },
-  { value: "PROPOSAL", label: "Proposal" },
-  { value: "NEGOTIATION", label: "Negotiation" },
-  { value: "WON", label: "Won" },
-  { value: "LOST", label: "Lost" },
-];
+import { OPPORTUNITY_STAGES, opportunityStageDescription } from "@/lib/opportunity-stages";
+import { OPPORTUNITY_LOST_REASONS, opportunityLostReasonLabel } from "@/lib/opportunity-lost-reasons";
 
 /**
  * Every Opportunity is editable regardless of source (manual, Meta,
@@ -28,29 +21,49 @@ const STAGES = [
 export function EditOpportunityButton({
   opportunityId,
   currentStage,
+  currentLostReason,
   currentEstimatedValue,
+  currentNotes,
 }: {
   opportunityId: string;
   currentStage: string;
+  currentLostReason: string | null;
   currentEstimatedValue: string | null;
+  currentNotes: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState(currentStage);
+  const [lostReason, setLostReason] = useState(currentLostReason ?? "");
   const [estimatedValue, setEstimatedValue] = useState(currentEstimatedValue ?? "");
+  const [notes, setNotes] = useState(currentNotes ?? "");
 
-  const selectedStage = STAGES.find((s) => s.value === stage);
+  const selectedStage = OPPORTUNITY_STAGES.find((s) => s.value === stage);
+  const selectedLostReason = OPPORTUNITY_LOST_REASONS.find((r) => r.value === lostReason);
+  const isLost = stage === "LOST";
+  const notesRequired = isLost && lostReason === "OTHER";
 
   function handleOpenChange(next: boolean) {
     if (next) {
       setStage(currentStage);
+      setLostReason(currentLostReason ?? "");
       setEstimatedValue(currentEstimatedValue ?? "");
+      setNotes(currentNotes ?? "");
     }
     setOpen(next);
   }
 
   async function handleSave() {
+    if (isLost && !lostReason) {
+      toast.error("Pick a lost reason before saving");
+      return;
+    }
+    if (notesRequired && !notes.trim()) {
+      toast.error('Notes are required when the lost reason is "Other"');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`/api/v1/opportunities/${opportunityId}`, {
@@ -58,7 +71,9 @@ export function EditOpportunityButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           stage,
+          lostReason: isLost ? lostReason : undefined,
           estimatedValue: estimatedValue ? Number(estimatedValue) : null,
+          notes: notes || undefined,
         }),
       });
       if (!res.ok) {
@@ -97,14 +112,36 @@ export function EditOpportunityButton({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                {STAGES.map((s) => (
+                {OPPORTUNITY_STAGES.map((s) => (
                   <DropdownMenuItem key={s.value} onSelect={() => setStage(s.value)}>
                     {s.label}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <p className="text-xs text-muted-foreground">{opportunityStageDescription(stage)}</p>
           </div>
+
+          {isLost && (
+            <div className="flex flex-col gap-1.5">
+              <Label>Lost reason</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" type="button" className="w-full justify-start">
+                    {selectedLostReason?.label ?? "Select a reason"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-72 w-[--radix-dropdown-menu-trigger-width] overflow-y-auto">
+                  {OPPORTUNITY_LOST_REASONS.map((r) => (
+                    <DropdownMenuItem key={r.value} onSelect={() => setLostReason(r.value)}>
+                      {r.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="estimatedValue">Estimated value</Label>
             <Input
@@ -115,6 +152,18 @@ export function EditOpportunityButton({
               value={estimatedValue}
               onChange={(e) => setEstimatedValue(e.target.value)}
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="notes">
+              Notes{notesRequired ? " *" : ""}
+            </Label>
+            <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            {notesRequired && (
+              <p className="text-xs text-muted-foreground">
+                Required — explain what &quot;{opportunityLostReasonLabel("OTHER")}&quot; means here.
+              </p>
+            )}
           </div>
         </div>
         <div className="flex justify-end gap-2">
