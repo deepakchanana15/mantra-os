@@ -3,6 +3,12 @@ import { CustomerType, OpportunityLostReason, OpportunityStage } from "@mantra-o
 import { BusinessCodeService } from "../../../common/business-code/business-code.service";
 import { TenantContextService } from "../../../common/context/tenant-context.service";
 import { BaseRepository } from "../../../common/repositories/base.repository";
+import { ActivityEntry } from "../../activity/activity-entry.type";
+import { AuditLogRepository } from "../../activity/audit-log/audit-log.repository";
+import { humanize } from "../../activity/humanize.util";
+import { NotesRepository } from "../../activity/notes/notes.repository";
+import { resolveUserNames } from "../../activity/user-names.util";
+import { QuotesRepository } from "../quotes/quotes.repository";
 import { CreateOpportunityDto } from "./dto/create-opportunity.dto";
 import { UpdateOpportunityDto } from "./dto/update-opportunity.dto";
 
@@ -69,6 +75,9 @@ export class OpportunitiesRepository extends BaseRepository {
   constructor(
     tenantContext: TenantContextService,
     private readonly businessCode: BusinessCodeService,
+    private readonly notes: NotesRepository,
+    private readonly auditLog: AuditLogRepository,
+    private readonly quotes: QuotesRepository,
   ) {
     super(tenantContext);
   }
@@ -154,7 +163,10 @@ export class OpportunitiesRepository extends BaseRepository {
   async findOneOrThrow(id: string) {
     const opportunity = await this.db.opportunity.findFirst({
       where: { id, organizationId: this.organizationId, deletedAt: null },
-      include: { customer: true },
+      // Quotes (and their resulting SalesOrder/Invoices, if any) are
+      // included here so the detail page can show "sale details" for a
+      // converted opportunity straight off this same fetch.
+      include: { customer: true, quotes: { include: { salesOrder: { include: { invoices: true } } } } },
     });
     if (!opportunity) {
       throw new NotFoundException("Opportunity not found");
@@ -309,5 +321,103 @@ export class OpportunitiesRepository extends BaseRepository {
       data: { customerId: customer.id, updatedBy: this.userId },
       include: { customer: true },
     });
+  }
+
+  addNote(id: string, body: string) {
+    return this.notes.create({ entityType: "OPPORTUNITY", entityId: id, body });
+  }
+
+  findViews(id: string) {
+    return this.auditLog.findViewSummary("OPPORTUNITY", id);
+  }
+
+  async findActivity(id: string): Promise<ActivityEntry[]> {
+    const opportunity = await this.findOneOrThrow(id);
+
+    const [stageHistory, whatsappMessages, quotes, notes, auditEntries] = await Promise.all([
+      this.db.opportunityStageHistory.findMany({
+        where: { organizationId: this.organizationId, opportunityId: id },
+      }),
+      this.db.whatsAppMessage.findMany({ where: { organizationId: this.organizationId, opportunityId: id } }),
+      this.quotes.findByOpportunityId(id),
+      this.notes.findForEntity("OPPORTUNITY", id),
+      this.auditLog.findActionsForEntity("OPPORTUNITY", id),
+    ]);
+
+    const actorNames = await resolveUserNames(this.db, [opportunity.createdBy, ...stageHistory.map((h) => h.changedBy)]);
+
+    const entries: ActivityEntry[] = [
+      {
+        id: `created-${opportunity.id}`,
+        type: "CREATED",
+        timestamp: opportunity.createdAt,
+        title: opportunity.source === "MANUAL" ? "Opportunity created" : `Opportunity created via ${humanize(opportunity.source)}`,
+        detail: null,
+        actor: opportunity.source === "MANUAL" ? (actorNames.get(opportunity.createdBy) ?? null) : null,
+      },
+    ];
+
+    for (const h of stageHistory) {
+      entries.push({
+        id: h.id,
+        type: "STAGE_CHANGE",
+        timestamp: h.changedAt,
+        title: h.fromStage ? `Stage changed: ${humanize(h.fromStage)} → ${humanize(h.toStage)}` : `Initial stage: ${humanize(h.toStage)}`,
+        detail: null,
+        actor: actorNames.get(h.changedBy) ?? null,
+      });
+    }
+
+    for (const m of whatsappMessages) {
+      entries.push({
+        id: m.id,
+        type: "WHATSAPP_MESSAGE",
+        timestamp: m.receivedAt,
+        title: `WhatsApp message from ${m.fromPhone}`,
+        detail: m.body,
+        actor: null,
+      });
+    }
+
+    for (const q of quotes) {
+      entries.push({ id: q.id, type: "QUOTE", timestamp: q.createdAt, title: `Quote raised (${humanize(q.status)})`, detail: null, actor: null });
+
+      if (q.salesOrder) {
+        const channelParts = [
+          q.salesOrder.salesChannel ? humanize(q.salesOrder.salesChannel) : null,
+          q.salesOrder.onlineChannelType ? humanize(q.salesOrder.onlineChannelType) : null,
+          q.salesOrder.offlineChannelType ? humanize(q.salesOrder.offlineChannelType) : null,
+        ].filter(Boolean);
+        entries.push({
+          id: q.salesOrder.id,
+          type: "SALES_ORDER",
+          timestamp: q.salesOrder.createdAt,
+          title: `Sales order placed${channelParts.length ? ` (${channelParts.join(" · ")})` : ""}`,
+          detail: q.salesOrder.orderReference ? `Ref: ${q.salesOrder.orderReference}` : null,
+          actor: null,
+        });
+
+        for (const inv of q.salesOrder.invoices) {
+          entries.push({
+            id: inv.id,
+            type: "INVOICE",
+            timestamp: inv.createdAt,
+            title: `Invoice ${inv.invoiceNumber} issued (${humanize(inv.status)})`,
+            detail: `Amount: ${inv.amount}`,
+            actor: null,
+          });
+        }
+      }
+    }
+
+    for (const n of notes) {
+      entries.push({ id: n.id, type: "NOTE", timestamp: n.createdAt, title: "Note", detail: n.body, actor: n.authorName });
+    }
+
+    for (const a of auditEntries) {
+      entries.push({ id: a.id, type: "AUDIT", timestamp: a.createdAt, title: humanize(a.action), detail: null, actor: a.performedBy.name });
+    }
+
+    return entries.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
 }

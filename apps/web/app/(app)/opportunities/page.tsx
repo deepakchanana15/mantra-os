@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
 import { ConvertToCustomerButton } from "@/components/domain/convert-to-customer-button";
-import { EditOpportunityButton } from "@/components/domain/edit-opportunity-button";
 import { ExportCsvButton } from "@/components/domain/export-csv-button";
 import { opportunityStageLabel } from "@/lib/opportunity-stages";
 import { opportunityLostReasonLabel } from "@/lib/opportunity-lost-reasons";
+import { opportunitySourceLabel } from "@/lib/opportunity-source";
 import { OpportunitySortControl } from "./opportunity-sort-control";
 import { OpportunitySearch } from "./opportunity-search";
 
@@ -39,13 +39,6 @@ interface OpportunitiesPage {
   take: number;
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  MANUAL: "Manual",
-  WEBSITE: "Website",
-  META_LEAD_AD: "Meta lead ad",
-  WHATSAPP: "WhatsApp",
-};
-
 const CLOSED_STAGES = new Set(["WON", "LOST"]);
 const PAGE_SIZE = 50;
 // Backend caps a single request's `take` at 100 — export pulls every page
@@ -65,7 +58,7 @@ function toExportRow(o: Opportunity) {
     "Customer / Lead": o.customer?.name ?? o.leadName ?? "",
     Email: o.customer ? "" : (o.leadEmail ?? ""),
     Phone: o.customer ? "" : (o.leadPhone ?? ""),
-    Source: SOURCE_LABELS[o.source] ?? o.source,
+    Source: opportunitySourceLabel(o.source),
     Stage: opportunityStageLabel(o.stage),
     "Lost Reason": o.lostReason ? opportunityLostReasonLabel(o.lostReason) : "",
     "Estimated Value": o.estimatedValue ?? "",
@@ -171,7 +164,11 @@ export default async function OpportunitiesPage({
                 return (
                   <TableRow key={opportunity.id}>
                     <TableCell className="font-mono text-xs text-faint">{opportunity.code ?? "—"}</TableCell>
-                    <TableCell className="font-medium text-foreground">{opportunity.name}</TableCell>
+                    <TableCell>
+                      <Link href={`/opportunities/${opportunity.id}`} className="font-medium text-foreground hover:text-accent">
+                        {opportunity.name}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {opportunity.customer ? (
                         opportunity.customer.name
@@ -190,7 +187,7 @@ export default async function OpportunitiesPage({
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="neutral">{SOURCE_LABELS[opportunity.source] ?? opportunity.source}</Badge>
+                      <Badge variant="neutral">{opportunitySourceLabel(opportunity.source)}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       <div className="flex flex-col">
@@ -211,13 +208,6 @@ export default async function OpportunitiesPage({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <EditOpportunityButton
-                          opportunityId={opportunity.id}
-                          currentStage={opportunity.stage}
-                          currentLostReason={opportunity.lostReason}
-                          currentEstimatedValue={opportunity.estimatedValue}
-                          currentNotes={opportunity.notes}
-                        />
                         {opportunity.customer ? (
                           <Link href={`/quotes/new?opportunityId=${opportunity.id}`}>
                             <Button variant="outline" size="sm">

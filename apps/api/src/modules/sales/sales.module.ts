@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { ActivityModule } from "../activity/activity.module";
 import { InventoryModule } from "../inventory/inventory.module";
 import { IndiaExportInvoicePdfService } from "./invoices/india-export-invoice-pdf.service";
 import { InvoicePdfService } from "./invoices/invoice-pdf.service";
@@ -27,7 +28,7 @@ import { WhatsAppPhoneNumbersService } from "./whatsapp/whatsapp-phone-numbers.s
 import { WhatsAppWebhookController } from "./whatsapp/whatsapp-webhook.controller";
 
 @Module({
-  imports: [InventoryModule],
+  imports: [InventoryModule, ActivityModule],
   controllers: [
     QuotesController,
     SalesOrdersController,
@@ -57,5 +58,6 @@ import { WhatsAppWebhookController } from "./whatsapp/whatsapp-webhook.controlle
     WhatsAppPhoneNumbersRepository,
     WhatsAppPhoneNumbersService,
   ],
+  exports: [QuotesRepository, SalesOrdersRepository, InvoicesRepository],
 })
 export class SalesModule {}

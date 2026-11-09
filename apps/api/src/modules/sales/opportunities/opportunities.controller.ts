@@ -4,6 +4,7 @@ import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard";
 import { PermissionGuard } from "../../../common/guards/permission.guard";
 import { TenantMembershipGuard } from "../../../common/guards/tenant-membership.guard";
 import { PERMISSIONS } from "../../../common/permissions/permission-keys";
+import { CreateNoteDto } from "../../activity/notes/dto/create-note.dto";
 import { CreateOpportunityDto } from "./dto/create-opportunity.dto";
 import { ListOpportunitiesQueryDto } from "./dto/list-opportunities-query.dto";
 import { UpdateOpportunityDto } from "./dto/update-opportunity.dto";
@@ -48,5 +49,23 @@ export class OpportunitiesController {
   @RequirePermission(PERMISSIONS.OPPORTUNITIES_UPDATE)
   convertToCustomer(@Param("id") id: string) {
     return this.opportunities.convertToCustomer(id);
+  }
+
+  @Get(":id/activity")
+  @RequirePermission(PERMISSIONS.OPPORTUNITIES_READ)
+  findActivity(@Param("id") id: string) {
+    return this.opportunities.findActivity(id);
+  }
+
+  @Get(":id/views")
+  @RequirePermission(PERMISSIONS.OPPORTUNITIES_READ)
+  findViews(@Param("id") id: string) {
+    return this.opportunities.findViews(id);
+  }
+
+  @Post(":id/notes")
+  @RequirePermission(PERMISSIONS.OPPORTUNITIES_UPDATE)
+  addNote(@Param("id") id: string, @Body() dto: CreateNoteDto) {
+    return this.opportunities.addNote(id, dto);
   }
 }

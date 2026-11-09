@@ -67,6 +67,7 @@ model Organization {
   adCampaignRegions       AdCampaignRegion[]
   adCampaignTargetedCities AdCampaignTargetedCity[]
   notifications           Notification[]
+  notes                   Note[]
   opportunities           Opportunity[]
   invoices                Invoice[]
   invoiceLines            InvoiceLine[]
@@ -503,6 +504,28 @@ model Contact {
   @@index([organizationId])
   @@index([customerId])
   @@map("contacts")
+}
+
+/// Free-text note attached to any record's activity timeline (an
+/// Opportunity or a Customer so far). Polymorphic the same way `AuditLog`
+/// already is — `entityType` + `entityId` strings, no enum — rather than a
+/// separate FK column per entity, so this stays reusable as more entities
+/// grow a timeline. Append-only: no update/delete, since an editable note
+/// isn't a trustworthy record of what was actually said/done at the time.
+model Note {
+  id             String   @id @default(uuid())
+  organizationId String
+  entityType     String
+  entityId       String
+  body           String
+  createdAt      DateTime @default(now())
+  createdBy      String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([entityType, entityId])
+  @@map("notes")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

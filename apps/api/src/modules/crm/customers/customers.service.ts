@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { DeletionGuardService } from "../../../common/deletion/deletion-guard.service";
+import { AuditLogRepository } from "../../activity/audit-log/audit-log.repository";
+import { CreateNoteDto } from "../../activity/notes/dto/create-note.dto";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
 import { CustomersRepository } from "./customers.repository";
@@ -9,14 +11,29 @@ export class CustomersService {
   constructor(
     private readonly customers: CustomersRepository,
     private readonly deletionGuard: DeletionGuardService,
+    private readonly auditLog: AuditLogRepository,
   ) {}
 
   findAll(params: { skip?: number; take?: number; search?: string }) {
     return this.customers.findAll(params);
   }
 
-  findOne(id: string) {
-    return this.customers.findOneOrThrow(id);
+  async findOne(id: string) {
+    const customer = await this.customers.findOneOrThrow(id);
+    await this.auditLog.record({ entityType: "CUSTOMER", entityId: id, action: "VIEWED" });
+    return customer;
+  }
+
+  findActivity(id: string) {
+    return this.customers.findActivity(id);
+  }
+
+  findViews(id: string) {
+    return this.customers.findViews(id);
+  }
+
+  addNote(id: string, dto: CreateNoteDto) {
+    return this.customers.addNote(id, dto.body);
   }
 
   create(dto: CreateCustomerDto) {

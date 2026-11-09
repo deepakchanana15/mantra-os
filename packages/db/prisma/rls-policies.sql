@@ -131,6 +131,14 @@ CREATE POLICY tenant_isolation ON "contacts"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
 
+-- ── Activity timeline (notes on Opportunities/Customers) ────────────────
+
+ALTER TABLE "notes" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "notes" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "notes"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
 -- ── Products ─────────────────────────────────────────────────────────────
 
 ALTER TABLE "categories" ENABLE ROW LEVEL SECURITY;

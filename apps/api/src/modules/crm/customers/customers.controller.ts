@@ -5,6 +5,7 @@ import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard";
 import { PermissionGuard } from "../../../common/guards/permission.guard";
 import { TenantMembershipGuard } from "../../../common/guards/tenant-membership.guard";
 import { PERMISSIONS } from "../../../common/permissions/permission-keys";
+import { CreateNoteDto } from "../../activity/notes/dto/create-note.dto";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
 import { CustomersService } from "./customers.service";
@@ -42,5 +43,23 @@ export class CustomersController {
   @RequirePermission(PERMISSIONS.CUSTOMERS_DELETE)
   remove(@Param("id") id: string) {
     return this.customers.remove(id);
+  }
+
+  @Get(":id/activity")
+  @RequirePermission(PERMISSIONS.CUSTOMERS_READ)
+  findActivity(@Param("id") id: string) {
+    return this.customers.findActivity(id);
+  }
+
+  @Get(":id/views")
+  @RequirePermission(PERMISSIONS.CUSTOMERS_READ)
+  findViews(@Param("id") id: string) {
+    return this.customers.findViews(id);
+  }
+
+  @Post(":id/notes")
+  @RequirePermission(PERMISSIONS.CUSTOMERS_UPDATE)
+  addNote(@Param("id") id: string, @Body() dto: CreateNoteDto) {
+    return this.customers.addNote(id, dto);
   }
 }

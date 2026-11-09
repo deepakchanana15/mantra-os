@@ -19,6 +19,15 @@ export class QuotesRepository extends BaseRepository {
     });
   }
 
+  /** For an Opportunity's activity timeline / "sale details" once converted — includes the resulting SalesOrder and its Invoices, if any. */
+  findByOpportunityId(opportunityId: string) {
+    return this.db.quote.findMany({
+      where: { organizationId: this.organizationId, opportunityId, deletedAt: null },
+      include: { salesOrder: { include: { invoices: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
   async findOneOrThrow(id: string) {
     const quote = await this.db.quote.findFirst({
       where: { id, organizationId: this.organizationId, deletedAt: null },
