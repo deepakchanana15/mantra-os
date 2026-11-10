@@ -57,6 +57,12 @@ export class CustomersController {
     return this.customers.findViews(id);
   }
 
+  @Get(":id/views/log")
+  @RequirePermission(PERMISSIONS.CUSTOMERS_READ)
+  findViewLog(@Param("id") id: string) {
+    return this.customers.findViewLog(id);
+  }
+
   @Post(":id/notes")
   @RequirePermission(PERMISSIONS.CUSTOMERS_UPDATE)
   addNote(@Param("id") id: string, @Body() dto: CreateNoteDto) {

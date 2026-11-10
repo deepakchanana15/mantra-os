@@ -63,6 +63,12 @@ export class OpportunitiesController {
     return this.opportunities.findViews(id);
   }
 
+  @Get(":id/views/log")
+  @RequirePermission(PERMISSIONS.OPPORTUNITIES_READ)
+  findViewLog(@Param("id") id: string) {
+    return this.opportunities.findViewLog(id);
+  }
+
   @Post(":id/notes")
   @RequirePermission(PERMISSIONS.OPPORTUNITIES_UPDATE)
   addNote(@Param("id") id: string, @Body() dto: CreateNoteDto) {

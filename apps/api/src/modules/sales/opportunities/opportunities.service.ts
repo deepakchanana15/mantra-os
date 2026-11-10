@@ -32,6 +32,10 @@ export class OpportunitiesService {
     return this.opportunities.findViews(id);
   }
 
+  findViewLog(id: string) {
+    return this.opportunities.findViewLog(id);
+  }
+
   addNote(id: string, dto: CreateNoteDto) {
     return this.opportunities.addNote(id, dto.body);
   }

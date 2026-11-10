@@ -106,6 +106,10 @@ export class CustomersRepository extends BaseRepository {
     return this.auditLog.findViewSummary("CUSTOMER", id);
   }
 
+  findViewLog(id: string) {
+    return this.auditLog.findFullViewLog("CUSTOMER", id);
+  }
+
   async findActivity(id: string): Promise<ActivityEntry[]> {
     const customer = await this.findOneOrThrow(id);
 

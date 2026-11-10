@@ -331,6 +331,10 @@ export class OpportunitiesRepository extends BaseRepository {
     return this.auditLog.findViewSummary("OPPORTUNITY", id);
   }
 
+  findViewLog(id: string) {
+    return this.auditLog.findFullViewLog("OPPORTUNITY", id);
+  }
+
   async findActivity(id: string): Promise<ActivityEntry[]> {
     const opportunity = await this.findOneOrThrow(id);
 

@@ -49,6 +49,19 @@ export class AuditLogRepository extends BaseRepository {
     return [...byUser.values()].sort((a, b) => b.lastViewedAt.getTime() - a.lastViewedAt.getTime());
   }
 
+  /**
+   * Every individual view, timestamped — the raw log behind `findViewSummary`'s
+   * collapsed "Viewed by X (3x)" line, for when someone actually needs to see
+   * each access rather than just the last one.
+   */
+  findFullViewLog(entityType: string, entityId: string) {
+    return this.db.auditLog.findMany({
+      where: { organizationId: this.organizationId, entityType, entityId, action: AUDIT_ACTION_VIEWED },
+      orderBy: { createdAt: "desc" },
+      include: { performedBy: { select: { id: true, name: true } } },
+    });
+  }
+
   /** Every logged action on this entity except raw views — those are summarized separately above. */
   findActionsForEntity(entityType: string, entityId: string) {
     return this.db.auditLog.findMany({

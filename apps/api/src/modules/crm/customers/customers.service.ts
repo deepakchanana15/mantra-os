@@ -32,6 +32,10 @@ export class CustomersService {
     return this.customers.findViews(id);
   }
 
+  findViewLog(id: string) {
+    return this.customers.findViewLog(id);
+  }
+
   addNote(id: string, dto: CreateNoteDto) {
     return this.customers.addNote(id, dto.body);
   }

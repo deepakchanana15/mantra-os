@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Clock, Eye, FileText, MessageSquare, Receipt, ShoppingCart, Smartphone, Zap } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AddNoteForm } from "./add-note-form";
 
 interface ActivityEntry {
@@ -19,6 +20,12 @@ interface ViewSummary {
   userName: string;
   lastViewedAt: string;
   viewCount: number;
+}
+
+interface ViewLogEntry {
+  id: string;
+  createdAt: string;
+  performedBy: { id: string; name: string };
 }
 
 const ICONS: Record<ActivityEntry["type"], typeof Clock> = {
@@ -41,6 +48,7 @@ const ICONS: Record<ActivityEntry["type"], typeof Clock> = {
 export function ActivityTimeline({ basePath }: { basePath: string }) {
   const [entries, setEntries] = useState<ActivityEntry[] | null>(null);
   const [views, setViews] = useState<ViewSummary[] | null>(null);
+  const [viewLog, setViewLog] = useState<ViewLogEntry[] | null>(null);
 
   const load = useCallback(async () => {
     const [activityRes, viewsRes] = await Promise.all([fetch(`/api/v1${basePath}/activity`), fetch(`/api/v1${basePath}/views`)]);
@@ -52,14 +60,45 @@ export function ActivityTimeline({ basePath }: { basePath: string }) {
     load();
   }, [load]);
 
+  const loadViewLog = useCallback(async () => {
+    const res = await fetch(`/api/v1${basePath}/views/log`);
+    setViewLog(res.ok ? await res.json() : []);
+  }, [basePath]);
+
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex-col items-start gap-1">
         <CardTitle>Activity</CardTitle>
         {views && views.length > 0 && (
-          <p className="text-xs text-faint">
-            Viewed by {views.map((v) => `${v.userName}${v.viewCount > 1 ? ` (${v.viewCount}×)` : ""}`).join(", ")}
-          </p>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-faint">
+            <span>Viewed by {views.map((v) => `${v.userName}${v.viewCount > 1 ? ` (${v.viewCount}×)` : ""}`).join(", ")}</span>
+            <Dialog onOpenChange={(open) => open && loadViewLog()}>
+              <DialogTrigger asChild>
+                <button type="button" className="text-accent hover:underline">
+                  View access log
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Access log</DialogTitle>
+                </DialogHeader>
+                {viewLog === null ? (
+                  <p className="text-sm text-faint">Loading…</p>
+                ) : viewLog.length === 0 ? (
+                  <p className="text-sm text-faint">No views recorded.</p>
+                ) : (
+                  <ul className="flex max-h-96 flex-col gap-2 overflow-y-auto">
+                    {viewLog.map((v) => (
+                      <li key={v.id} className="flex items-center justify-between text-sm">
+                        <span className="text-foreground">{v.performedBy.name}</span>
+                        <span className="text-xs text-faint">{new Date(v.createdAt).toLocaleString()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </CardHeader>
 
