@@ -12,6 +12,7 @@ out/
 
 # Prisma
 packages/db/generated/
+packages/storefront-db/generated/
 
 # Vercel
 .vercel

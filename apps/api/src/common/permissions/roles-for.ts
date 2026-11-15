@@ -20,13 +20,16 @@ export function rolesFor(resource: string, action: string): SystemRoleKey[] {
     resource === "marketing_integrations" ||
     resource === "lead_intake_keys" ||
     resource === "whatsapp_phone_numbers" ||
-    resource === "meta_lead_pages"
+    resource === "meta_lead_pages" ||
+    resource === "storefront_sites"
   ) {
-    // Org-level settings, membership management, and ad-platform/lead-intake/
-    // WhatsApp/Meta-lead connection records — restricted to Owner/Admin even
-    // for reads, since these resources each identify a real external channel
-    // (an access token, a website's public-intake key, or which phone
-    // number/Page feeds this org's leads) that shouldn't be broadly readable.
+    // Org-level settings, membership management, ad-platform/lead-intake/
+    // WhatsApp/Meta-lead connection records, and storefront-site connection
+    // details — restricted to Owner/Admin even for reads, since these
+    // resources each identify a real external channel (an access token, a
+    // website's public-intake key, which phone number/Page feeds this org's
+    // leads, or a regional storefront's own database/Cloudinary credentials)
+    // that shouldn't be broadly readable.
     return ["owner", "admin"];
   }
   if (resource === "ad_campaign_metrics") {
@@ -58,6 +61,8 @@ export function rolesFor(resource: string, action: string): SystemRoleKey[] {
   // Generic CRUD-group resources: customers, contacts, products, categories,
   // warehouses, quotes, sales_orders, shipments, suppliers, purchase_orders,
   // goods_receipts, segments, email_templates, campaigns, opportunities,
-  // invoices, support_tickets.
+  // invoices, support_tickets, storefront_content (products/blog/settings/
+  // media for a registered storefront site — ordinary content, not a secret,
+  // unlike storefront_sites above which holds that site's connection creds).
   return action === "read" ? ALL_ROLES : WRITE_ROLES;
 }

@@ -146,6 +146,19 @@ export const PERMISSIONS = {
   UPLOADS_CREATE: "uploads:create",
 
   REPORTS_READ: "reports:read",
+
+  // Websites CMS — connects to each regional storefront's own database/
+  // Cloudinary account. `storefront_sites` holds those connection credentials
+  // (restricted like marketing_integrations/meta_lead_pages); `storefront_content`
+  // covers day-to-day content (products, blog, settings, media) once a site
+  // is registered — ordinary business content, not a secret.
+  STOREFRONT_SITES_CREATE: "storefront_sites:create",
+  STOREFRONT_SITES_READ: "storefront_sites:read",
+  STOREFRONT_SITES_UPDATE: "storefront_sites:update",
+  STOREFRONT_SITES_DELETE: "storefront_sites:delete",
+
+  STOREFRONT_CONTENT_READ: "storefront_content:read",
+  STOREFRONT_CONTENT_WRITE: "storefront_content:write",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
