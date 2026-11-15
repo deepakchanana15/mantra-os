@@ -68,7 +68,6 @@ model Organization {
   adCampaignTargetedCities AdCampaignTargetedCity[]
   notifications           Notification[]
   notes                   Note[]
-  storefrontSites         StorefrontSite[]
   opportunities           Opportunity[]
   invoices                Invoice[]
   invoiceLines            InvoiceLine[]
@@ -1924,44 +1923,4 @@ model UserPreferences {
   user User @relation(fields: [userId], references: [id])
 
   @@map("user_preferences")
-}
-
-enum StorefrontSiteStatus {
-  ACTIVE
-  COMING_SOON
-}
-
-/// Registry of Mantra Sports' external regional storefronts (CA/DE/NL/IN,
-/// future UK/NZ) — each one a standalone Next.js app with its own Postgres
-/// database and Cloudinary account. MantraOS does not host this content; it
-/// connects directly to whichever site is selected (see SiteConnectionManager
-/// in apps/api/src/modules/storefront/) using the credentials stored here.
-/// `databaseUrl`/`cloudinaryApiKey`/`cloudinaryApiSecret` are plain columns,
-/// not encrypted — same posture as `MarketingIntegration.accessToken` above:
-/// Neon encrypts at rest, and reads are Owner/Admin-only via RBAC (see
-/// roles-for.ts), with those three fields never selected into any API
-/// response (see StorefrontSitesRepository's SELECT constant).
-model StorefrontSite {
-  id                   String               @id @default(uuid())
-  organizationId       String
-  name                 String
-  code                 String
-  domain               String?
-  locale               String?
-  currencyCode         String?
-  databaseUrl          String
-  cloudinaryCloudName  String?
-  cloudinaryApiKey     String?
-  cloudinaryApiSecret  String?
-  status               StorefrontSiteStatus @default(ACTIVE)
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  createdBy            String
-  updatedBy            String
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-
-  @@unique([organizationId, code])
-  @@index([organizationId])
-  @@map("storefront_sites")
 }

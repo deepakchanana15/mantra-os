@@ -1,7 +1,6 @@
 import {
   Boxes,
   ClipboardList,
-  Globe,
   LayoutDashboard,
   LifeBuoy,
   LineChart,
@@ -76,10 +75,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Support",
     items: [{ label: "Tickets", href: "/support-tickets", icon: LifeBuoy }],
-  },
-  {
-    label: "Websites",
-    items: [{ label: "Websites", href: "/websites", icon: Globe }],
   },
   {
     label: "More",
