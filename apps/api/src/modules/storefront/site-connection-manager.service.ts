@@ -1,4 +1,5 @@
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient as StorefrontPrismaClient } from "@mantra-os/storefront-db";
 import { StorefrontSitesRepository } from "./sites/storefront-sites.repository";
 
@@ -45,7 +46,14 @@ export class SiteConnectionManager implements OnModuleDestroy {
     if (cached) {
       await cached.client.$disconnect();
     }
-    const client = new StorefrontPrismaClient({ datasources: { db: { url: site.databaseUrl } } });
+    // Connects via Neon's serverless driver adapter, same reason as
+    // PrismaService for MantraOS's own database (see its doc comment): a raw
+    // TCP connection can silently hang on Vercel's serverless runtime against
+    // a Neon pooler hostname, which resolves to both IPv4 and IPv6. The
+    // global `ws`/`dns` setup that adapter needs is already applied once by
+    // PrismaService at app boot, in the same process.
+    const adapter = new PrismaNeon({ connectionString: site.databaseUrl });
+    const client = new StorefrontPrismaClient({ adapter });
     this.connections.set(siteId, { databaseUrl: site.databaseUrl, client });
     return client;
   }
