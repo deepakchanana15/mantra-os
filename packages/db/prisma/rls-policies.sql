@@ -372,3 +372,11 @@ ALTER TABLE "whatsapp_messages" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON "whatsapp_messages"
   USING ("organizationId" = current_setting('app.current_org_id', true))
   WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
+
+-- ── Websites CMS (regional storefront registry) ──────────────────────────
+
+ALTER TABLE "storefront_sites" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "storefront_sites" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "storefront_sites"
+  USING ("organizationId" = current_setting('app.current_org_id', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_org_id', true));
