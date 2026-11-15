@@ -1,14 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_BOTTOM, NAV_GROUPS, NAV_TOP } from "./nav-config";
 import { OrgSwitcher, type OrgSwitcherOrg } from "./org-switcher";
-
-const COLLAPSED_GROUPS_KEY = "mantraos_sidebar_collapsed_groups";
 
 function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }) {
   const pathname = usePathname();
@@ -28,34 +24,6 @@ function NavLink({ href, label, icon: Icon }: { href: string; label: string; ico
 }
 
 export function Sidebar({ currentOrg, organizations }: { currentOrg: OrgSwitcherOrg; organizations: OrgSwitcherOrg[] }) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(COLLAPSED_GROUPS_KEY);
-      if (stored) setCollapsedGroups(new Set(JSON.parse(stored)));
-    } catch {
-      // localStorage can throw or be unavailable (private browsing, etc.) — default to all expanded.
-    }
-  }, []);
-
-  const toggleGroup = (label: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) {
-        next.delete(label);
-      } else {
-        next.add(label);
-      }
-      try {
-        localStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify([...next]));
-      } catch {
-        // best-effort persistence only
-      }
-      return next;
-    });
-  };
-
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col gap-1 overflow-hidden border-r border-border bg-surface p-3">
       <div className="shrink-0">
@@ -65,22 +33,16 @@ export function Sidebar({ currentOrg, organizations }: { currentOrg: OrgSwitcher
       <nav className="mt-2 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
         <NavLink {...NAV_TOP} />
 
-        {NAV_GROUPS.map((group) => {
-          const isCollapsed = collapsedGroups.has(group.label);
-          return (
-            <div key={group.label} className="mt-3.5 flex flex-col gap-0.5">
-              <button
-                type="button"
-                onClick={() => toggleGroup(group.label)}
-                className="flex items-center justify-between rounded-md px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-faint transition-colors hover:text-muted-foreground"
-              >
-                {group.label}
-                <ChevronRight className={cn("h-3 w-3 shrink-0 transition-transform", !isCollapsed && "rotate-90")} />
-              </button>
-              {!isCollapsed && group.items.map((item) => <NavLink key={item.href} {...item} />)}
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label} className="mt-3.5 flex flex-col gap-0.5">
+            <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-faint">
+              {group.label}
             </div>
-          );
-        })}
+            {group.items.map((item) => (
+              <NavLink key={item.href} {...item} />
+            ))}
+          </div>
+        ))}
       </nav>
 
       <div className="mt-auto flex shrink-0 flex-col gap-0.5 border-t border-border pt-2">
