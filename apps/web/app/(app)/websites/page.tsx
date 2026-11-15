@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AddStorefrontSiteButton } from "@/components/domain/add-storefront-site-button";
@@ -14,7 +14,23 @@ interface StorefrontSite {
 }
 
 export default async function WebsitesPage() {
-  const sites = await apiFetch<StorefrontSite[]>("/v1/storefront/sites");
+  let sites: StorefrontSite[];
+  try {
+    sites = await apiFetch<StorefrontSite[]>("/v1/storefront/sites");
+  } catch (err) {
+    // Same idiom as settings/page.tsx's fetchOrNull — an owner/admin-only
+    // resource shows a plain message for everyone else, rather than
+    // crashing the whole page.
+    if (err instanceof ApiError && err.status === 403) {
+      return (
+        <div className="flex flex-col gap-5 p-7">
+          <h1 className="text-xl font-bold text-foreground">Websites</h1>
+          <p className="text-sm text-faint">You don&apos;t have access to manage websites. Ask an owner or admin for access.</p>
+        </div>
+      );
+    }
+    throw err;
+  }
 
   return (
     <div className="flex flex-col gap-5 p-7">
