@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { ActivityModule } from "../activity/activity.module";
 import { InventoryModule } from "../inventory/inventory.module";
+import { NotificationsModule } from "../notifications/notifications.module";
+import { BrochureRequestController } from "./leads/brochure-request.controller";
 import { IndiaExportInvoicePdfService } from "./invoices/india-export-invoice-pdf.service";
 import { InvoicePdfService } from "./invoices/invoice-pdf.service";
 import { InvoicesController } from "./invoices/invoices.controller";
@@ -28,7 +30,7 @@ import { WhatsAppPhoneNumbersService } from "./whatsapp/whatsapp-phone-numbers.s
 import { WhatsAppWebhookController } from "./whatsapp/whatsapp-webhook.controller";
 
 @Module({
-  imports: [InventoryModule, ActivityModule],
+  imports: [InventoryModule, ActivityModule, NotificationsModule],
   controllers: [
     QuotesController,
     SalesOrdersController,
@@ -37,6 +39,7 @@ import { WhatsAppWebhookController } from "./whatsapp/whatsapp-webhook.controlle
     InvoicesController,
     LeadIntakeKeysController,
     LeadIntakeController,
+    BrochureRequestController,
     WhatsAppPhoneNumbersController,
     WhatsAppWebhookController,
   ],

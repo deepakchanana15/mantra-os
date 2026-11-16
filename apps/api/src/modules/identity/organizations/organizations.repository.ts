@@ -45,4 +45,17 @@ export class OrganizationsRepository extends BaseRepository {
       data,
     });
   }
+
+  /**
+   * Upsert since OrganizationSettings isn't created at org signup today —
+   * the first brochure upload is often the first write this table ever
+   * gets for a given org.
+   */
+  updateBrochureUrls(data: { brochureUrlEn?: string; brochureUrlDe?: string; brochureUrlNl?: string }) {
+    return this.db.organizationSettings.upsert({
+      where: { organizationId: this.organizationId },
+      create: { organizationId: this.organizationId, ...data, updatedBy: this.userId },
+      update: { ...data, updatedBy: this.userId },
+    });
+  }
 }

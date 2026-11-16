@@ -1511,6 +1511,11 @@ model Opportunity {
   /// website's own and would otherwise need a lossy, fragile mapping.
   customerType      String?
   productInterest   String?
+  /// Set by POST /v1/leads/brochure when a B2B lead's contact-form
+  /// submission also triggers the gated PDF brochure — lets the sales team
+  /// see, per-Opportunity, whether the brochure actually went out.
+  brochureSent      Boolean           @default(false)
+  brochureSentAt    DateTime?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   createdBy         String
@@ -1888,6 +1893,12 @@ model OrganizationSettings {
   /// business ID, e.g. "MS" -> "MS-AU-20260726-01" — see DECISIONS.md
   /// "Business ID codes for Customers and Opportunities".
   codePrefix     String   @default("ORG")
+  /// The B2B brochure PDF(s) sent by POST /v1/leads/brochure — uploaded
+  /// here (Settings → Brochures) via Vercel Blob, so replacing one never
+  /// needs a code change or redeploy. Null until the first upload.
+  brochureUrlEn  String?
+  brochureUrlDe  String?
+  brochureUrlNl  String?
   updatedAt      DateTime @updatedAt
   updatedBy      String
 

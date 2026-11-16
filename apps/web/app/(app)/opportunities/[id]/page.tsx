@@ -39,6 +39,8 @@ interface Opportunity {
   leadPhone: string | null;
   customerType: string | null;
   productInterest: string | null;
+  brochureSent: boolean;
+  brochureSentAt: string | null;
   quotes: Quote[];
 }
 
@@ -81,6 +83,11 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
             </div>
             {(opportunity.customerType || opportunity.productInterest) && (
               <p className="text-xs text-faint">{[opportunity.customerType, opportunity.productInterest].filter(Boolean).join(" · ")}</p>
+            )}
+            {opportunity.brochureSent && (
+              <p className="text-xs text-faint">
+                Brochure sent{opportunity.brochureSentAt ? ` — ${new Date(opportunity.brochureSentAt).toLocaleDateString()}` : ""}
+              </p>
             )}
             {opportunity.customer && (
               <Link href={`/customers/${opportunity.customer.id}`} className="text-xs text-accent hover:underline">

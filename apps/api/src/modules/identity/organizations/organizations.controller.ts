@@ -7,6 +7,7 @@ import { PermissionGuard } from "../../../common/guards/permission.guard";
 import { TenantMembershipGuard } from "../../../common/guards/tenant-membership.guard";
 import { User } from "@mantra-os/db";
 import { PERMISSIONS } from "../../../common/permissions/permission-keys";
+import { UpdateBrochureUrlsDto } from "./dto/update-brochure-urls.dto";
 import { UpdateOrganizationDto } from "./dto/update-organization.dto";
 import { OrganizationsService } from "./organizations.service";
 
@@ -30,5 +31,11 @@ export class OrganizationsController {
   @RequirePermission(PERMISSIONS.ORG_SETTINGS_UPDATE)
   updateCurrent(@Body() dto: UpdateOrganizationDto) {
     return this.organizations.updateCurrent(dto);
+  }
+
+  @Patch("me/brochures")
+  @RequirePermission(PERMISSIONS.ORG_SETTINGS_UPDATE)
+  updateBrochureUrls(@Body() dto: UpdateBrochureUrlsDto) {
+    return this.organizations.updateBrochureUrls(dto);
   }
 }

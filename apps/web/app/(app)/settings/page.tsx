@@ -9,12 +9,14 @@ import { BrandsTab } from "./brands-tab";
 import { WebsitesTab } from "./websites-tab";
 import { IntegrationsTab } from "./integrations-tab";
 import { LeadIntakeTab } from "./lead-intake-tab";
+import { BrochuresTab } from "./brochures-tab";
 import { WhatsAppTab } from "./whatsapp-tab";
 import { MetaLeadsTab } from "./meta-leads-tab";
 
 interface Organization {
   name: string;
   slug: string;
+  settings: { brochureUrlEn: string | null; brochureUrlDe: string | null; brochureUrlNl: string | null } | null;
 }
 
 interface Member {
@@ -167,12 +169,21 @@ export default async function SettingsPage() {
           {globalDomainAvailable && <TabsTrigger value="websites">Websites</TabsTrigger>}
           {integrations && <TabsTrigger value="integrations">Integrations</TabsTrigger>}
           {leadIntakeKeys && companies && <TabsTrigger value="lead-intake">Lead Intake</TabsTrigger>}
+          <TabsTrigger value="brochures">Brochures</TabsTrigger>
           {whatsappPhoneNumbers && companies && <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>}
           {metaLeadPages && companies && <TabsTrigger value="meta-leads">Meta Leads</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="organization">
           <OrgSettingsForm initialName={org.name} initialSlug={org.slug} />
+        </TabsContent>
+
+        <TabsContent value="brochures">
+          <BrochuresTab
+            initialBrochureUrlEn={org.settings?.brochureUrlEn ?? null}
+            initialBrochureUrlDe={org.settings?.brochureUrlDe ?? null}
+            initialBrochureUrlNl={org.settings?.brochureUrlNl ?? null}
+          />
         </TabsContent>
 
         {members && (
