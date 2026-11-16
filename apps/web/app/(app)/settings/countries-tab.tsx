@@ -31,6 +31,7 @@ interface Country {
   name: string;
   isoCode: string;
   currencyId: string | null;
+  defaultLanguage: string | null;
   taxPercentage: string | null;
   enabled: boolean;
 }
@@ -52,8 +53,10 @@ export function CountriesTab({
   const [name, setName] = useState("");
   const [isoCode, setIsoCode] = useState("");
   const [currencyId, setCurrencyId] = useState<string | undefined>(undefined);
+  const [defaultLanguage, setDefaultLanguage] = useState("");
   const [taxPercentage, setTaxPercentage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [savingLanguageFor, setSavingLanguageFor] = useState<string | null>(null);
 
   const companyName = (id: string) => companies.find((c) => c.id === id)?.name ?? "—";
   const currencyCode = (id: string | null) => currencies.find((c) => c.id === id)?.code ?? "—";
@@ -74,6 +77,7 @@ export function CountriesTab({
           name,
           isoCode: isoCode.toUpperCase(),
           currencyId,
+          defaultLanguage: defaultLanguage || undefined,
           taxPercentage: taxPercentage ? Number(taxPercentage) : undefined,
         }),
       });
@@ -87,11 +91,37 @@ export function CountriesTab({
       setName("");
       setIsoCode("");
       setCurrencyId(undefined);
+      setDefaultLanguage("");
       setTaxPercentage("");
       setOpen(false);
       router.refresh();
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleLanguageBlur(countryId: string, value: string) {
+    const normalized = value.trim().toLowerCase();
+    const current = countries.find((c) => c.id === countryId);
+    if (!current || (current.defaultLanguage ?? "") === normalized) return;
+
+    setSavingLanguageFor(countryId);
+    try {
+      const res = await fetch(`/api/v1/countries/${countryId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultLanguage: normalized }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error?.message ?? "Couldn't update the language.");
+        return;
+      }
+      toast.success("Language updated");
+      setCountries((prev) => prev.map((c) => (c.id === countryId ? data : c)));
+      router.refresh();
+    } finally {
+      setSavingLanguageFor(null);
     }
   }
 
@@ -110,13 +140,14 @@ export function CountriesTab({
               <TableHead>ISO</TableHead>
               <TableHead>Company</TableHead>
               <TableHead>Currency</TableHead>
+              <TableHead>Language</TableHead>
               <TableHead>Tax %</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {countries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-6 text-center text-sm text-faint">
+                <TableCell colSpan={6} className="py-6 text-center text-sm text-faint">
                   No countries yet.
                 </TableCell>
               </TableRow>
@@ -127,6 +158,17 @@ export function CountriesTab({
                   <TableCell className="text-muted-foreground">{country.isoCode}</TableCell>
                   <TableCell className="text-muted-foreground">{companyName(country.companyId)}</TableCell>
                   <TableCell className="text-muted-foreground">{currencyCode(country.currencyId)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <Input
+                      key={country.id + (country.defaultLanguage ?? "")}
+                      defaultValue={country.defaultLanguage ?? ""}
+                      placeholder="en"
+                      maxLength={50}
+                      disabled={savingLanguageFor === country.id}
+                      onBlur={(e) => handleLanguageBlur(country.id, e.target.value)}
+                      className="h-8 w-20"
+                    />
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {country.taxPercentage ? `${country.taxPercentage}%` : "—"}
                   </TableCell>
@@ -189,6 +231,16 @@ export function CountriesTab({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="country-language">Default language</Label>
+              <Input
+                id="country-language"
+                placeholder="en, de, nl..."
+                maxLength={50}
+                value={defaultLanguage}
+                onChange={(e) => setDefaultLanguage(e.target.value)}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="country-tax">Tax percentage</Label>

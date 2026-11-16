@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { upload } from "@vercel/blob/client";
 import { FileText, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -74,11 +73,17 @@ export function BrochuresTab({ companies, currencies }: { companies: Company[]; 
   ) {
     setUploading(uploadKey);
     try {
-      const blob = await upload(file.name, file, { access: "public", handleUploadUrl: "/api/uploads" });
-      await patchCompanies(companyIds, { [field]: blob.url });
+      const form = new FormData();
+      form.append("file", file);
+      const uploadRes = await fetch("/api/brochure-upload", { method: "POST", body: form });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) {
+        throw new Error(uploadData.error?.message ?? "Upload failed.");
+      }
+      await patchCompanies(companyIds, { [field]: uploadData.url });
       setFiles((prev) => {
         const next = { ...prev };
-        for (const id of companyIds) next[id] = { ...next[id], [field]: blob.url };
+        for (const id of companyIds) next[id] = { ...next[id], [field]: uploadData.url };
         return next;
       });
       toast.success("Brochure updated");

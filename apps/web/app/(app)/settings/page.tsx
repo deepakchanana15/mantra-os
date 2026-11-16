@@ -56,6 +56,7 @@ interface Country {
   name: string;
   isoCode: string;
   currencyId: string | null;
+  defaultLanguage: string | null;
   taxPercentage: string | null;
   enabled: boolean;
 }
