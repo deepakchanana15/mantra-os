@@ -16,7 +16,6 @@ import { MetaLeadsTab } from "./meta-leads-tab";
 interface Organization {
   name: string;
   slug: string;
-  settings: { brochureUrlEn: string | null; brochureUrlDe: string | null; brochureUrlNl: string | null } | null;
 }
 
 interface Member {
@@ -46,6 +45,9 @@ interface Company {
   phone: string | null;
   lutArn: string | null;
   baseCurrencyId: string | null;
+  brochureUrl: string | null;
+  brochureUrlEn: string | null;
+  countries: { defaultLanguage: string | null }[];
 }
 
 interface Country {
@@ -169,7 +171,7 @@ export default async function SettingsPage() {
           {globalDomainAvailable && <TabsTrigger value="websites">Websites</TabsTrigger>}
           {integrations && <TabsTrigger value="integrations">Integrations</TabsTrigger>}
           {leadIntakeKeys && companies && <TabsTrigger value="lead-intake">Lead Intake</TabsTrigger>}
-          <TabsTrigger value="brochures">Brochures</TabsTrigger>
+          {companies && currencies && <TabsTrigger value="brochures">Brochures</TabsTrigger>}
           {whatsappPhoneNumbers && companies && <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>}
           {metaLeadPages && companies && <TabsTrigger value="meta-leads">Meta Leads</TabsTrigger>}
         </TabsList>
@@ -178,13 +180,11 @@ export default async function SettingsPage() {
           <OrgSettingsForm initialName={org.name} initialSlug={org.slug} />
         </TabsContent>
 
-        <TabsContent value="brochures">
-          <BrochuresTab
-            initialBrochureUrlEn={org.settings?.brochureUrlEn ?? null}
-            initialBrochureUrlDe={org.settings?.brochureUrlDe ?? null}
-            initialBrochureUrlNl={org.settings?.brochureUrlNl ?? null}
-          />
-        </TabsContent>
+        {companies && currencies && (
+          <TabsContent value="brochures">
+            <BrochuresTab companies={companies} currencies={currencies} />
+          </TabsContent>
+        )}
 
         {members && (
           <TabsContent value="members">

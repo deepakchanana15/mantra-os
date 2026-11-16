@@ -283,6 +283,15 @@ model Company {
   /** LUT (Letter of Undertaking) ARN — India export invoices under LUT print this instead of charging IGST. Filed annually with the GST portal; only meaningful for an INR-based company. */
   lutArn             String?
   baseCurrencyId     String?
+  /// This company's own B2B brochure PDF — its local language/currency —
+  /// sent by POST /v1/leads/brochure. Uploaded via Settings → Brochures
+  /// (Vercel Blob), never a code change to replace.
+  brochureUrl        String?
+  /// Optional English add-on brochure, only meaningful where this
+  /// company's own language isn't English (e.g. DE, NL). Companies sharing
+  /// a currency can be pointed at the same uploaded file from the
+  /// Brochures settings UI.
+  brochureUrlEn      String?
   enabled            Boolean   @default(true)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -1893,12 +1902,6 @@ model OrganizationSettings {
   /// business ID, e.g. "MS" -> "MS-AU-20260726-01" — see DECISIONS.md
   /// "Business ID codes for Customers and Opportunities".
   codePrefix     String   @default("ORG")
-  /// The B2B brochure PDF(s) sent by POST /v1/leads/brochure — uploaded
-  /// here (Settings → Brochures) via Vercel Blob, so replacing one never
-  /// needs a code change or redeploy. Null until the first upload.
-  brochureUrlEn  String?
-  brochureUrlDe  String?
-  brochureUrlNl  String?
   updatedAt      DateTime @updatedAt
   updatedBy      String
 

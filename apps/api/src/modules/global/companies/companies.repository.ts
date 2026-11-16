@@ -8,7 +8,7 @@ export class CompaniesRepository extends BaseRepository {
   findAll() {
     return this.db.company.findMany({
       where: { organizationId: this.organizationId, deletedAt: null },
-      include: { baseCurrency: true },
+      include: { baseCurrency: true, countries: { where: { deletedAt: null } } },
       orderBy: { name: "asc" },
     });
   }
@@ -36,6 +36,8 @@ export class CompaniesRepository extends BaseRepository {
         phone: dto.phone,
         lutArn: dto.lutArn,
         baseCurrencyId: dto.baseCurrencyId,
+        brochureUrl: dto.brochureUrl,
+        brochureUrlEn: dto.brochureUrlEn,
         organizationId: this.organizationId,
         createdBy: this.userId,
         updatedBy: this.userId,
@@ -57,6 +59,8 @@ export class CompaniesRepository extends BaseRepository {
         phone: dto.phone,
         lutArn: dto.lutArn,
         baseCurrencyId: dto.baseCurrencyId,
+        brochureUrl: dto.brochureUrl,
+        brochureUrlEn: dto.brochureUrlEn,
         updatedBy: this.userId,
       },
     });

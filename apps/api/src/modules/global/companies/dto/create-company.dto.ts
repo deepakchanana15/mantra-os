@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID, MaxLength, MinLength } from "class-validator";
+import { IsOptional, IsString, IsUUID, IsUrl, MaxLength, MinLength } from "class-validator";
 
 export class CreateCompanyDto {
   @IsString()
@@ -49,4 +49,14 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsUUID()
   baseCurrencyId?: string;
+
+  /** This company's own B2B brochure PDF (its local language/currency), sent by POST /v1/leads/brochure. */
+  @IsOptional()
+  @IsUrl()
+  brochureUrl?: string;
+
+  /** Optional English add-on brochure — only meaningful where this company's own language isn't English. */
+  @IsOptional()
+  @IsUrl()
+  brochureUrlEn?: string;
 }

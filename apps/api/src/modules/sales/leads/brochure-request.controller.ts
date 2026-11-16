@@ -12,19 +12,21 @@ const RATE_LIMIT_PER_HOUR = 30;
 const RECENT_OPPORTUNITY_WINDOW_MS = 15 * 60 * 1000;
 
 /**
- * Brochure files live in OrganizationSettings (set via Settings →
- * Brochures, uploaded to Vercel Blob) rather than as static files in this
- * codebase — replacing one is just a re-upload, never a code change. Falls
- * back to English if a locale-specific file, or the whole settings row,
- * isn't set yet; returns nothing if even English is missing.
+ * Brochures live on the Company the LeadIntakeKey resolves to (set via
+ * Settings → Brochures, uploaded to Vercel Blob) rather than as static
+ * files in this codebase — replacing one is just a re-upload, never a code
+ * change. `brochureUrl` is that company's own local-language/currency file;
+ * `brochureUrlEn` is an optional English add-on (only meaningful where the
+ * company's own language isn't English — e.g. DE/NL). `dto.locale` is kept
+ * for backward compatibility with sites built before brochures became
+ * per-company, but is no longer used: the company itself now determines
+ * which files apply.
  */
 function resolveBrochureUrls(
-  locale: "en" | "de" | "nl" | undefined,
-  settings: { brochureUrlEn: string | null; brochureUrlDe: string | null; brochureUrlNl: string | null } | null,
+  company: { brochureUrl: string | null; brochureUrlEn: string | null } | null,
 ): string[] {
-  if (!settings) return [];
-  const localized = locale === "de" ? settings.brochureUrlDe : locale === "nl" ? settings.brochureUrlNl : null;
-  return [localized, settings.brochureUrlEn].filter((url): url is string => Boolean(url));
+  if (!company) return [];
+  return [company.brochureUrl, company.brochureUrlEn].filter((url): url is string => Boolean(url));
 }
 
 /**
@@ -59,8 +61,8 @@ export class BrochureRequestController {
     }
 
     const { organizationId, companyId } = keyRecord;
-    const settings = await this.prisma.organizationSettings.findUnique({ where: { organizationId } });
-    const downloadUrls = resolveBrochureUrls(dto.locale, settings);
+    const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+    const downloadUrls = resolveBrochureUrls(company);
 
     const result = await this.prisma.$transaction(
       async (tx) => {

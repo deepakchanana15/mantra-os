@@ -1,5 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { UpdateBrochureUrlsDto } from "./dto/update-brochure-urls.dto";
 import { UpdateOrganizationDto } from "./dto/update-organization.dto";
 import { OrganizationsRepository } from "./organizations.repository";
 
@@ -17,9 +16,5 @@ export class OrganizationsService {
 
   updateCurrent(dto: UpdateOrganizationDto) {
     return this.organizations.updateCurrent(dto);
-  }
-
-  updateBrochureUrls(dto: UpdateBrochureUrlsDto) {
-    return this.organizations.updateBrochureUrls(dto);
   }
 }
