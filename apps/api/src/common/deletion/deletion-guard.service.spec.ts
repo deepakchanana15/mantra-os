@@ -101,18 +101,18 @@ describe("DeletionGuardService.authorize", () => {
     await expect(guard.authorize({ entityCreatedBy: GRANTED_USER_ID })).rejects.toThrow(/can't delete a record you created/i);
   });
 
-  it("blocks anyone, including a grant holder, once today's 1/day limit is already used", async () => {
+  it("blocks anyone, including a grant holder, once today's 50/day limit is already used", async () => {
     db.membership.findUnique.mockResolvedValue(membershipRole("manager"));
     db.userDeletionGrant.findUnique.mockResolvedValue({ revokedAt: null });
-    db.auditLog.count.mockResolvedValue(1);
+    db.auditLog.count.mockResolvedValue(50);
     const guard = new DeletionGuardService(createTenantContext(db, GRANTED_USER_ID), eventEmitter);
 
     await expect(guard.authorize({ entityCreatedBy: "someone-else" })).rejects.toThrow(/deletion limit for today/i);
   });
 
-  it("blocks the Owner too once today's 1/day limit is used — the rate limit applies even at the escalation floor", async () => {
+  it("blocks the Owner too once today's 50/day limit is used — the rate limit applies even at the escalation floor", async () => {
     db.membership.findUnique.mockResolvedValue(membershipRole("owner"));
-    db.auditLog.count.mockResolvedValue(1);
+    db.auditLog.count.mockResolvedValue(50);
     const guard = new DeletionGuardService(createTenantContext(db, OWNER_ID), eventEmitter);
 
     await expect(guard.authorize({ entityCreatedBy: "someone-else" })).rejects.toThrow(/deletion limit for today/i);

@@ -3,7 +3,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { TenantContextService } from "../context/tenant-context.service";
 import { RECORD_DELETED_EVENT } from "../events/record-deleted.event";
 
-const DAILY_DELETE_LIMIT = 1;
+const DAILY_DELETE_LIMIT = 50;
 
 /**
  * Shared deletion governance — see DECISIONS.md "Deletion governance:
