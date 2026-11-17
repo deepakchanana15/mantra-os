@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DeleteEntityButton } from "@/components/domain/delete-entity-button";
 
 interface Currency {
   id: string;
@@ -142,12 +143,13 @@ export function CountriesTab({
               <TableHead>Currency</TableHead>
               <TableHead>Language</TableHead>
               <TableHead>Tax %</TableHead>
+              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
             {countries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-faint">
+                <TableCell colSpan={7} className="py-6 text-center text-sm text-faint">
                   No countries yet.
                 </TableCell>
               </TableRow>
@@ -171,6 +173,13 @@ export function CountriesTab({
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {country.taxPercentage ? `${country.taxPercentage}%` : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <DeleteEntityButton
+                      apiPath={`/api/v1/countries/${country.id}`}
+                      entityLabel="Country"
+                      onDeleted={() => setCountries((prev) => prev.filter((c) => c.id !== country.id))}
+                    />
                   </TableCell>
                 </TableRow>
               ))
