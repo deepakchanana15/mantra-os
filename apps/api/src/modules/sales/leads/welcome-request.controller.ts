@@ -5,44 +5,61 @@ import { SkipTenantContext } from "../../../common/decorators/skip-tenant-contex
 import { TenantContextService } from "../../../common/context/tenant-context.service";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { BrevoService } from "../../notifications/brevo/brevo.service";
+import { ctaButton, renderEmailShell, resolveLanguage, whatsappButtons } from "../../notifications/brevo/email-template";
 import { WelcomeRequestDto } from "./dto/welcome-request.dto";
 
 const SYSTEM_ACTOR = "lead-intake";
 const RATE_LIMIT_PER_HOUR = 30;
 const RECENT_OPPORTUNITY_WINDOW_MS = 15 * 60 * 1000;
 
-type WelcomeCopy = { subject: string; html: (name: string, blogUrl: string | null) => string };
+function welcomeBody(language: "en" | "de" | "nl", name: string, blogUrl: string | null): { subject: string; html: string } {
+  const whatsapp = whatsappButtons(`Hi Mantra Sports, I just reached out via your website!`);
 
-const COPY: Record<"en" | "de" | "nl", WelcomeCopy> = {
-  en: {
-    subject: "Thanks for reaching out — Mantra Sports",
-    html: (name, blogUrl) =>
-      `<p>Hi ${name},</p>` +
-      `<p>Thanks for getting in touch with Mantra Sports. We've received your message and our team will reach out to you within 24 hours.</p>` +
-      (blogUrl ? `<p>In the meantime, have a look at our blog: <a href="${blogUrl}">${blogUrl}</a></p>` : "") +
-      `<p>Best regards,<br>The Mantra Sports Team</p>`,
-  },
-  de: {
-    subject: "Danke für deine Anfrage — Mantra Sports",
-    html: (name, blogUrl) =>
-      `<p>Hallo ${name},</p>` +
-      `<p>vielen Dank, dass du dich an Mantra Sports gewandt hast. Wir haben deine Nachricht erhalten und unser Team wird sich innerhalb von 24 Stunden bei dir melden.</p>` +
-      (blogUrl ? `<p>Schau in der Zwischenzeit gerne in unserem Blog vorbei: <a href="${blogUrl}">${blogUrl}</a></p>` : "") +
-      `<p>Viele Grüße,<br>Dein Mantra Sports Team</p>`,
-  },
-  nl: {
-    subject: "Bedankt voor je bericht — Mantra Sports",
-    html: (name, blogUrl) =>
-      `<p>Hoi ${name},</p>` +
-      `<p>Bedankt dat je contact hebt opgenomen met Mantra Sports. We hebben je bericht ontvangen en ons team neemt binnen 24 uur contact met je op.</p>` +
-      (blogUrl ? `<p>Bekijk ondertussen gerust onze blog: <a href="${blogUrl}">${blogUrl}</a></p>` : "") +
-      `<p>Met vriendelijke groet,<br>Het Mantra Sports Team</p>`,
-  },
-};
+  if (language === "de") {
+    const blog = blogUrl
+      ? `<p style="font-size:15px;line-height:1.6;margin:20px 0 0;">Während du wartest, schau doch mal hier vorbei:</p>${ctaButton(blogUrl, "Zum Blog")}`
+      : "";
+    return {
+      subject: `Hey ${name}, schön von dir zu hören! — Mantra Sports`,
+      html: `
+        <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, schön von dir zu hören! 👋</h1>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Danke für deine Nachricht — sie ist gerade bei uns eingetrudelt und hat garantiert jemandem im Team ein Lächeln ins Gesicht gezaubert. Wir melden uns innerhalb von <strong>24 Stunden</strong> ausführlich bei dir.</p>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Kann's nicht warten? Verständlich. Schreib uns direkt auf WhatsApp:</p>
+        ${whatsapp}
+        ${blog}
+        <p style="font-size:15px;line-height:1.6;margin:28px 0 0;">Bis bald,<br><strong>Dein Mantra Sports Team</strong></p>`,
+    };
+  }
 
-function resolveLanguage(company: { countries: { defaultLanguage: string | null }[] } | null): "en" | "de" | "nl" {
-  const lang = company?.countries[0]?.defaultLanguage;
-  return lang === "de" || lang === "nl" ? lang : "en";
+  if (language === "nl") {
+    const blog = blogUrl
+      ? `<p style="font-size:15px;line-height:1.6;margin:20px 0 0;">Terwijl je wacht, lees gerust even mee:</p>${ctaButton(blogUrl, "Naar de blog")}`
+      : "";
+    return {
+      subject: `Hey ${name}, leuk je te spreken! — Mantra Sports`,
+      html: `
+        <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, leuk je te spreken! 👋</h1>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Bedankt voor je bericht — die is zojuist bij ons binnengekomen en heeft gegarandeerd iemand van het team aan het lachen gemaakt. We nemen binnen <strong>24 uur</strong> uitgebreid contact met je op.</p>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Kan het niet wachten? Helemaal begrijpelijk. Stuur ons direct een bericht via WhatsApp:</p>
+        ${whatsapp}
+        ${blog}
+        <p style="font-size:15px;line-height:1.6;margin:28px 0 0;">Tot snel,<br><strong>Het Mantra Sports Team</strong></p>`,
+    };
+  }
+
+  const blog = blogUrl
+    ? `<p style="font-size:15px;line-height:1.6;margin:20px 0 0;">While you wait, here's something worth a read:</p>${ctaButton(blogUrl, "Read our blog")}`
+    : "";
+  return {
+    subject: `Hey ${name}, good to meet you! — Mantra Sports`,
+    html: `
+      <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, good to meet you! 👋</h1>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Thanks for dropping us a line — it just landed in our inbox and made someone on the team smile. We'll get back to you properly within <strong>24 hours</strong>.</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Can't wait that long? Totally fair — tap below and chat with a real person on WhatsApp right now:</p>
+      ${whatsapp}
+      ${blog}
+      <p style="font-size:15px;line-height:1.6;margin:28px 0 0;">Talk soon,<br><strong>The Mantra Sports Team</strong></p>`,
+  };
 }
 
 /**
@@ -147,11 +164,11 @@ export class WelcomeRequestController {
       { timeout: 15000 },
     );
 
-    const copy = COPY[result.language];
+    const { subject, html } = welcomeBody(result.language, dto.name, result.blogUrl);
     await this.brevo.sendEmail({
       to: dto.email,
-      subject: copy.subject,
-      html: copy.html(dto.name, result.blogUrl),
+      subject,
+      html: renderEmailShell(html),
       tags: ["welcome-email"],
     });
 

@@ -5,7 +5,87 @@ import { SkipTenantContext } from "../../../common/decorators/skip-tenant-contex
 import { TenantContextService } from "../../../common/context/tenant-context.service";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { BrevoService } from "../../notifications/brevo/brevo.service";
+import {
+  SUPPORT_EMAIL,
+  ctaButton,
+  renderEmailShell,
+  resolveLanguage,
+  type SupportedLanguage,
+  whatsappButtons,
+} from "../../notifications/brevo/email-template";
 import { BrochureRequestDto } from "./dto/brochure-request.dto";
+
+const DOWNLOAD_LABEL: Record<SupportedLanguage, string> = {
+  en: "📄 Download Brochure",
+  de: "📄 Broschüre herunterladen",
+  nl: "📄 Brochure downloaden",
+};
+
+function brochureBody(
+  language: SupportedLanguage,
+  name: string,
+  downloadUrls: string[],
+): { subject: string; html: string } {
+  const buttons = downloadUrls
+    .map((url, i) => ctaButton(url, i === 0 ? DOWNLOAD_LABEL[language] : "📄 Download Brochure (English)"))
+    .join("");
+  const whatsapp = whatsappButtons(`Hi Mantra Sports, I just requested the wholesale brochure!`);
+
+  if (language === "de") {
+    return {
+      subject: `Hey ${name}, danke für dein Interesse! — Mantra Sports`,
+      html: `
+        <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, danke für dein Interesse! 🙌</h1>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Du bist einen Schritt näher dran, Mantra Sports Produkte zu führen. Hier ist die Broschüre, um die du gebeten hast:</p>
+        ${buttons}
+        <p style="font-size:15px;line-height:1.6;margin:24px 0 8px;">Lieber direkt sprechen? Kein Problem — schlag uns einen kurzen <strong>Zoom</strong>- oder <strong>Teams</strong>-Call vor. Schreib einfach an <a href="mailto:${SUPPORT_EMAIL}" style="color:#f05f22;font-weight:600;">${SUPPORT_EMAIL}</a> mit:</p>
+        <ul style="font-size:15px;line-height:1.7;margin:0 0 16px;padding-left:20px;">
+          <li>Zoom oder Teams?</li>
+          <li>Ein Termin, der dir passt — inklusive Zeitzone</li>
+        </ul>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Auch ohne Call melden wir uns garantiert innerhalb von <strong>24 Stunden</strong> bei dir.</p>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Lieber sofort chatten? Dann auf WhatsApp:</p>
+        ${whatsapp}
+        <p style="font-size:15px;line-height:1.6;margin:28px 0 0;">Wir freuen uns auf die Zusammenarbeit,<br><strong>Dein Mantra Sports Team</strong></p>`,
+    };
+  }
+
+  if (language === "nl") {
+    return {
+      subject: `Hey ${name}, bedankt voor je interesse! — Mantra Sports`,
+      html: `
+        <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, bedankt voor je interesse! 🙌</h1>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Je bent een stap dichter bij het voeren van Mantra Sports producten. Hier is de brochure waar je om vroeg:</p>
+        ${buttons}
+        <p style="font-size:15px;line-height:1.6;margin:24px 0 8px;">Liever direct even sparren? Geen probleem — stel een korte <strong>Zoom</strong>- of <strong>Teams</strong>-call voor. Mail gewoon naar <a href="mailto:${SUPPORT_EMAIL}" style="color:#f05f22;font-weight:600;">${SUPPORT_EMAIL}</a> met:</p>
+        <ul style="font-size:15px;line-height:1.7;margin:0 0 16px;padding-left:20px;">
+          <li>Zoom of Teams?</li>
+          <li>Een tijdstip dat jou uitkomt — inclusief tijdzone</li>
+        </ul>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Ook zonder call nemen we gegarandeerd binnen <strong>24 uur</strong> contact met je op.</p>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Liever nu meteen chatten? Dan via WhatsApp:</p>
+        ${whatsapp}
+        <p style="font-size:15px;line-height:1.6;margin:28px 0 0;">We kijken ernaar uit om samen te werken,<br><strong>Het Mantra Sports Team</strong></p>`,
+    };
+  }
+
+  return {
+    subject: `Hey ${name}, thanks for reaching out! — Mantra Sports`,
+    html: `
+      <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, thanks for reaching out! 🙌</h1>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">You're one step closer to stocking Mantra Sports gear. Here's the brochure you asked for:</p>
+      ${buttons}
+      <p style="font-size:15px;line-height:1.6;margin:24px 0 8px;">Prefer to talk it through live? We're flexible — hop on a quick <strong>Zoom</strong> or <strong>Teams</strong> call, whichever you like. Just reply to <a href="mailto:${SUPPORT_EMAIL}" style="color:#f05f22;font-weight:600;">${SUPPORT_EMAIL}</a> and let us know:</p>
+      <ul style="font-size:15px;line-height:1.7;margin:0 0 16px;padding-left:20px;">
+        <li>Zoom or Teams?</li>
+        <li>A day/time that suits you — plus your timezone</li>
+      </ul>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">And even without a call, someone from our team will reach out within <strong>24 hours</strong> regardless.</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Want to chat right now instead? Tap below for WhatsApp:</p>
+      ${whatsapp}
+      <p style="font-size:15px;line-height:1.6;margin:28px 0 0;">Looking forward to working with you,<br><strong>The Mantra Sports Team</strong></p>`,
+  };
+}
 
 const SYSTEM_ACTOR = "lead-intake";
 const RATE_LIMIT_PER_HOUR = 30;
@@ -62,12 +142,16 @@ export class BrochureRequestController {
 
     const { organizationId, companyId } = keyRecord;
 
-    const { downloadUrls, ...result } = await this.prisma.$transaction(
+    const { downloadUrls, language, ...result } = await this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe(`SET LOCAL app.current_org_id = '${organizationId}'`);
         return this.tenantContext.run({ tx, organizationId, userId: SYSTEM_ACTOR }, async () => {
-          const company = await tx.company.findUnique({ where: { id: companyId } });
+          const company = await tx.company.findUnique({
+            where: { id: companyId },
+            include: { countries: { where: { deletedAt: null } } },
+          });
           const downloadUrls = resolveBrochureUrls(company);
+          const language = resolveLanguage(company);
 
           const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
           const recentCount = await tx.opportunity.count({
@@ -124,19 +208,18 @@ export class BrochureRequestController {
             });
           }
 
-          return { ok: true as const, downloadUrls };
+          return { ok: true as const, downloadUrls, language };
         });
       },
       { timeout: 15000 },
     );
 
     if (downloadUrls.length > 0) {
+      const { subject, html } = brochureBody(language, dto.name, downloadUrls);
       await this.brevo.sendEmail({
         to: dto.email,
-        subject: "Your Mantra Sports brochure",
-        html: `<p>Hi ${dto.name},</p><p>Thanks for your interest — here's your brochure:</p><ul>${downloadUrls
-          .map((url) => `<li><a href="${url}">${url}</a></li>`)
-          .join("")}</ul><p>Our sales team will also be in touch.</p>`,
+        subject,
+        html: renderEmailShell(html),
         tags: ["brochure-download"],
       });
     }
