@@ -5,22 +5,34 @@ import { SkipTenantContext } from "../../../common/decorators/skip-tenant-contex
 import { TenantContextService } from "../../../common/context/tenant-context.service";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { BrevoService } from "../../notifications/brevo/brevo.service";
-import { ctaButton, renderEmailShell, resolveLanguage, whatsappButtons } from "../../notifications/brevo/email-template";
+import {
+  ctaButton,
+  renderEmailShell,
+  resolveLanguage,
+  resolveSiteLabel,
+  whatsappButtons,
+} from "../../notifications/brevo/email-template";
 import { WelcomeRequestDto } from "./dto/welcome-request.dto";
 
 const SYSTEM_ACTOR = "lead-intake";
 const RATE_LIMIT_PER_HOUR = 30;
 const RECENT_OPPORTUNITY_WINDOW_MS = 15 * 60 * 1000;
 
-function welcomeBody(language: "en" | "de" | "nl", name: string, blogUrl: string | null): { subject: string; html: string } {
+function welcomeBody(
+  language: "en" | "de" | "nl",
+  siteLabel: string,
+  name: string,
+  blogUrl: string | null,
+): { subject: string; html: string } {
   const whatsapp = whatsappButtons(`Hi Mantra Sports, I just reached out via your website!`);
+  const brand = siteLabel ? `Mantra Sports ${siteLabel}` : "Mantra Sports";
 
   if (language === "de") {
     const blog = blogUrl
       ? `<p style="font-size:15px;line-height:1.6;margin:20px 0 0;">Während du wartest, schau doch mal hier vorbei:</p>${ctaButton(blogUrl, "Zum Blog")}`
       : "";
     return {
-      subject: `Hey ${name}, schön von dir zu hören! — Mantra Sports`,
+      subject: `Hey ${name}, schön von dir zu hören! — ${brand}`,
       html: `
         <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, schön von dir zu hören! 👋</h1>
         <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Danke für deine Nachricht — sie ist gerade bei uns eingetrudelt und hat garantiert jemandem im Team ein Lächeln ins Gesicht gezaubert. Wir melden uns innerhalb von <strong>24 Stunden</strong> ausführlich bei dir.</p>
@@ -36,7 +48,7 @@ function welcomeBody(language: "en" | "de" | "nl", name: string, blogUrl: string
       ? `<p style="font-size:15px;line-height:1.6;margin:20px 0 0;">Terwijl je wacht, lees gerust even mee:</p>${ctaButton(blogUrl, "Naar de blog")}`
       : "";
     return {
-      subject: `Hey ${name}, leuk je te spreken! — Mantra Sports`,
+      subject: `Hey ${name}, leuk je te spreken! — ${brand}`,
       html: `
         <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, leuk je te spreken! 👋</h1>
         <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Bedankt voor je bericht — die is zojuist bij ons binnengekomen en heeft gegarandeerd iemand van het team aan het lachen gemaakt. We nemen binnen <strong>24 uur</strong> uitgebreid contact met je op.</p>
@@ -51,7 +63,7 @@ function welcomeBody(language: "en" | "de" | "nl", name: string, blogUrl: string
     ? `<p style="font-size:15px;line-height:1.6;margin:20px 0 0;">While you wait, here's something worth a read:</p>${ctaButton(blogUrl, "Read our blog")}`
     : "";
   return {
-    subject: `Hey ${name}, good to meet you! — Mantra Sports`,
+    subject: `Hey ${name}, good to meet you! — ${brand}`,
     html: `
       <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, good to meet you! 👋</h1>
       <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Thanks for dropping us a line — it just landed in our inbox and made someone on the team smile. We'll get back to you properly within <strong>24 hours</strong>.</p>
@@ -102,6 +114,7 @@ export class WelcomeRequestController {
             include: { countries: { where: { deletedAt: null } } },
           });
           const language = resolveLanguage(company);
+          const siteLabel = resolveSiteLabel(company);
 
           const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
           const recentCount = await tx.opportunity.count({
@@ -158,13 +171,13 @@ export class WelcomeRequestController {
             });
           }
 
-          return { ok: true as const, language, blogUrl: company?.blogUrl ?? null };
+          return { ok: true as const, language, siteLabel, blogUrl: company?.blogUrl ?? null };
         });
       },
       { timeout: 15000 },
     );
 
-    const { subject, html } = welcomeBody(result.language, dto.name, result.blogUrl);
+    const { subject, html } = welcomeBody(result.language, result.siteLabel, dto.name, result.blogUrl);
     await this.brevo.sendEmail({
       to: dto.email,
       subject,

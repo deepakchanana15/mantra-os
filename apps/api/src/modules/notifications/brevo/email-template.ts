@@ -47,6 +47,22 @@ export function resolveLanguage(
   return lang === "de" || lang === "nl" ? lang : "en";
 }
 
+const SITE_LABELS: Record<string, string> = {
+  AU: "AU",
+  US: "USA",
+  CA: "CA",
+  DE: "DE",
+  NL: "NL",
+  IN: "IN",
+};
+
+/** Appended to the subject (e.g. "— Mantra Sports AU") so a lead's own inbox shows which storefront they used. */
+export function resolveSiteLabel(company: { countries: { isoCode: string }[] } | null): string {
+  const isoCode = company?.countries[0]?.isoCode;
+  if (!isoCode) return "";
+  return SITE_LABELS[isoCode] ?? isoCode;
+}
+
 function waLink(whatsapp: string, text: string): string {
   return `https://wa.me/${whatsapp}?text=${encodeURIComponent(text)}`;
 }

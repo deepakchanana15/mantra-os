@@ -10,6 +10,7 @@ import {
   ctaButton,
   renderEmailShell,
   resolveLanguage,
+  resolveSiteLabel,
   type SupportedLanguage,
   whatsappButtons,
 } from "../../notifications/brevo/email-template";
@@ -23,6 +24,7 @@ const DOWNLOAD_LABEL: Record<SupportedLanguage, string> = {
 
 function brochureBody(
   language: SupportedLanguage,
+  siteLabel: string,
   name: string,
   downloadUrls: string[],
 ): { subject: string; html: string } {
@@ -30,10 +32,11 @@ function brochureBody(
     .map((url, i) => ctaButton(url, i === 0 ? DOWNLOAD_LABEL[language] : "📄 Download Brochure (English)"))
     .join("");
   const whatsapp = whatsappButtons(`Hi Mantra Sports, I just requested the wholesale brochure!`);
+  const brand = siteLabel ? `Mantra Sports ${siteLabel}` : "Mantra Sports";
 
   if (language === "de") {
     return {
-      subject: `Hey ${name}, danke für dein Interesse! — Mantra Sports`,
+      subject: `Hey ${name}, danke für dein Interesse! — ${brand}`,
       html: `
         <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, danke für dein Interesse! 🙌</h1>
         <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Deine Regale sind nur noch einen Schritt von richtig gutem Sportgear entfernt. Hier ist die Broschüre, um die du gebeten hast:</p>
@@ -52,7 +55,7 @@ function brochureBody(
 
   if (language === "nl") {
     return {
-      subject: `Hey ${name}, bedankt voor je interesse! — Mantra Sports`,
+      subject: `Hey ${name}, bedankt voor je interesse! — ${brand}`,
       html: `
         <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, bedankt voor je interesse! 🙌</h1>
         <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Je schappen zijn nog maar één stap verwijderd van heel wat stoerder sportgear. Hier is de brochure waar je om vroeg:</p>
@@ -70,7 +73,7 @@ function brochureBody(
   }
 
   return {
-    subject: `Hey ${name}, thanks for reaching out! — Mantra Sports`,
+    subject: `Hey ${name}, thanks for reaching out! — ${brand}`,
     html: `
       <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, thanks for reaching out! 🙌</h1>
       <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Your shelves are one step closer to looking a lot cooler. Here's the brochure you asked for:</p>
@@ -142,7 +145,7 @@ export class BrochureRequestController {
 
     const { organizationId, companyId } = keyRecord;
 
-    const { downloadUrls, language, ...result } = await this.prisma.$transaction(
+    const { downloadUrls, language, siteLabel, ...result } = await this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe(`SET LOCAL app.current_org_id = '${organizationId}'`);
         return this.tenantContext.run({ tx, organizationId, userId: SYSTEM_ACTOR }, async () => {
@@ -152,6 +155,7 @@ export class BrochureRequestController {
           });
           const downloadUrls = resolveBrochureUrls(company);
           const language = resolveLanguage(company);
+          const siteLabel = resolveSiteLabel(company);
 
           const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
           const recentCount = await tx.opportunity.count({
@@ -208,14 +212,14 @@ export class BrochureRequestController {
             });
           }
 
-          return { ok: true as const, downloadUrls, language };
+          return { ok: true as const, downloadUrls, language, siteLabel };
         });
       },
       { timeout: 15000 },
     );
 
     if (downloadUrls.length > 0) {
-      const { subject, html } = brochureBody(language, dto.name, downloadUrls);
+      const { subject, html } = brochureBody(language, siteLabel, dto.name, downloadUrls);
       await this.brevo.sendEmail({
         to: dto.email,
         subject,
