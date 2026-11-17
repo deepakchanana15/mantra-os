@@ -61,13 +61,14 @@ export class BrochureRequestController {
     }
 
     const { organizationId, companyId } = keyRecord;
-    const company = await this.prisma.company.findUnique({ where: { id: companyId } });
-    const downloadUrls = resolveBrochureUrls(company);
 
-    const result = await this.prisma.$transaction(
+    const { downloadUrls, ...result } = await this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe(`SET LOCAL app.current_org_id = '${organizationId}'`);
         return this.tenantContext.run({ tx, organizationId, userId: SYSTEM_ACTOR }, async () => {
+          const company = await tx.company.findUnique({ where: { id: companyId } });
+          const downloadUrls = resolveBrochureUrls(company);
+
           const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
           const recentCount = await tx.opportunity.count({
             where: { organizationId, companyId, brochureSent: true, createdAt: { gte: oneHourAgo } },
@@ -123,7 +124,7 @@ export class BrochureRequestController {
             });
           }
 
-          return { ok: true as const };
+          return { ok: true as const, downloadUrls };
         });
       },
       { timeout: 15000 },
