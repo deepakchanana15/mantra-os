@@ -36,15 +36,15 @@ function brochureBody(
       subject: `Hey ${name}, danke für dein Interesse! — Mantra Sports`,
       html: `
         <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, danke für dein Interesse! 🙌</h1>
-        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Du bist einen Schritt näher dran, Mantra Sports Produkte zu führen. Hier ist die Broschüre, um die du gebeten hast:</p>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Deine Regale sind nur noch einen Schritt von richtig gutem Sportgear entfernt. Hier ist die Broschüre, um die du gebeten hast:</p>
         ${buttons}
-        <p style="font-size:15px;line-height:1.6;margin:24px 0 8px;">Lieber direkt sprechen? Kein Problem — schlag uns einen kurzen <strong>Zoom</strong>- oder <strong>Teams</strong>-Call vor. Schreib einfach an <a href="mailto:${SUPPORT_EMAIL}" style="color:#f05f22;font-weight:600;">${SUPPORT_EMAIL}</a> mit:</p>
+        <p style="font-size:15px;line-height:1.6;margin:24px 0 8px;">Lieber in echt sprechen? Verständlich — ein PDF schreibt halt nicht zurück. Schlag uns einen kurzen <strong>Zoom</strong>- oder <strong>Teams</strong>-Call vor, ganz wie du magst. Schreib einfach an <a href="mailto:${SUPPORT_EMAIL}" style="color:#f05f22;font-weight:600;">${SUPPORT_EMAIL}</a> mit:</p>
         <ul style="font-size:15px;line-height:1.7;margin:0 0 16px;padding-left:20px;">
           <li>Zoom oder Teams?</li>
           <li>Ein Termin, der dir passt — inklusive Zeitzone</li>
         </ul>
-        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Auch ohne Call melden wir uns garantiert innerhalb von <strong>24 Stunden</strong> bei dir.</p>
-        <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Lieber sofort chatten? Dann auf WhatsApp:</p>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Kein Call nötig? Kein Problem — ein echter Mensch aus unserem Team meldet sich trotzdem garantiert innerhalb von <strong>24 Stunden</strong>. Wir lassen dich nicht hängen.</p>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Keine Geduld? Verstehen wir total. Dann schreib uns direkt auf WhatsApp:</p>
         ${whatsapp}
         <p style="font-size:15px;line-height:1.6;margin:28px 0 0;">Wir freuen uns auf die Zusammenarbeit,<br><strong>Dein Mantra Sports Team</strong></p>`,
     };
@@ -55,15 +55,15 @@ function brochureBody(
       subject: `Hey ${name}, bedankt voor je interesse! — Mantra Sports`,
       html: `
         <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, bedankt voor je interesse! 🙌</h1>
-        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Je bent een stap dichter bij het voeren van Mantra Sports producten. Hier is de brochure waar je om vroeg:</p>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Je schappen zijn nog maar één stap verwijderd van heel wat stoerder sportgear. Hier is de brochure waar je om vroeg:</p>
         ${buttons}
-        <p style="font-size:15px;line-height:1.6;margin:24px 0 8px;">Liever direct even sparren? Geen probleem — stel een korte <strong>Zoom</strong>- of <strong>Teams</strong>-call voor. Mail gewoon naar <a href="mailto:${SUPPORT_EMAIL}" style="color:#f05f22;font-weight:600;">${SUPPORT_EMAIL}</a> met:</p>
+        <p style="font-size:15px;line-height:1.6;margin:24px 0 8px;">Liever gewoon even sparren? Snappen we — een PDF praat nu eenmaal niet terug. Plan een korte <strong>Zoom</strong>- of <strong>Teams</strong>-call, net wat jou het beste uitkomt. Mail gewoon naar <a href="mailto:${SUPPORT_EMAIL}" style="color:#f05f22;font-weight:600;">${SUPPORT_EMAIL}</a> met:</p>
         <ul style="font-size:15px;line-height:1.7;margin:0 0 16px;padding-left:20px;">
           <li>Zoom of Teams?</li>
           <li>Een tijdstip dat jou uitkomt — inclusief tijdzone</li>
         </ul>
-        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Ook zonder call nemen we gegarandeerd binnen <strong>24 uur</strong> contact met je op.</p>
-        <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Liever nu meteen chatten? Dan via WhatsApp:</p>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Geen zin in een call? Geen probleem — een echt mens van ons team neemt sowieso binnen <strong>24 uur</strong> contact op. We laten je niet links liggen.</p>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Kan het niet wachten? Helemaal terecht. Stuur ons dan meteen een appje via WhatsApp:</p>
         ${whatsapp}
         <p style="font-size:15px;line-height:1.6;margin:28px 0 0;">We kijken ernaar uit om samen te werken,<br><strong>Het Mantra Sports Team</strong></p>`,
     };
@@ -73,15 +73,15 @@ function brochureBody(
     subject: `Hey ${name}, thanks for reaching out! — Mantra Sports`,
     html: `
       <h1 style="font-size:23px;margin:0 0 16px;">Hey ${name}, thanks for reaching out! 🙌</h1>
-      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">You're one step closer to stocking Mantra Sports gear. Here's the brochure you asked for:</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Your shelves are one step closer to looking a lot cooler. Here's the brochure you asked for:</p>
       ${buttons}
-      <p style="font-size:15px;line-height:1.6;margin:24px 0 8px;">Prefer to talk it through live? We're flexible — hop on a quick <strong>Zoom</strong> or <strong>Teams</strong> call, whichever you like. Just reply to <a href="mailto:${SUPPORT_EMAIL}" style="color:#f05f22;font-weight:600;">${SUPPORT_EMAIL}</a> and let us know:</p>
+      <p style="font-size:15px;line-height:1.6;margin:24px 0 8px;">Prefer to talk it through? Fair enough — PDFs don't have a pulse. Hop on a quick <strong>Zoom</strong> or <strong>Teams</strong> call, whichever you fancy. Just reply to <a href="mailto:${SUPPORT_EMAIL}" style="color:#f05f22;font-weight:600;">${SUPPORT_EMAIL}</a> and let us know:</p>
       <ul style="font-size:15px;line-height:1.7;margin:0 0 16px;padding-left:20px;">
         <li>Zoom or Teams?</li>
         <li>A day/time that suits you — plus your timezone</li>
       </ul>
-      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">And even without a call, someone from our team will reach out within <strong>24 hours</strong> regardless.</p>
-      <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Want to chat right now instead? Tap below for WhatsApp:</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">No call? No worries — a real human from our team will still reach out within <strong>24 hours</strong> regardless. We don't ghost.</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 8px;">Impatient? We love that for you. Tap below for WhatsApp:</p>
       ${whatsapp}
       <p style="font-size:15px;line-height:1.6;margin:28px 0 0;">Looking forward to working with you,<br><strong>The Mantra Sports Team</strong></p>`,
   };
