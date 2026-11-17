@@ -73,7 +73,7 @@ export function whatsappButtons(prefilledText: string): string {
     <td style="padding:0 6px;">
       <a href="${waLink(c.whatsapp, prefilledText)}"
          style="display:inline-block;background:#25D366;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;text-decoration:none;padding:12px 18px;border-radius:8px;white-space:nowrap;">
-        ${c.flag}&nbsp; Chat&nbsp;on&nbsp;WhatsApp
+        ${c.flag}&nbsp; WhatsApp&nbsp;(${c.label})
       </a>
     </td>`;
   return `
