@@ -47,6 +47,7 @@ interface Company {
   baseCurrencyId: string | null;
   brochureUrl: string | null;
   brochureUrlEn: string | null;
+  blogUrl: string | null;
   countries: { defaultLanguage: string | null }[];
 }
 

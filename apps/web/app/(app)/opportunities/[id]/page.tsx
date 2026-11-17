@@ -41,6 +41,8 @@ interface Opportunity {
   productInterest: string | null;
   brochureSent: boolean;
   brochureSentAt: string | null;
+  welcomeEmailSent: boolean;
+  welcomeEmailSentAt: string | null;
   quotes: Quote[];
 }
 
@@ -87,6 +89,11 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
             {opportunity.brochureSent && (
               <p className="text-xs text-faint">
                 Brochure sent{opportunity.brochureSentAt ? ` — ${new Date(opportunity.brochureSentAt).toLocaleDateString()}` : ""}
+              </p>
+            )}
+            {opportunity.welcomeEmailSent && (
+              <p className="text-xs text-faint">
+                Welcome email sent{opportunity.welcomeEmailSentAt ? ` — ${new Date(opportunity.welcomeEmailSentAt).toLocaleDateString()}` : ""}
               </p>
             )}
             {opportunity.customer && (

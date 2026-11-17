@@ -59,4 +59,9 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsUrl()
   brochureUrlEn?: string | null;
+
+  /** Linked from the B2C welcome email sent by POST /v1/leads/welcome. Pass null to remove it. */
+  @IsOptional()
+  @IsUrl()
+  blogUrl?: string | null;
 }

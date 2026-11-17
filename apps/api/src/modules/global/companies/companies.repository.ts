@@ -38,6 +38,7 @@ export class CompaniesRepository extends BaseRepository {
         baseCurrencyId: dto.baseCurrencyId,
         brochureUrl: dto.brochureUrl,
         brochureUrlEn: dto.brochureUrlEn,
+        blogUrl: dto.blogUrl,
         organizationId: this.organizationId,
         createdBy: this.userId,
         updatedBy: this.userId,
@@ -61,6 +62,7 @@ export class CompaniesRepository extends BaseRepository {
         baseCurrencyId: dto.baseCurrencyId,
         brochureUrl: dto.brochureUrl,
         brochureUrlEn: dto.brochureUrlEn,
+        blogUrl: dto.blogUrl,
         updatedBy: this.userId,
       },
     });

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { FileText, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 interface Company {
@@ -12,6 +14,7 @@ interface Company {
   baseCurrencyId: string | null;
   brochureUrl: string | null;
   brochureUrlEn: string | null;
+  blogUrl: string | null;
   countries: { defaultLanguage: string | null }[];
 }
 
@@ -43,6 +46,10 @@ export function BrochuresTab({ companies, currencies }: { companies: Company[]; 
     () => Object.fromEntries(companies.map((c) => [c.id, { brochureUrl: c.brochureUrl, brochureUrlEn: c.brochureUrlEn }])),
   );
   const [uploading, setUploading] = useState<string | null>(null);
+  const [blogUrls, setBlogUrls] = useState<Record<string, string | null>>(
+    () => Object.fromEntries(companies.map((c) => [c.id, c.blogUrl])),
+  );
+  const [savingBlogUrlFor, setSavingBlogUrlFor] = useState<string | null>(null);
 
   const nonEnglishByCurrency = new Map<string, Company[]>();
   for (const c of companies) {
@@ -51,7 +58,10 @@ export function BrochuresTab({ companies, currencies }: { companies: Company[]; 
     nonEnglishByCurrency.set(key, [...(nonEnglishByCurrency.get(key) ?? []), c]);
   }
 
-  async function patchCompanies(ids: string[], data: { brochureUrl?: string | null; brochureUrlEn?: string | null }) {
+  async function patchCompanies(
+    ids: string[],
+    data: { brochureUrl?: string | null; brochureUrlEn?: string | null; blogUrl?: string | null },
+  ) {
     for (const id of ids) {
       const res = await fetch(`/api/v1/companies/${id}`, {
         method: "PATCH",
@@ -108,6 +118,22 @@ export function BrochuresTab({ companies, currencies }: { companies: Company[]; 
       toast.error(err instanceof Error ? err.message : "Couldn't remove the brochure.");
     } finally {
       setUploading(null);
+    }
+  }
+
+  async function handleBlogUrlBlur(companyId: string, value: string) {
+    const normalized = value.trim();
+    if ((blogUrls[companyId] ?? "") === normalized) return;
+
+    setSavingBlogUrlFor(companyId);
+    try {
+      await patchCompanies([companyId], { blogUrl: normalized || null });
+      setBlogUrls((prev) => ({ ...prev, [companyId]: normalized || null }));
+      toast.success("Blog link updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't save the blog link.");
+    } finally {
+      setSavingBlogUrlFor(null);
     }
   }
 
@@ -181,9 +207,9 @@ export function BrochuresTab({ companies, currencies }: { companies: Company[]; 
   return (
     <div className="flex max-w-2xl flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        The PDF sent to B2B leads who submit a wholesale/contact enquiry on each site. Every site has its own
-        brochure (its own language and currency) — upload or replace any of them here any time, no code change
-        needed.
+        The PDF sent to B2B leads who submit a wholesale/contact enquiry on each site, and the blog link sent to
+        everyone else's general enquiries. Every site has its own brochure (its own language and currency) and its
+        own blog link — update either here any time, no code change needed.
       </p>
       {companies.map((company) => {
         const lang = companyLanguage(company);
@@ -223,6 +249,20 @@ export function BrochuresTab({ companies, currencies }: { companies: Company[]; 
                   field="brochureUrlEn"
                 />
               )}
+              <div className="flex flex-col gap-1.5 rounded-md border border-border p-3">
+                <Label htmlFor={`blog-url-${company.id}`} className="text-xs font-medium text-foreground">
+                  Blog link (for the general-enquiry welcome email)
+                </Label>
+                <Input
+                  id={`blog-url-${company.id}`}
+                  key={company.id + (blogUrls[company.id] ?? "")}
+                  defaultValue={blogUrls[company.id] ?? ""}
+                  placeholder="https://..."
+                  disabled={savingBlogUrlFor === company.id}
+                  onBlur={(e) => handleBlogUrlBlur(company.id, e.target.value)}
+                  className="h-8"
+                />
+              </div>
             </CardContent>
           </Card>
         );

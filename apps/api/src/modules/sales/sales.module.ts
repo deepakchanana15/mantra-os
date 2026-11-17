@@ -3,6 +3,7 @@ import { ActivityModule } from "../activity/activity.module";
 import { InventoryModule } from "../inventory/inventory.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { BrochureRequestController } from "./leads/brochure-request.controller";
+import { WelcomeRequestController } from "./leads/welcome-request.controller";
 import { IndiaExportInvoicePdfService } from "./invoices/india-export-invoice-pdf.service";
 import { InvoicePdfService } from "./invoices/invoice-pdf.service";
 import { InvoicesController } from "./invoices/invoices.controller";
@@ -40,6 +41,7 @@ import { WhatsAppWebhookController } from "./whatsapp/whatsapp-webhook.controlle
     LeadIntakeKeysController,
     LeadIntakeController,
     BrochureRequestController,
+    WelcomeRequestController,
     WhatsAppPhoneNumbersController,
     WhatsAppWebhookController,
   ],

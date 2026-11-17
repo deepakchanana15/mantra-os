@@ -292,6 +292,10 @@ model Company {
   /// a currency can be pointed at the same uploaded file from the
   /// Brochures settings UI.
   brochureUrlEn      String?
+  /// A blog post (or any page) linked from the B2C "thanks for reaching
+  /// out" welcome email sent by POST /v1/leads/welcome — never the brochure,
+  /// which is B2B-only. Set via Settings → Brochures, same as brochureUrl.
+  blogUrl            String?
   enabled            Boolean   @default(true)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -1525,6 +1529,10 @@ model Opportunity {
   /// see, per-Opportunity, whether the brochure actually went out.
   brochureSent      Boolean           @default(false)
   brochureSentAt    DateTime?
+  /// Set by POST /v1/leads/welcome for B2C (GENERAL) leads — the brochure
+  /// fields above are the B2B equivalent, set by POST /v1/leads/brochure.
+  welcomeEmailSent  Boolean           @default(false)
+  welcomeEmailSentAt DateTime?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   createdBy         String
