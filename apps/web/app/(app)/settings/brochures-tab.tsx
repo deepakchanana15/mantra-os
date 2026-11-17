@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Upload } from "lucide-react";
+import { FileText, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -51,7 +51,7 @@ export function BrochuresTab({ companies, currencies }: { companies: Company[]; 
     nonEnglishByCurrency.set(key, [...(nonEnglishByCurrency.get(key) ?? []), c]);
   }
 
-  async function patchCompanies(ids: string[], data: { brochureUrl?: string; brochureUrlEn?: string }) {
+  async function patchCompanies(ids: string[], data: { brochureUrl?: string | null; brochureUrlEn?: string | null }) {
     for (const id of ids) {
       const res = await fetch(`/api/v1/companies/${id}`, {
         method: "PATCH",
@@ -94,6 +94,23 @@ export function BrochuresTab({ companies, currencies }: { companies: Company[]; 
     }
   }
 
+  async function handleRemove(uploadKey: string, companyIds: string[], field: "brochureUrl" | "brochureUrlEn") {
+    setUploading(uploadKey);
+    try {
+      await patchCompanies(companyIds, { [field]: null });
+      setFiles((prev) => {
+        const next = { ...prev };
+        for (const id of companyIds) next[id] = { ...next[id], [field]: null };
+        return next;
+      });
+      toast.success("Brochure removed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't remove the brochure.");
+    } finally {
+      setUploading(null);
+    }
+  }
+
   function UploadRow({
     uploadKey,
     label,
@@ -122,25 +139,39 @@ export function BrochuresTab({ companies, currencies }: { companies: Company[]; 
             )}
           </div>
         </div>
-        <label>
-          <Button type="button" variant="outline" size="sm" disabled={uploading === uploadKey} asChild>
-            <span className="cursor-pointer">
-              <Upload className="h-3.5 w-3.5" />
-              {uploading === uploadKey ? "Uploading…" : url ? "Replace" : "Upload"}
-            </span>
-          </Button>
-          <input
-            type="file"
-            accept="application/pdf"
-            className="hidden"
-            disabled={uploading !== null}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleUpload(uploadKey, companyIds, field, file);
-              e.target.value = "";
-            }}
-          />
-        </label>
+        <div className="flex items-center gap-2">
+          <label>
+            <Button type="button" variant="outline" size="sm" disabled={uploading === uploadKey} asChild>
+              <span className="cursor-pointer">
+                <Upload className="h-3.5 w-3.5" />
+                {uploading === uploadKey ? "Uploading…" : url ? "Replace" : "Upload"}
+              </span>
+            </Button>
+            <input
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              disabled={uploading !== null}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleUpload(uploadKey, companyIds, field, file);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          {url && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={uploading !== null}
+              onClick={() => void handleRemove(uploadKey, companyIds, field)}
+            >
+              <X className="h-3.5 w-3.5" />
+              Remove
+            </Button>
+          )}
+        </div>
       </div>
     );
   }

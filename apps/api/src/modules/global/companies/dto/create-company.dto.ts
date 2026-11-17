@@ -50,13 +50,13 @@ export class CreateCompanyDto {
   @IsUUID()
   baseCurrencyId?: string;
 
-  /** This company's own B2B brochure PDF (its local language/currency), sent by POST /v1/leads/brochure. */
+  /** This company's own B2B brochure PDF (its local language/currency), sent by POST /v1/leads/brochure. Pass null to remove it. */
   @IsOptional()
   @IsUrl()
-  brochureUrl?: string;
+  brochureUrl?: string | null;
 
-  /** Optional English add-on brochure — only meaningful where this company's own language isn't English. */
+  /** Optional English add-on brochure — only meaningful where this company's own language isn't English. Pass null to remove it. */
   @IsOptional()
   @IsUrl()
-  brochureUrlEn?: string;
+  brochureUrlEn?: string | null;
 }
