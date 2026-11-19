@@ -53,6 +53,17 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const contactEmail = opportunity.customer?.email ?? opportunity.leadEmail;
   const contactPhone = opportunity.customer?.phone ?? opportunity.leadPhone;
 
+  // customerType/productInterest come from the website lead-intake payload as
+  // separate columns — fold them into Notes so everything captured from the
+  // site shows in one place. Skipped once notes already contains this text
+  // (i.e. after the first save merges it in for real), so re-visiting the
+  // page never duplicates it.
+  const capturedInfo = [opportunity.customerType, opportunity.productInterest].filter(Boolean).join(" · ");
+  const notesWithCapturedInfo =
+    capturedInfo && !opportunity.notes?.includes(capturedInfo)
+      ? [capturedInfo, opportunity.notes].filter(Boolean).join("\n\n")
+      : opportunity.notes;
+
   return (
     <div className="grid grid-cols-1 gap-5 p-7 lg:grid-cols-[1fr_400px]">
       <div className="flex flex-col gap-4">
@@ -83,9 +94,6 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
               <Phone className="h-4 w-4 text-faint" />
               <span className="text-foreground">{contactPhone ?? "No phone on file"}</span>
             </div>
-            {(opportunity.customerType || opportunity.productInterest) && (
-              <p className="text-xs text-faint">{[opportunity.customerType, opportunity.productInterest].filter(Boolean).join(" · ")}</p>
-            )}
             {opportunity.brochureSent && (
               <p className="text-xs text-faint">
                 Brochure sent{opportunity.brochureSentAt ? ` — ${new Date(opportunity.brochureSentAt).toLocaleDateString()}` : ""}
@@ -104,7 +112,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
           </CardContent>
         </Card>
 
-        <Card className="max-w-lg">
+        <Card>
           <CardHeader>
             <CardTitle>Stage &amp; value</CardTitle>
           </CardHeader>
@@ -114,7 +122,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
               currentStage={opportunity.stage}
               currentLostReason={opportunity.lostReason}
               currentEstimatedValue={opportunity.estimatedValue}
-              currentNotes={opportunity.notes}
+              currentNotes={notesWithCapturedInfo}
             />
           </CardContent>
         </Card>

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { OPPORTUNITY_STAGES, opportunityStageDescription } from "@/lib/opportunity-stages";
 import { OPPORTUNITY_LOST_REASONS, opportunityLostReasonLabel } from "@/lib/opportunity-lost-reasons";
@@ -135,7 +136,7 @@ export function OpportunityStageEditor({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="notes">Notes{notesRequired ? " *" : ""}</Label>
-        <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <Textarea id="notes" rows={6} value={notes} onChange={(e) => setNotes(e.target.value)} />
         {notesRequired && (
           <p className="text-xs text-muted-foreground">
             Required — explain what &quot;{opportunityLostReasonLabel("OTHER")}&quot; means here.
