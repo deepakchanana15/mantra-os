@@ -1,4 +1,5 @@
 import { apiFetch, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OrgSettingsForm } from "./org-settings-form";
 import { MembersTab } from "./members-tab";
@@ -158,8 +159,13 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-5 p-7">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground">Settings</h1>
+        <Button variant="outline" size="sm" asChild>
+          <a href="/api/v1/contacts-export/vcard" download>
+            Export contacts (.vcf)
+          </a>
+        </Button>
       </div>
 
       <Tabs defaultValue="organization">
