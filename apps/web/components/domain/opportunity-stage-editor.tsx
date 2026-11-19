@@ -134,15 +134,13 @@ export function OpportunityStageEditor({
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="notes">Notes{notesRequired ? " *" : ""}</Label>
-        <Textarea id="notes" rows={6} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        {notesRequired && (
-          <p className="text-xs text-muted-foreground">
-            Required — explain what &quot;{opportunityLostReasonLabel("OTHER")}&quot; means here.
-          </p>
-        )}
-      </div>
+      {notesRequired && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="notes">Explain &quot;{opportunityLostReasonLabel("OTHER")}&quot; *</Label>
+          <Textarea id="notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <p className="text-xs text-muted-foreground">Required when the lost reason is &quot;Other&quot;.</p>
+        </div>
+      )}
 
       <Button disabled={loading || !isDirty} onClick={handleSave} className="self-start">
         {loading ? "Saving…" : "Save changes"}

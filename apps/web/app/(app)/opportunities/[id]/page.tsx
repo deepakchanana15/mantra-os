@@ -53,16 +53,12 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const contactEmail = opportunity.customer?.email ?? opportunity.leadEmail;
   const contactPhone = opportunity.customer?.phone ?? opportunity.leadPhone;
 
-  // customerType/productInterest come from the website lead-intake payload as
-  // separate columns — fold them into Notes so everything captured from the
-  // site shows in one place. Skipped once notes already contains this text
-  // (i.e. after the first save merges it in for real), so re-visiting the
-  // page never duplicates it.
+  // customerType/productInterest/notes are what the lead typed on the
+  // website itself — shown read-only together (see the "Message" card
+  // below) rather than folded into the editable Notes field, since nobody
+  // should be able to overwrite what a lead actually submitted.
   const capturedInfo = [opportunity.customerType, opportunity.productInterest].filter(Boolean).join(" · ");
-  const notesWithCapturedInfo =
-    capturedInfo && !opportunity.notes?.includes(capturedInfo)
-      ? [capturedInfo, opportunity.notes].filter(Boolean).join("\n\n")
-      : opportunity.notes;
+  const hasMessage = Boolean(capturedInfo || opportunity.notes);
 
   return (
     <div className="grid grid-cols-1 gap-5 p-7 lg:grid-cols-[1fr_400px]">
@@ -112,6 +108,19 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
           </CardContent>
         </Card>
 
+        {hasMessage && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Message</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap text-sm text-foreground">
+                {[capturedInfo, opportunity.notes].filter(Boolean).join("\n\n")}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Stage &amp; value</CardTitle>
@@ -122,7 +131,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
               currentStage={opportunity.stage}
               currentLostReason={opportunity.lostReason}
               currentEstimatedValue={opportunity.estimatedValue}
-              currentNotes={notesWithCapturedInfo}
+              currentNotes={opportunity.notes}
             />
           </CardContent>
         </Card>
