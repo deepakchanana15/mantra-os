@@ -1,4 +1,4 @@
-import { Controller, Get, Res, UseGuards } from "@nestjs/common";
+import { Controller, Get, Query, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
 import { RequirePermission } from "../../../common/decorators/require-permission.decorator";
 import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard";
@@ -14,10 +14,11 @@ export class ContactsExportController {
 
   @Get("vcard")
   @RequirePermission(PERMISSIONS.CUSTOMERS_READ)
-  async downloadVCard(@Res() res: Response) {
-    const vcard = await this.contactsExport.buildVCard();
+  async downloadVCard(@Query("country") country: string | undefined, @Res() res: Response) {
+    const vcard = await this.contactsExport.buildVCard(country);
+    const filename = country ? `mantra-os-contacts-${country.toLowerCase()}.vcf` : "mantra-os-contacts.vcf";
     res.setHeader("Content-Type", "text/vcard; charset=utf-8");
-    res.setHeader("Content-Disposition", 'attachment; filename="mantra-os-contacts.vcf"');
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.send(vcard);
   }
 }

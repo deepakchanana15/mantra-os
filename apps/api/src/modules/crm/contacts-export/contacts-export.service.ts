@@ -15,8 +15,8 @@ function escapeVCardText(value: string): string {
 export class ContactsExportService {
   constructor(private readonly contacts: ContactsExportRepository) {}
 
-  async buildVCard(): Promise<string> {
-    const contacts = await this.contacts.findAllContacts();
+  async buildVCard(countryIso?: string): Promise<string> {
+    const contacts = await this.contacts.findAllContacts(countryIso);
 
     const blocks = contacts.map((c) => {
       const lines = ["BEGIN:VCARD", "VERSION:3.0", `FN:${escapeVCardText(c.name)}`, `TEL;TYPE=CELL:${c.phone}`];

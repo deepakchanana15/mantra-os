@@ -1,6 +1,6 @@
 import { apiFetch, ApiError } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ContactsExportControl } from "@/components/domain/contacts-export-control";
 import { OrgSettingsForm } from "./org-settings-form";
 import { MembersTab } from "./members-tab";
 import { DeletionGrantsTab } from "./deletion-grants-tab";
@@ -156,16 +156,15 @@ export default async function SettingsPage() {
     fetchOrNull<MetaLeadPage[]>("/v1/meta-lead-pages"),
   ]);
   const globalDomainAvailable = currencies && companies && countries && brands && websites;
+  const exportCountries = countries
+    ? [...new Map(countries.map((c) => [c.isoCode, { isoCode: c.isoCode, name: c.name }])).values()]
+    : [];
 
   return (
     <div className="flex flex-col gap-5 p-7">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground">Settings</h1>
-        <Button variant="outline" size="sm" asChild>
-          <a href="/api/v1/contacts-export/vcard" download>
-            Export contacts (.vcf)
-          </a>
-        </Button>
+        <ContactsExportControl countries={exportCountries} />
       </div>
 
       <Tabs defaultValue="organization">
