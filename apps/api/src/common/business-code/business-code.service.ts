@@ -50,12 +50,17 @@ export class BusinessCodeService {
   }
 
   private async resolveIsoCode(params: { companyId?: string | null; countryId?: string | null }): Promise<string> {
+    // Countries are soft-deleted, so skip deleted rows — otherwise a deleted
+    // country (e.g. one created with a typo and replaced) leaks its old code.
     if (params.countryId) {
-      const country = await this.db.country.findUnique({ where: { id: params.countryId } });
+      const country = await this.db.country.findFirst({ where: { id: params.countryId, deletedAt: null } });
       if (country) return country.isoCode;
     }
     if (params.companyId) {
-      const country = await this.db.country.findFirst({ where: { companyId: params.companyId } });
+      const country = await this.db.country.findFirst({
+        where: { companyId: params.companyId, deletedAt: null },
+        orderBy: { createdAt: "asc" },
+      });
       if (country) return country.isoCode;
     }
     return "XX";
